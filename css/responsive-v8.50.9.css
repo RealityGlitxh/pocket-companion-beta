@@ -1,0 +1,39 @@
+/* V8.50.9 — Responsive QA hardening */
+html,body{max-width:100%;overflow-x:hidden}img,svg,canvas,video{max-width:100%}button,input,select,textarea{max-width:100%}.panel,.grid>*{min-width:0}
+@media(max-width:1120px){
+  .mobileBottomNav{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.mobileBottomNav::-webkit-scrollbar{display:none}.mobileBottomNav button{flex:1 1 0}
+  .deckManagerToolbar{grid-template-columns:1fr 1fr}.deckManagerToolbar>*:first-child{grid-column:1/-1}
+  .collectionBrowserGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:800px){
+  .foundationEntryShell{margin:18px auto;gap:12px}.foundationEntryCard{padding:20px}.entryFeatureGrid{grid-template-columns:1fr 1fr}
+  .deckManagerToolbar{grid-template-columns:1fr}.deckManagerToolbar>*:first-child{grid-column:auto}
+  .collectionModes,.battleTabs,.segmented{overflow-x:auto;overscroll-behavior-x:contain}.collectionModes>* ,.battleTabs>*{flex:0 0 auto}
+  .filtergrid{grid-template-columns:1fr 1fr}.filtergrid>*{min-width:0}
+  .v849ShareLanding{margin:20px auto;padding:12px}
+}
+@media(max-width:600px){
+  .foundationEntryStory{padding:22px}.foundationEntryStory h1{font-size:clamp(2.25rem,11vw,3rem)}.entryFeatureGrid{grid-template-columns:1fr}
+  .entryLinkRow{grid-template-columns:1fr}.foundationEntryCard{padding:17px}
+  .deckManagerMeta{gap:8px;flex-wrap:wrap}.deckManagerMetrics{grid-template-columns:1fr 1fr 1fr}
+  .collectionBrowserGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .quickResultActions,.streamResultButtons,.gymResultButtons{grid-template-columns:1fr 1fr}
+  .sessionCardHead{grid-template-columns:1fr}.sessionMetricGrid,.sessionMatchups{grid-template-columns:1fr 1fr}
+  .rankProgressMain .rp{font-size:clamp(3rem,17vw,4.5rem)}
+  .v848DomainGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v849Journey{scroll-snap-type:x proximity}.v849JourneyStep{scroll-snap-align:start}
+  .modalback{padding:8px}.modal{padding:14px;border-radius:16px;max-height:94dvh}
+}
+@media(max-width:430px){
+  body{padding-bottom:82px}.appHeaderBar{min-width:0}.headerTools{min-width:0}.globalSearchButton{min-width:42px}
+  .panel{padding:13px}.metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .deckManagerMetrics{gap:5px}.deckManagerMetrics span{padding:7px}
+  .v848DomainGrid{grid-template-columns:1fr 1fr}.v848Domain{padding:10px}.v848DomainCount{font-size:23px}
+  .bigBossGrid{grid-template-columns:1fr 1fr}.bigBossArt{gap:3px}
+  .quickResultActions,.streamResultButtons,.gymResultButtons{gap:6px}
+  .mobileBottomNav button{min-height:46px}
+}
+@media(max-width:350px){
+  .metricgrid,.v848DomainGrid,.sessionMetricGrid,.sessionMatchups{grid-template-columns:1fr}
+  .collectionBrowserGrid{grid-template-columns:1fr 1fr}.foundationEntryStory{padding:17px}.foundationEntryCard{padding:14px}
+}
