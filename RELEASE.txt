@@ -1,3 +1,10 @@
+PocketNexus V8.64.1 Hotfix 10 — Meta Refresh Stability
+- Stops stale Meta snapshots from triggering a refresh/render loop that could freeze or crash the site.
+- Throttles background Meta refreshes to the existing five-minute freshness window.
+- Compacts live Meta payloads before caching/rendering and caps matchup rows kept client-side.
+- Keeps cached/fallback Meta available when live refresh fails.
+- Preserves on-demand deck/card detail loading.
+
 PocketNexus V8.64.1 — Closed Beta Release Candidate
 
 Finalizes the PocketNexus brand migration, hardened tournament browsing with cached/recovery behavior, combined competitive Meta list + matchup matrix with low-sample labeling, compact Training navigation, onboarding-style update window, privacy-safe diagnostics, Google/Supabase auth-return cleanup for beta.pocketnexus.app, and opt-in public grind-session posts on player profiles.
