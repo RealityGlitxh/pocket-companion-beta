@@ -1,0 +1,19 @@
+Pocket Companion V8.64.0 — Closed Beta Validation & Bug Fixes
+
+Adds a persistent per-device beta QA checklist, beta session IDs, richer privacy-safe diagnostic reports, storage/PWA/device diagnostics, and a clean V8.64 PWA cache boundary. This build is intended for hosted closed-beta validation; checklist completion is device-local and does not claim global production validation.
+No Supabase migration required.
+
+Pocket Companion V8.63.0 — Public Launch Hardening
+
+Adds dedicated Privacy, Terms, and Support pages, in-app release-readiness status, local-only runtime error diagnostics, and a clean V8.63 PWA cache boundary. This is a public-launch release candidate; hosted/device QA, a permanent support destination, final auth/domain configuration, and appropriate legal/security review remain required before broad public release.
+No Supabase migration required.
+
+Pocket Companion V8.62.4 — Mobile QA + Release Candidate
+
+Release-candidate hardening for the V8.62 mobile/PWA line. Adds mobile overflow/touch/focus safeguards, versioned PWA cache refresh, and an in-app readiness diagnostic available at PPCMobile.readinessReport().
+No Supabase migration required.
+
+Pocket Companion V8.62.3 — Mobile App Readiness
+
+Installed-app lifecycle, deep-link routing, auth-return routing, mobile keyboard handling, Web Share support, and native-wrapper preparation.
+No Supabase migration required.
