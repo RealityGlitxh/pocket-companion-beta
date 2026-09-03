@@ -1,7 +1,7 @@
 /* V8.59.3 Automatic Sync Orchestrator
    Runs registered read-only adapters, records each run, retries transient failures,
    and forwards successful envelopes to the existing ingestion layer.
-   Browser scheduling only runs while Pocket Companion is open; server-side scheduling
+   Browser scheduling only runs while PocketNexus is open; server-side scheduling
    can be attached later without changing the adapter contract. */
 (function(){
   const timers=new Map();

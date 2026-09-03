@@ -629,7 +629,7 @@ function startSession(){
  if(state.sessions.some(s=>!s.end))return ppcNotice("A battle session is already active.");
  const d=state.battlePrefs.lastDeckId||state.decks[0]?.id||"",type=document.getElementById("sessionType")?.value||"Ranked Grind",custom=(document.getElementById("sessionName")?.value||"").trim();state.sessions.push({id:makeId(),start:Date.now(),end:null,deckId:d,type,name:custom||type});save();matches();
 }
-function endSession(){const s=state.sessions.find(s=>!s.end);if(!s)return;s.end=Date.now();save();matches()}
+function endSession(){const s=state.sessions.find(s=>!s.end);if(!s)return;s.end=Date.now();save();ppcNotice("Session ended. You can post the grind summary to your public profile from Sessions.");matches()}
 function sessionSummary(s){
  const ms=normalizedMatches().filter(m=>m.sessionId===s.id),r=wl(ms),rank=ms.reduce((n,m)=>n+(Number(m.rankChange)||0),0),st=streakInfo(ms),counts={};ms.forEach(m=>counts[m.opponentArchetype]=(counts[m.opponentArchetype]||0)+1);const common=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0]||"—";
  const ranked=ms.filter(m=>m.gameMode==="ranked");
@@ -641,9 +641,23 @@ function sessionRPLabel(x){
  if(!x.rpTracked)return `<span class="sessionRpLegacy">Legacy • RP not tracked</span>`;
  return `<span class="${x.rankChange>=0?"sessionRpGood":"sessionRpBad"}">${x.rankChange>0?"+":""}${x.rankChange} RP</span>`;
 }
+function publicSessionPostButton(s,x){if(!s.end||!x.matches)return "";const signed=!!window.getPPCCloudSession?.()?.user;if(!signed)return "";return s.publicPostedAt?`<div class="sessionShareActions"><button class="secondary smallbtn" onclick="postSessionToProfile(\'${esc(s.id)}\')">Update public post</button><button class="secondary smallbtn" onclick="removeSessionFromProfile(\'${esc(s.id)}\')">Remove</button></div>`:`<div class="sessionShareActions"><button class="secondary smallbtn" onclick="postSessionToProfile(\'${esc(s.id)}\')">Post to public profile</button></div>`}
 function sessionCardHtml(s){
- const x=sessionSummary(s);return `<div class="sessionCard ${x.matches===0?"sessionEmpty":""}"><div class="between"><div><strong>${esc(s.name||"Battle Session")}</strong><div class="muted tiny">${new Date(s.start).toLocaleString()}</div></div><span class="pill">${s.end?"Ended":"Active"}</span></div><div class="sessionMetrics"><span>${x.w}-${x.l}</span><span>${x.matches?x.wr.toFixed(1)+"%":"—"}</span>${sessionRPLabel(x)}<span>${x.durationMinutes} min</span><span>${x.streak.type==="none"?"—":(x.streak.type==="win"?"W":"L")+x.streak.count} current</span></div><div class="muted tiny">Most faced: ${esc(x.mostCommon)} • Best: ${esc(x.bestMatchup)} • Hardest: ${esc(x.hardestMatchup)}</div></div>`;
+ const x=sessionSummary(s);return `<div class="sessionCard ${x.matches===0?"sessionEmpty":""}"><div class="between"><div><strong>${esc(s.name||"Battle Session")}</strong><div class="muted tiny">${new Date(s.start).toLocaleString()}</div></div><span class="pill">${s.end?"Ended":"Active"}</span></div><div class="sessionMetrics"><span>${x.w}-${x.l}</span><span>${x.matches?x.wr.toFixed(1)+"%":"—"}</span>${sessionRPLabel(x)}<span>${x.durationMinutes} min</span><span>${x.streak.type==="none"?"—":(x.streak.type==="win"?"W":"L")+x.streak.count} current</span></div><div class="muted tiny">Most faced: ${esc(x.mostCommon)} • Best: ${esc(x.bestMatchup)} • Hardest: ${esc(x.hardestMatchup)}</div>${publicSessionPostButton(s,x)}</div>`;
 }
+async function postSessionToProfile(sessionId){
+ const s=(state.sessions||[]).find(x=>x.id===sessionId);if(!s||!s.end)return ppcNotice("Finish the session before posting it.");
+ const client=window.getPPCCloudClient?.(),auth=window.getPPCCloudSession?.();if(!client||!auth?.user)return ppcNotice("Sign in to post a session to your public profile.");
+ const ms=normalizedMatches().filter(m=>m.sessionId===s.id).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));if(!ms.length)return ppcNotice("This session has no recorded matches.");
+ const r=wl(ms),deckCounts={};ms.forEach(m=>{const k=m.deckName||"Unknown Deck";deckCounts[k]=(deckCounts[k]||0)+1});const deckName=Object.entries(deckCounts).sort((a,b)=>b[1]-a[1])[0]?.[0]||"Unknown Deck",deckMatch=ms.find(m=>m.deckName===deckName)||ms[0];
+ const ranked=ms.filter(m=>m.gameMode==="ranked"),firstRank=ranked.find(m=>Number.isFinite(Number(m.rankBefore?.points))),lastRank=[...ranked].reverse().find(m=>Number.isFinite(Number(m.rankAfter?.points))),summary=sessionSummary(s);
+ const row={user_id:auth.user.id,session_local_id:String(s.id),title:String(s.name||s.type||"Battle Session").slice(0,80),session_type:String(s.type||"Battle Session").slice(0,40),deck_name:String(deckName||"Unknown Deck").slice(0,100),deck_archetype:String(deckMatch?.deckArchetype||"").slice(0,100)||null,started_at:new Date(s.start).toISOString(),ended_at:new Date(s.end).toISOString(),duration_minutes:summary.durationMinutes,wins:r.w,losses:r.l,ties:r.t||0,matches:r.n,win_rate:Number((r.wr||0).toFixed(2)),rank_change:Number(summary.rankChange||0),starting_rp:Number.isFinite(Number(firstRank?.rankBefore?.points))?Number(firstRank.rankBefore.points):null,ending_rp:Number.isFinite(Number(lastRank?.rankAfter?.points))?Number(lastRank.rankAfter.points):null,is_public:true,updated_at:new Date().toISOString()};
+ const {error}=await client.from("profile_session_posts").upsert(row,{onConflict:"user_id,session_local_id"});if(error)return ppcNotice(error.message);s.publicPostedAt=Date.now();save();ppcNotice("Session posted to your public profile.");matches();
+}
+async function removeSessionFromProfile(sessionId){
+ const s=(state.sessions||[]).find(x=>x.id===sessionId),client=window.getPPCCloudClient?.(),auth=window.getPPCCloudSession?.();if(!s||!client||!auth?.user)return;const {error}=await client.from("profile_session_posts").delete().eq("user_id",auth.user.id).eq("session_local_id",String(sessionId));if(error)return ppcNotice(error.message);delete s.publicPostedAt;save();ppcNotice("Session removed from your public profile.");matches();
+}
+window.postSessionToProfile=postSessionToProfile;window.removeSessionFromProfile=removeSessionFromProfile;
 function sessionHistoryHtml(){
  if(!state.sessions.length)return `<p class="muted">No battle sessions yet.</p>`;
  const ordered=[...state.sessions].sort((a,b)=>(b.start||0)-(a.start||0)),active=ordered.find(s=>!s.end)||null,past=ordered.filter(s=>s.end&&sessionSummary(s).matches>0),emptyCount=ordered.filter(s=>s.end&&sessionSummary(s).matches===0).length;

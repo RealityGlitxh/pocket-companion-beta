@@ -1,19 +1,56 @@
-Pocket Companion V8.64.0 — Closed Beta Validation & Bug Fixes
+PocketNexus V8.64.1 — Closed Beta Release Candidate
+
+Finalizes the PocketNexus brand migration, hardened tournament browsing with cached/recovery behavior, combined competitive Meta list + matchup matrix with low-sample labeling, compact Training navigation, onboarding-style update window, privacy-safe diagnostics, Google/Supabase auth-return cleanup for beta.pocketnexus.app, and opt-in public grind-session posts on player profiles.
+No new database migration is required beyond the V8.64.1 public-session-posts migration already applied.
+
+PocketNexus V8.64.1 Hotfix 5 — Public Grind Session Posts
+
+Adds opt-in public Battle session posts to competitive profiles, showing deck, grind duration, record, win rate, match count, and RP movement without exposing private match notes or detailed logs.
+Supabase migration: v8641_public_session_posts.
+
+PocketNexus V8.64.1 — Beta Security + Brand Migration
+- Renamed user-facing Pocket Companion branding to PocketNexus across the app, PWA, legal/support pages, overlay, and product docs.
+- Added runtime diagnostic redaction for OAuth tokens, authorization codes, JWT-like values, secrets, URL fragments, and credentials before beta-report storage/export.
+- Bumped PWA/service-worker/cache references to V8.64.1 / 8641.
+- Preserved independent third-party Pokémon TCG Pocket positioning and existing Supabase/auth architecture.
+
+PocketNexus V8.64.1 — Closed Beta Validation & Bug Fixes
 
 Adds a persistent per-device beta QA checklist, beta session IDs, richer privacy-safe diagnostic reports, storage/PWA/device diagnostics, and a clean V8.64 PWA cache boundary. This build is intended for hosted closed-beta validation; checklist completion is device-local and does not claim global production validation.
 No Supabase migration required.
 
-Pocket Companion V8.63.0 — Public Launch Hardening
+PocketNexus V8.63.0 — Public Launch Hardening
 
 Adds dedicated Privacy, Terms, and Support pages, in-app release-readiness status, local-only runtime error diagnostics, and a clean V8.63 PWA cache boundary. This is a public-launch release candidate; hosted/device QA, a permanent support destination, final auth/domain configuration, and appropriate legal/security review remain required before broad public release.
 No Supabase migration required.
 
-Pocket Companion V8.62.4 — Mobile QA + Release Candidate
+PocketNexus V8.62.4 — Mobile QA + Release Candidate
 
 Release-candidate hardening for the V8.62 mobile/PWA line. Adds mobile overflow/touch/focus safeguards, versioned PWA cache refresh, and an in-app readiness diagnostic available at PPCMobile.readinessReport().
 No Supabase migration required.
 
-Pocket Companion V8.62.3 — Mobile App Readiness
+PocketNexus V8.62.3 — Mobile App Readiness
 
 Installed-app lifecycle, deep-link routing, auth-return routing, mobile keyboard handling, Web Share support, and native-wrapper preparation.
 No Supabase migration required.
+
+V8.64.1 Hotfix 1 — Tournament Live Cache Reliability
+- Persistent tournament catalog cache
+- Independent ancillary RPC failure handling
+- Cached filters and last-synced status
+- Failed refreshes preserve usable tournament data
+
+
+V8.64.1 Hotfix 2 — Combined Competitive Meta + Matrix
+- Combined competitive field dataset instead of a single-event-only read
+- 7/14/30/60/90-day sample windows
+- List and matchup-matrix views
+- Larger sample counts and confidence indicators
+- Source-neutral Meta Center presentation
+- Supabase migration: v8641_combined_meta_matrix
+
+
+V8.64.1 Hotfix 4 — Competitive Training Compact Layout
+- Competitive Training now shows one scenario at a time instead of rendering all 19 vertically.
+- Previous/Next controls and a complete scenario selector preserve access to every scenario and mode.
+- Hero, mode chips, choices, explanation, progress, and reset remain available in a much shorter page footprint.

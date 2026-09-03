@@ -1,4 +1,4 @@
-/* Pokémon Pocket Companion — V8.12.2 Dark Neutral Theme Service */
+/* PocketNexus — V8.12.2 Dark Neutral Theme Service */
 (function(){
   "use strict";
   const DARK="dark";

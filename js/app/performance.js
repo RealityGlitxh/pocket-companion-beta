@@ -29,7 +29,7 @@ function exportBattleCSV(){
 function downloadText(name,text,type="text/plain"){const b=new Blob([text],{type}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function backupAllData(){downloadText("pokemon-pocket-companion-backup-v8.2.json",JSON.stringify({version:"8.2",exportedAt:Date.now(),state},null,2),"application/json")}
 function restoreBackupPrompt(){
- PPCUI.open({eyebrow:"LOCAL BACKUP",title:"Restore a JSON backup",message:"Paste a Pocket Companion backup below. Your current data will be downloaded before replacement.",html:`<label>Backup JSON</label><textarea id="restoreBackupJson" rows="10" placeholder='{"version":"...","state":{...}}'></textarea>`,actions:[{label:"Cancel",className:"secondary",onclick:"PPCUI.close()"},{label:"Review Backup",onclick:"reviewPastedBackup()"}]});
+ PPCUI.open({eyebrow:"LOCAL BACKUP",title:"Restore a JSON backup",message:"Paste a PocketNexus backup below. Your current data will be downloaded before replacement.",html:`<label>Backup JSON</label><textarea id="restoreBackupJson" rows="10" placeholder='{"version":"...","state":{...}}'></textarea>`,actions:[{label:"Cancel",className:"secondary",onclick:"PPCUI.close()"},{label:"Review Backup",onclick:"reviewPastedBackup()"}]});
 }
 function reviewPastedBackup(){
  const raw=document.getElementById("restoreBackupJson")?.value?.trim();if(!raw)return PPCUI.notice("Paste a backup first.",{title:"Backup required",tone:"warning"});

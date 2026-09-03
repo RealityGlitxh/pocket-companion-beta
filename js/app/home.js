@@ -112,7 +112,7 @@ function collectionLegacyValueByName(name,keyName){
 function collectionValueByName(name,keyName){
  const key=normalizedCardName(name);let n=0;
  CARDS.forEach(c=>{if(normalizedCardName(c.name)===key)n+=Number(state.collection?.[c.id]?.[keyName]||0)});
- // Older Pocket Companion builds sometimes stored collection rows under a previous
+ // Older PocketNexus builds sometimes stored collection rows under a previous
  // card-id format. Only unmatched/legacy keys are considered here, so current
  // records are never double-counted. This keeps Deck ↔ Collection sync stable
  // across card-database normalization changes.

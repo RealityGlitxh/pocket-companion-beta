@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Independent beta companion for Pokémon TCG Pocket deck building, battle tracking, competitive profiles, Team Ranked, meta, and rank tools.">
+<meta name="description" content="PocketNexus is an independent Pokémon TCG Pocket companion for deck building, battle tracking, competitive profiles, Team Ranked, meta analysis, and training tools.">
 <meta name="theme-color" content="#101218">
-<meta name="application-name" content="Pocket Companion">
+<meta name="application-name" content="PocketNexus">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Pocket Companion">
-<link rel="manifest" href="manifest.webmanifest?v=8640">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=8640">
-<title>Pocket Companion — Pokémon TCG Pocket Companion</title>
+<meta name="apple-mobile-web-app-title" content="PocketNexus">
+<link rel="manifest" href="manifest.webmanifest?v=8641rc1">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=8641rc1">
+<title>PocketNexus — Pokémon TCG Pocket Tools</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" crossorigin>
-<link rel="stylesheet" href="css/app.css?v=8640">
+<link rel="stylesheet" href="css/app.css?v=8641rc1">
 </head>
 <body>
 <header class="appHeader"><div class="appHeaderBar">
-  <button class="appBrand brandHome" type="button" onclick="if(state?.user||cloudSession?.user){headerNavigate('dashboard')}" aria-label="Go to Home"><strong>Pocket Companion</strong></button>
+  <button class="appBrand brandHome" type="button" onclick="if(state?.user||cloudSession?.user){headerNavigate('dashboard')}" aria-label="Go to Home"><strong>PocketNexus</strong></button>
   <div id="nav" class="headerNav" aria-label="Primary navigation"></div>
   <div class="row headerTools">
     <button id="globalSearchButton" class="globalSearchButton" type="button" onclick="openGlobalSearch()" aria-label="Search everything"><span>⌕</span><span class="globalSearchButtonText">Search everything</span><kbd>Ctrl K</kbd></button>
@@ -27,47 +27,47 @@
 </div></header>
 <main id="app">
 <div class="foundationEntryShell" id="staticEntry">
-  <section class="foundationEntryStory"><div class="foundationEntryBrand"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKET COMPANION</span></div><h1>Your Pocket game plan, in one place.</h1><p>Build 20-card decks, track real battles, understand the competitive field, and turn your own results into better decisions.</p><div class="entryFeatureGrid"><article><span>PLAY</span><strong>Battle + Rank</strong><small>Fast match logging and ranked progress.</small></article><article><span>BUILD</span><strong>Decks + Collection</strong><small>Know what you can build and what you're missing.</small></article><article><span>COMPETE</span><strong>Meta + Tournaments</strong><small>Scout the field and prepare your deck pair.</small></article><article><span>IMPROVE</span><strong>Performance</strong><small>Use your own matches for coaching and matchup reads.</small></article></div><p class="entryIndependent">Independent third-party companion • Not affiliated with The Pokémon Company</p></section>
+  <section class="foundationEntryStory"><div class="foundationEntryBrand"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKETNEXUS</span></div><h1>Your Pocket game plan, in one place.</h1><p>Build 20-card decks, track real battles, understand the competitive field, and turn your own results into better decisions.</p><div class="entryFeatureGrid"><article><span>PLAY</span><strong>Battle + Rank</strong><small>Fast match logging and ranked progress.</small></article><article><span>BUILD</span><strong>Decks + Collection</strong><small>Know what you can build and what you're missing.</small></article><article><span>COMPETE</span><strong>Meta + Tournaments</strong><small>Scout the field and prepare your deck pair.</small></article><article><span>IMPROVE</span><strong>Performance</strong><small>Use your own matches for coaching and matchup reads.</small></article></div><p class="entryIndependent">Independent third-party companion • Not affiliated with The Pokémon Company</p></section>
   <section class="entryCard foundationEntryCard"><span class="eyebrow">WELCOME</span><h2>Sign in or play locally</h2><p class="muted">Guest mode works immediately. Sign in when you want supported cloud sync.</p><button class="oauthBtn googleBtn" type="button" data-entry-action="google"><span class="oauthIcon">G</span><span>Continue with Google</span></button><button class="oauthBtn appleBtn" type="button" data-entry-action="apple"><span class="oauthIcon">●</span><span>Sign in with Apple</span></button><div class="entryDivider"><span>or</span></div><label for="entryEmail" class="entryFieldLabel">Email address</label><input id="entryEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email"><label for="entryPassword" class="entryFieldLabel">Password</label><input id="entryPassword" type="password" placeholder="Password" autocomplete="current-password"><button class="entrySignIn" type="button" data-entry-action="email-signin">Sign in</button><div class="entryLinkRow"><button class="entryLink" type="button" data-entry-action="forgot">Forgot password?</button><button class="entryLink" type="button" data-entry-action="register">Create account</button></div><div class="entryDivider"><span>or</span></div><button class="guestBtn" type="button" data-entry-action="guest">Continue as guest</button><p class="entryNote">Your local data stays in this browser unless you explicitly use cloud sync.</p><div id="entryMessage" role="status" aria-live="polite"></div></section>
 </div>
 </main>
 <nav id="mobileNav" class="mobileBottomNav" aria-label="Mobile primary navigation"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/services/storage-service.js?v=8640"></script>
-<script src="js/services/card-service.js?v=8640"></script>
-<script src="js/services/image-service.js?v=8640"></script>
-<script src="js/services/ui-service.js?v=8640"></script>
-<script src="js/services/theme-service.js?v=8640"></script>
-<script src="js/data/meta-data.js?v=8640"></script>
-<script src="js/data/meta-content.js?v=8640"></script>
-<script src="js/services/meta-service.js?v=8640"></script>
-<script src="js/services/tournament-service.js?v=8640"></script>
-<script src="js/services/rank-border-service.js?v=8640"></script>
-<script src="js/services/rank-session-service.js?v=8640"></script>
-<script src="js/features/ui-dialogs.js?v=8640"></script>
-<script src="js/features/whats-new-v8.33.js?v=8640"></script>
-<script src="js/features/tournament-leaderboards-v8.31.js?v=8640"></script>
-<script src="js/app/bootstrap.js?v=8640"></script>
-<script src="js/core/navigation-v8.33.js?v=8640"></script>
-<script src="js/app/home.js?v=8640"></script>
-<script src="js/app/decks_meta.js?v=8640"></script>
-<script src="js/app/collection.js?v=8640"></script>
-<script src="js/app/performance.js?v=8640"></script>
-<script src="js/app/battle_gym.js?v=8640"></script>
-<script src="js/app/streamer_rank_tools.js?v=8640"></script>
-<script src="js/app/ai_coach.js?v=8640"></script>
-<script src="js/app/profile_teamwars.js?v=8640"></script>
-<script src="js/app/training.js?v=8640"></script>
-<script src="js/services/pocket-sync-adapter-service.js?v=8640"></script>
-<script src="js/services/pocket-sync-orchestrator-service.js?v=8640"></script>
-<script src="js/app/pocket_sync.js?v=8640"></script>
+<script src="js/services/storage-service.js?v=8641rc1"></script>
+<script src="js/services/card-service.js?v=8641rc1"></script>
+<script src="js/services/image-service.js?v=8641rc1"></script>
+<script src="js/services/ui-service.js?v=8641rc1"></script>
+<script src="js/services/theme-service.js?v=8641rc1"></script>
+<script src="js/data/meta-data.js?v=8641rc1"></script>
+<script src="js/data/meta-content.js?v=8641rc1"></script>
+<script src="js/services/meta-service.js?v=8641rc1"></script>
+<script src="js/services/tournament-service.js?v=8641rc1"></script>
+<script src="js/services/rank-border-service.js?v=8641rc1"></script>
+<script src="js/services/rank-session-service.js?v=8641rc1"></script>
+<script src="js/features/ui-dialogs.js?v=8641rc1"></script>
+<script src="js/features/whats-new-v8.33.js?v=8641rc1"></script>
+<script src="js/features/tournament-leaderboards-v8.31.js?v=8641rc1"></script>
+<script src="js/app/bootstrap.js?v=8641rc1"></script>
+<script src="js/core/navigation-v8.33.js?v=8641rc1"></script>
+<script src="js/app/home.js?v=8641rc1"></script>
+<script src="js/app/decks_meta.js?v=8641rc1"></script>
+<script src="js/app/collection.js?v=8641rc1"></script>
+<script src="js/app/performance.js?v=8641rc1"></script>
+<script src="js/app/battle_gym.js?v=8641rc1"></script>
+<script src="js/app/streamer_rank_tools.js?v=8641rc1"></script>
+<script src="js/app/ai_coach.js?v=8641rc1"></script>
+<script src="js/app/profile_teamwars.js?v=8641rc1"></script>
+<script src="js/app/training.js?v=8641rc1"></script>
+<script src="js/services/pocket-sync-adapter-service.js?v=8641rc1"></script>
+<script src="js/services/pocket-sync-orchestrator-service.js?v=8641rc1"></script>
+<script src="js/app/pocket_sync.js?v=8641rc1"></script>
 
-<script src="js/features/experience-v8.36.js?v=8640"></script>
-<script src="js/features/battle-streamer-v8.43.js?v=8640"></script>
-<script src="js/app/account_startup.js?v=8640"></script>
-<script src="js/features/expansion-v8.49.js?v=8640"></script>
-<script src="js/features/stability-v8.50.js?v=8640"></script>
-<script src="js/app/pwa.js?v=8640"></script>
+<script src="js/features/experience-v8.36.js?v=8641rc1"></script>
+<script src="js/features/battle-streamer-v8.43.js?v=8641rc1"></script>
+<script src="js/app/account_startup.js?v=8641rc1"></script>
+<script src="js/features/expansion-v8.49.js?v=8641rc1"></script>
+<script src="js/features/stability-v8.50.js?v=8641rc1"></script>
+<script src="js/app/pwa.js?v=8641rc1"></script>
 <div id="cardModal" class="modalback" onclick="if(event.target===this)closeCardModal()"><div class="modal"><div id="cardModalBody"></div></div></div></body>
 </html>

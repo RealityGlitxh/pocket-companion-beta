@@ -1,7 +1,7 @@
 {
-  "name": "Pocket Companion \u2014 Pok\u00e9mon TCG Pocket Companion",
-  "short_name": "Pocket Companion",
-  "description": "Independent third-party Pok\u00e9mon TCG Pocket companion, optimized for installable mobile and desktop use.",
+  "name": "PocketNexus — Pokémon TCG Pocket Tools",
+  "short_name": "PocketNexus",
+  "description": "PocketNexus is an independent third-party Pokémon TCG Pocket companion, optimized for installable mobile and desktop use.",
   "id": "./",
   "start_url": "./?source=pwa",
   "scope": "./",

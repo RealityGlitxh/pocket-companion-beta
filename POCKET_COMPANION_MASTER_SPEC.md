@@ -1,4 +1,4 @@
-# Pokémon Pocket Companion — Master Project Spec
+# PocketNexus — Master Project Spec
 
 ## Project identity
 Independent third-party companion for Pokémon TCG Pocket. It is not an official Pokémon, Limitless, or tournament-platform application.
@@ -248,7 +248,7 @@ V8.51.x
 - Cache-busted the competitive identity script to ensure browsers load the repaired code.
 
 ## V8.55.0 — Player Search + Trophy/Achievement System
-- Profiles is now the public competitive identity hub for Pocket Companion.
+- Profiles is now the public competitive identity hub for PocketNexus.
 - Added public Player Search by username/display name. Search results show public rank, team, wins, and achievement count and open the player's public profile.
 - Public Player Search works for signed-out visitors; private profiles remain undiscoverable.
 - Added a server-backed achievement catalog with Common, Rare, Epic, and Legendary tiers.
@@ -316,7 +316,7 @@ Added a season-backed shared Team RP ladder. Active season entries begin at 1500
 - Transient failures retry with exponential backoff.
 - Successful adapter envelopes are sent directly into the V8.59.1 normalization/deduplication/review/merge pipeline.
 - Ready records can auto-apply; Collection conflicts remain staged and are never silently overwritten.
-- Browser scheduling runs only while Pocket Companion is open; schedule records are designed to be reusable by a future approved server-side source.
+- Browser scheduling runs only while PocketNexus is open; schedule records are designed to be reusable by a future approved server-side source.
 - No Pocket/Nintendo/Google/Apple passwords, cookies, reusable session tokens, client secrets, or service-role keys are accepted by the sync architecture.
 - Official Pocket Sync remains behind the research gate.
 
@@ -353,7 +353,7 @@ Status: Complete.
 
 Team Ranked lifecycle is hardened for beta testing. Queues expire after 10 minutes, private match codes and unsettled matches expire after 30 minutes, and expired matches settle with no RP movement. A no-result/abandon flow requires both players to agree before a match is closed with no rating change.
 
-Dispute evidence is now mandatory for winner decisions. A disputed match freezes RP. Both actual match participants must upload at least one screenshot through Pocket Companion before Team Ranked staff can award Team A or Team B the win. Screenshots are limited to PNG/JPEG/WebP and 5 MB each and are stored in a private Supabase Storage bucket with participant/staff access only. Winner controls remain locked until both players submit proof; staff can void a case with no RP change if proof is missing or insufficient. Final staff action continues to be written to the resolution audit history.
+Dispute evidence is now mandatory for winner decisions. A disputed match freezes RP. Both actual match participants must upload at least one screenshot through PocketNexus before Team Ranked staff can award Team A or Team B the win. Screenshots are limited to PNG/JPEG/WebP and 5 MB each and are stored in a private Supabase Storage bucket with participant/staff access only. Winner controls remain locked until both players submit proof; staff can void a case with no RP change if proof is missing or insufficient. Final staff action continues to be written to the resolution audit history.
 
 V8.60.2 also includes a controlled two-team beta QA checklist for validating matchmaking, same-tag blocking, normal +20/-20 settlement, dispute freeze, evidence uploads, staff resolution, expiration, and mutual no-result behavior in the hosted beta.
 
@@ -433,7 +433,7 @@ V8.60.2 also includes a controlled two-team beta QA checklist for validating mat
 - No Supabase migration required.
 
 ## V8.62.1 — PWA Foundation
-- Pocket Companion is installable as a Progressive Web App when served over HTTPS.
+- PocketNexus is installable as a Progressive Web App when served over HTTPS.
 - Added manifest, 192/512 app icons, Apple touch icon, standalone presentation, shortcuts, and theme metadata.
 - Added a versioned service worker for local app-shell caching, same-origin runtime caching, offline navigation fallback, cache cleanup, and update activation.
 - Added browser install handling, iOS Add to Home Screen guidance, connectivity notices, and update detection.
@@ -451,7 +451,7 @@ V8.60.2 also includes a controlled two-team beta QA checklist for validating mat
 
 ## V8.62.3 — Mobile App Readiness
 - Added safe page deep links and corrected PWA shortcut routing.
-- Hosted auth/recovery redirects can preserve the active Pocket Companion page.
+- Hosted auth/recovery redirects can preserve the active PocketNexus page.
 - Added foreground/resume lifecycle handling for installed mobile use.
 - Added mobile software-keyboard viewport handling and iOS-safe input sizing.
 - Added reusable Web Share API support with clipboard fallback.
@@ -476,10 +476,52 @@ V8.60.2 also includes a controlled two-team beta QA checklist for validating mat
 - Public launch still requires hosted device QA, final domain/auth configuration, a permanent support destination, and appropriate legal/security review.
 
 
-## V8.64.0 — Closed Beta Validation & Bug Fixes
+## V8.64.1 — Closed Beta Validation & Bug Fixes
 - Closed-beta QA checklist stored locally per device.
 - Beta session IDs and richer privacy-safe downloadable diagnostic reports.
 - Diagnostic payload includes PWA readiness, device/viewport, storage estimate, runtime errors, QA state, and existing app checks; no automatic upload.
 - V8.64 PWA cache boundary.
 - No Supabase migration.
 - Device PASS is not global production certification; hosted multi-device/two-account QA remains required.
+
+
+## V8.64.1 — Beta Security + PocketNexus Brand Migration
+- PocketNexus is now the user-facing product name across the web app, PWA metadata, legal/support/offline surfaces, overlay, and current product documentation.
+- The project remains an independent third-party Pokémon TCG Pocket companion and is not an official Pokémon, Nintendo, Limitless, or tournament-platform application.
+- Runtime beta diagnostics sanitize sensitive OAuth/auth material before local storage and export, including JWT-like values, access/refresh/id tokens, authorization codes, client-secret-like values, URL credentials, and URL fragments.
+- Diagnostic storage keys and PWA/service-worker caches are versioned for V8.64.1 so V8.64.0 unsanitized runtime-error logs do not flow into new beta reports.
+- Closed-beta target domain is `https://beta.pocketnexus.app`; hosted OAuth/device validation remains a release QA requirement.
+
+### V8.64.1 Hotfix 1 — Tournament Catalog Reliability
+PocketNexus tournament intelligence must preserve the last known usable catalog across temporary network/RPC failures. The catalog is cached locally, ancillary sync-metadata failures may not invalidate a successful catalog response, filters must continue to work against cached data, and the UI must distinguish live, cached, refreshing, and true fallback states with a last-synced timestamp.
+
+
+### V8.64.1 Hotfix 2 — Combined Competitive Meta
+- Meta Center competitive intelligence is no longer constrained to the single event selector.
+- The UI reads a combined sanitized aggregate through `get_combined_competitive_meta(days, limit)` and `get_combined_matchup_matrix(days, top)`.
+- Supported windows: 7, 14, 30, 60, 90 days; default 30.
+- Views: ranked list and matchup matrix.
+- Combined UI does not expose upstream provider/source labels; legal/About positioning remains independent third-party/community data.
+- Pairing legacy event context is retained internally for backwards compatibility until its RPC is migrated to the combined aggregate.
+
+
+### V8.64.1 Hotfix 3
+Tournament Intelligence no longer auto-retries empty standings indefinitely, uses a resilient RPC fallback path, and has a render recovery boundary. What's New uses an onboarding-style update window. Training has a refreshed daily-card hero and Competitive Training Lab presentation while preserving curated puzzle logic and the no-invented-card-effects rule.
+
+
+V8.64.1 Hotfix 4 — Competitive Training Compact Layout
+- Competitive Training now shows one scenario at a time instead of rendering all 19 vertically.
+- Previous/Next controls and a complete scenario selector preserve access to every scenario and mode.
+- Hero, mode chips, choices, explanation, progress, and reset remain available in a much shorter page footprint.
+
+### V8.64.1 Hotfix 5 — Public Grind Session Posts
+Completed Battle Tracker sessions can be deliberately published to a PocketNexus public profile. A public grind card includes the session title/type, most-used deck and archetype, date, duration, W-L(-T), win rate, match count, and RP change when tracked. Publishing is opt-in and removable. Private match notes, opponent identities, and individual match logs are not published.
+
+
+## V8.64.1 Release Candidate
+- PocketNexus is the user-facing product identity.
+- Tournament Intelligence must fail soft: cached catalog/standings, bounded requests, empty-state recovery, and no page-level crash from one event.
+- Combined Competitive Meta supports List and Matrix views across selectable time windows. Matchups with fewer than 10 games are labeled low sample.
+- Public profiles support opt-in Recent Grinds session posts with deck, duration, record, win rate, games, date, and RP change when tracked.
+- OAuth returns on beta.pocketnexus.app use the root beta URL and sensitive auth-return parameters are removed from the visible URL after session hydration.
+- What's New is presented as an onboarding-style modal; Training remains compact while preserving all scenarios.

@@ -1,4 +1,4 @@
-# Pokémon Pocket Companion — V8.58 Beta Launch Checklist
+# PocketNexus — V8.58 Beta Launch Checklist
 
 ## Before inviting testers
 - Host over HTTPS; do not use `file://` for OAuth testing.

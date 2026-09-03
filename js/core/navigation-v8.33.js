@@ -33,7 +33,7 @@ function mobileMoreSheetHtml(){
   ['SOCIAL',[{page:'profile',icon:'◉',title:'Profiles'}]],
   ['UTILITIES',[{page:'trade',icon:'⇄',title:'Trade'},{page:'streamer',icon:'▤',title:'Streamer'},{search:true,icon:'⌕',title:'Search Everything'},{page:'sync',icon:'↻',title:'Pocket Sync'},{page:'account',icon:'◉',title:'Account & Cloud'},{page:'about',icon:'ⓘ',title:'About & Privacy'},{page:'more',icon:'⚙',title:'Settings'}]]
  ];
- return `<div class="mobileMoreBackdrop" id="mobileMoreBackdrop"><section class="mobileMoreSheet" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle"><div class="mobileMoreHandle" aria-hidden="true"></div><div class="between"><div><span class="eyebrow">POCKET COMPANION</span><h2 id="mobileMoreTitle">More</h2></div><button class="secondary" type="button" onclick="closeMobileMoreSheet()">Close</button></div>${groups.map(([label,items])=>`<div class="mobileMoreGroup"><h3>${label}</h3><div class="mobileMoreGrid">${items.map(x=>`<button type="button" class="mobileMoreItem ${navItemActive(x)?'active':''}" onclick="mobileMoreNavigate(${JSON.stringify(x).replace(/\"/g,'&quot;')})"><span>${x.icon}</span><strong>${esc(x.title)}</strong></button>`).join('')}</div></div>`).join('')}</section></div>`;
+ return `<div class="mobileMoreBackdrop" id="mobileMoreBackdrop"><section class="mobileMoreSheet" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle"><div class="mobileMoreHandle" aria-hidden="true"></div><div class="between"><div><span class="eyebrow">POCKETNEXUS</span><h2 id="mobileMoreTitle">More</h2></div><button class="secondary" type="button" onclick="closeMobileMoreSheet()">Close</button></div>${groups.map(([label,items])=>`<div class="mobileMoreGroup"><h3>${label}</h3><div class="mobileMoreGrid">${items.map(x=>`<button type="button" class="mobileMoreItem ${navItemActive(x)?'active':''}" onclick="mobileMoreNavigate(${JSON.stringify(x).replace(/\"/g,'&quot;')})"><span>${x.icon}</span><strong>${esc(x.title)}</strong></button>`).join('')}</div></div>`).join('')}</section></div>`;
 }
 function openMobileMoreSheet(){
  closeHeaderMenus();document.getElementById('mobileMoreBackdrop')?.remove();
@@ -73,7 +73,7 @@ function nav(){
   {page:"stats",icon:"⌁",title:"Performance",description:"Review match trends, deck results, and matchup data."},
   {page:"stats",action:"coaching",icon:"✦",title:"Coaching",description:"Turn your recorded matches into practice priorities."},
   {page:"optimizer",icon:"◎",title:"Simulation Lab",description:"Test draws and deck consistency."},
-  {page:"coach",icon:"✦",title:"Pocket Coach",description:"Ask grounded questions across your Pocket Companion data."},
+  {page:"coach",icon:"✦",title:"Pocket Coach",description:"Ask grounded questions across your PocketNexus data."},
   {page:"training",icon:"?",title:"Brain Teasers",description:"Daily What’s This Card? and competitive training challenges."}
  ];
  const more=[
@@ -97,7 +97,7 @@ function nav(){
    {page:'decks',icon:'▣',label:'Decks'},
    {page:'meta',icon:'◆',label:'Meta'}
   ];
-  mobile.innerHTML=mobileItems.map(x=>{const active=navItemActive(x);return `<button class="${active?'active':''}" onclick="${navAction(x)}" aria-current="${active?'page':'false'}"><span>${x.icon}</span><small>${x.label}</small></button>`}).join('')+`<button class="${!mobileItems.some(navItemActive)?'active':''}" onclick="openMobileMoreSheet()" aria-label="Open more Pocket Companion tools"><span>•••</span><small>More</small></button>`;
+  mobile.innerHTML=mobileItems.map(x=>{const active=navItemActive(x);return `<button class="${active?'active':''}" onclick="${navAction(x)}" aria-current="${active?'page':'false'}"><span>${x.icon}</span><small>${x.label}</small></button>`}).join('')+`<button class="${!mobileItems.some(navItemActive)?'active':''}" onclick="openMobileMoreSheet()" aria-label="Open more PocketNexus tools"><span>•••</span><small>More</small></button>`;
  }
 }
 if(!window.__ppcHeaderMenuHandlers){

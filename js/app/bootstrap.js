@@ -607,7 +607,7 @@ function archetypeDeckText(a){
  if(!list.length)return "";
  const header=[
   `# ${a.name}`,
-  `# Source: ${a.source||"Pocket Companion"}`,
+  `# Source: ${a.source||"PocketNexus"}`,
   a.sampleSource?.tournamentName?`# Tournament: ${a.sampleSource.tournamentName}`:"",
   a.sampleSource?.player?`# Player: ${a.sampleSource.player}`:"",
   ""
@@ -994,7 +994,7 @@ function issues(d){
  const names={};it.forEach(x=>{const k=normalizedCardName(x.card.name);names[k]=names[k]||{name:x.card.name,q:0};names[k].q+=x.qty});Object.values(names).filter(x=>x.q>2).forEach(x=>o.push(`${x.name} has ${x.q} copies across prints; max is 2.`));return o
 }
 function goPage(page){state.page=page;render()}
-function ppcNotice(message,options){if(window.PPCUI?.notice)return window.PPCUI.notice(String(message??""),options||{title:"Pocket Companion"});console.info("Pocket Companion:",message);return false}
+function ppcNotice(message,options){if(window.PPCUI?.notice)return window.PPCUI.notice(String(message??""),options||{title:"PocketNexus"});console.info("PocketNexus:",message);return false}
 // Navigation moved to js/core/navigation-v8.33.js in V8.33.
 
 // ============================================================
@@ -1119,8 +1119,13 @@ function entryMessage(msg,bad=false){
 }
 function ppcAuthRedirectUrl(){
  if(location.protocol!=="http:"&&location.protocol!=="https:")return "";
+ if(location.hostname==="beta.pocketnexus.app")return "https://beta.pocketnexus.app/";
+ if(location.hostname==="pocketnexus.app"||location.hostname==="www.pocketnexus.app")return "https://pocketnexus.app/";
  if(window.PPCMobile?.authRedirectUrl)return window.PPCMobile.authRedirectUrl();
  return location.origin+location.pathname;
+}
+function cleanupAuthReturnUrl(){
+ try{const u=new URL(location.href),keys=["code","error","error_code","error_description","access_token","refresh_token","token_type","expires_in"];let changed=false;keys.forEach(k=>{if(u.searchParams.has(k)){u.searchParams.delete(k);changed=true}});if(/access_token|refresh_token/i.test(u.hash||"")){u.hash="";changed=true}if(changed)history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash)}catch{}
 }
 function setEntryBusy(busy,label="Signing in…"){
  const buttons=[...document.querySelectorAll("[data-entry-action]")];
@@ -1138,6 +1143,7 @@ async function ensureCloudClientReady(timeoutMs=3500){
 }
 async function applyEntrySession(session){
  if(!session?.user)return false;
+ cleanupAuthReturnUrl();
  cloudSession=session;
  if(state.user&&state.user!=="Guest"&&state.sessionMode!=="cloud")state.localProfileName=state.user;
  state.user=session.user.email||"Account";
@@ -1244,8 +1250,8 @@ async function entryForgotPassword(){
 function entryScreen(){
  const root=document.getElementById("app");if(!root)return;
  root.innerHTML=`<div class="foundationEntryShell">
-  <section class="foundationEntryStory" aria-label="Pocket Companion overview">
-   <div class="foundationEntryBrand"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKET COMPANION</span></div>
+  <section class="foundationEntryStory" aria-label="PocketNexus overview">
+   <div class="foundationEntryBrand"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKETNEXUS</span></div>
    <h1>Your Pocket game plan, in one place.</h1>
    <p>Build 20-card decks, track real battles, understand the competitive field, and turn your own results into better decisions.</p>
    <div class="entryFeatureGrid">
@@ -1273,7 +1279,7 @@ function entryScreen(){
 }
 
 function runtimeErrorScreen(error,pageName=state.page){
- console.error("Pocket Companion render error",pageName,error);
+ console.error("PocketNexus render error",pageName,error);
  const root=document.getElementById("app");if(!root)return;
  root.innerHTML=`<div class="panel runtimeError" style="max-width:760px;margin:30px auto"><span class="badge">Runtime Recovery</span><h1>This page hit an error</h1><p class="muted">Your saved data was not deleted. The error was contained instead of blanking the whole app.</p><div class="dangerBox"><strong>${esc(pageName||"page")}</strong><br>${esc(error?.message||String(error))}</div><div class="row" style="margin-top:12px"><button onclick="state.page='dashboard';render()">Go Home</button><button class="secondary" onclick="render()">Retry Page</button><button class="secondary" onclick="runFullDiagnostics()">Run Diagnostics</button></div></div>`;
 }
@@ -1292,7 +1298,7 @@ function render(){
 }
 function auth(){
  const root=document.getElementById("app");if(!root)return;
- root.innerHTML=`<div class="panel" style="max-width:520px;margin:50px auto"><span class="badge">LOCAL PROFILE</span><h1>Welcome</h1><p class="muted">Create a local profile to enter Pocket Companion. Your Supabase account can be connected later from Account.</p>${!storageAvailable?`<div class="dangerBox"><strong>Browser storage is blocked.</strong><br>The app can still open, but changes may not persist after you close this page. Hosting the site on GitHub Pages is recommended.</div>`:""}<label>Local Profile Name</label><input id="name" placeholder="Username" autocomplete="nickname"><button onclick="login()">Continue to Pocket Companion</button><p class="muted tiny" style="margin-top:12px">Already used this app before? Your existing local data is loaded automatically when browser storage is available.</p></div>`;
+ root.innerHTML=`<div class="panel" style="max-width:520px;margin:50px auto"><span class="badge">LOCAL PROFILE</span><h1>Welcome</h1><p class="muted">Create a local profile to enter PocketNexus. Your Supabase account can be connected later from Account.</p>${!storageAvailable?`<div class="dangerBox"><strong>Browser storage is blocked.</strong><br>The app can still open, but changes may not persist after you close this page. Hosting the site on GitHub Pages is recommended.</div>`:""}<label>Local Profile Name</label><input id="name" placeholder="Username" autocomplete="nickname"><button onclick="login()">Continue to PocketNexus</button><p class="muted tiny" style="margin-top:12px">Already used this app before? Your existing local data is loaded automatically when browser storage is available.</p></div>`;
 }
 function login(){let n=document.getElementById("name").value.trim();if(!n)return ppcNotice("Enter a username.");state.user=n;state.page="dashboard";save();render()}
 function logout(){return signOutEverywhere()}

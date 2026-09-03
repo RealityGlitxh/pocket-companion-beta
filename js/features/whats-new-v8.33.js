@@ -1,6 +1,6 @@
 (function(){
-  const VERSION="8.33.1";
-  const SEEN_KEY=`ppc_whats_new_seen_${VERSION.replace('.','_')}`;
+  const VERSION="8.64.1";
+  const SEEN_KEY=`ppc_whats_new_seen_${VERSION.replaceAll('.','_')}`;
   const AUTO_KEY="ppc_whats_new_auto";
   function read(key){try{return typeof safeStorageGet==='function'?safeStorageGet(key):localStorage.getItem(key)}catch(e){return null}}
   function write(key,value){try{if(typeof safeStorageSet==='function')return safeStorageSet(key,value);localStorage.setItem(key,value);return true}catch(e){return false}}
@@ -18,20 +18,18 @@
       if(typeof state!=="undefined"&&!state?.onboarding?.completed)return;
     }
     const auto=shouldAutoShow();
-    const html=`<div class="whatsNewBackdrop" id="ppcWhatsNewBackdrop" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
-      <section class="whatsNewModal">
-        <button class="whatsNewClose" type="button" aria-label="Close What's New">×</button>
-        <div class="whatsNewHero">
-          <div class="whatsNewCopy"><span class="eyebrow">WHAT'S NEW • V${VERSION}</span><h1 id="whatsNewTitle">Battle Tracker and Gym Battle are now cleanly separated.</h1><p>Battle Tracker now opens directly into standard match recording, while Gym Battle opens directly into the team format. The redundant mode switch has been removed.</p></div>
-          <div class="updateCardFan" aria-hidden="true"><i class="updateCard u1"><b>20</b><span>DECK</span></i><i class="updateCard u2"><b>VS</b><span>BATTLE</span></i><i class="updateCard u3"><b>♜</b><span>EVENT</span></i></div>
+    const html=`<div class="onboardingBackdrop ppcUpdateBackdrop" id="ppcWhatsNewBackdrop" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
+      <section class="onboardingCard ppcUpdateCard">
+        <div class="onboardingTop ppcUpdateTop"><div><span class="badge">POCKETNEXUS UPDATE</span><h1 id="whatsNewTitle">A cleaner beta, a bigger Meta read, and better training.</h1><p class="muted">This update focuses on reliability and presentation without changing the data you already saved.</p></div><button class="secondary whatsNewClose" type="button" aria-label="Close What's New">×</button></div>
+        <div class="onboardingProgress ppcUpdateProgress" aria-label="Three update highlights"><i class="done"></i><i class="done"></i><i class="done"></i></div>
+        <div class="ppcUpdateHero"><div class="ppcUpdateMark"><span class="pocketBallMark"><i></i></span></div><div><span class="eyebrow">LATEST UPDATE</span><h2>A more polished PocketNexus beta</h2><p>Branding, launch surfaces, reliability, Meta tools, Training, and privacy safeguards have all been tightened for the next beta round.</p></div></div>
+        <div class="ppcUpdateGrid">
+          <article><span>◫</span><div><b>TOURNAMENTS</b><h3>More resilient event browsing</h3><p>Cached tournament data stays usable during refresh failures, empty standings no longer cause repeated reload loops, and the page recovers instead of taking the rest of the app down.</p></div></article>
+          <article><span>▦</span><div><b>META</b><h3>Combined Meta + matchup matrix</h3><p>The Meta Center can use a much larger competitive sample and switch between a ranked list and matchup matrix for faster field reads.</p></div></article>
+          <article><span>✦</span><div><b>TRAINING</b><h3>Competitive Training refresh</h3><p>Daily card training and Brain Teasers now have clearer progress, stronger hierarchy, and more polished puzzle cards.</p></div></article>
+          <article><span>⌁</span><div><b>PRIVACY</b><h3>Safer beta diagnostics</h3><p>Diagnostic exports sanitize token-like values, authorization codes, URL credentials, and sensitive auth fragments before they are stored or shared.</p></div></article>
         </div>
-        <div class="whatsNewGrid">
-          <article class="whatsNewFeature featured"><span>⌂</span><div><b>NEW</b><h3>Direct Battle Routes</h3><p>Battle Tracker and Gym Battle now open as separate experiences instead of asking you to choose the mode twice.</p></div></article>
-          <article class="whatsNewFeature"><span>◉</span><div><h3>Cleaner Battle Tracker</h3><p>The Standard Match / Gym Battle toggle is gone. Battle Tracker is focused only on normal ranked and casual matches.</p></div></article>
-          <article class="whatsNewFeature"><span>◆</span><div><h3>Dedicated Gym Battle</h3><p>Gym Battle opens directly from Play and keeps its own setup, history, and Pairing Lab connection.</p></div></article>
-          <article class="whatsNewFeature"><span>⚙</span><div><h3>Less Duplicate Navigation</h3><p>The Play menu is now the single place to choose Battle Tracker, Rank, or Gym Battle.</p></div></article>
-        </div>
-        <div class="whatsNewFooter"><label class="whatsNewToggle"><input id="whatsNewAutoToggle" type="checkbox" ${auto?'checked':''}><span>Show What's New automatically after major updates</span></label><div class="row"><button class="secondary" id="whatsNewDismiss" type="button">Got It</button><button id="whatsNewExplore" type="button">Explore Home →</button></div></div>
+        <div class="onboardingActions ppcUpdateActions"><label class="whatsNewToggle"><input id="whatsNewAutoToggle" type="checkbox" ${auto?'checked':''}><span>Show this window automatically after major updates</span></label><div class="right"><button class="secondary" id="whatsNewDismiss" type="button">Got It</button><button id="whatsNewExplore" type="button">Explore PocketNexus →</button></div></div>
       </section>
     </div>`;
     document.body.insertAdjacentHTML("beforeend",html);

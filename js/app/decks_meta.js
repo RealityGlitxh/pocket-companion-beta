@@ -198,7 +198,7 @@ ${metaQualityPanel()}
 ${metaIntelligencePanel()}
 ${wat.length?`<div class="panel"><h2>My Meta Watchlist</h2><div class="metaIntelGrid">${wat.map(metaIntelCard).join("")}</div></div>`:""}
 <div class="panel metaTopDecksPanel"><div class="between"><div><h2>Top Decks</h2><p class="muted">Scan the field by usage first. Open a deck for its list, matchup results, key cards, and your personal record.</p></div><span class="badge">${metaFiltered().length} results</span></div><div class="metaIntelFilters"><input placeholder="Search archetypes, Pokémon, cards…" value="${esc(state.metaIntel.query||"")}" oninput="state.metaIntel.query=this.value;render()"><select onchange="state.metaIntel.type=this.value;save();render()"><option value="">All Types</option>${[...new Set(MetaService.getArchetypes().map(a=>a.type).filter(Boolean))].sort().map(x=>`<option ${state.metaIntel.type===x?"selected":""}>${esc(x)}</option>`).join("")}</select><select onchange="state.metaIntel.confidence=this.value;save();render()"><option value="">All Confidence</option>${["High","Medium","Limited"].map(x=>`<option ${state.metaIntel.confidence===x?"selected":""}>${x}</option>`).join("")}</select><select onchange="state.metaIntel.hasSample=this.value;save();render()"><option value="">Any Sample</option><option value="yes" ${state.metaIntel.hasSample==="yes"?"selected":""}>Has 20-card sample</option></select></div><div class="metaIntelGrid">${metaFiltered().map(metaIntelCard).join("")||`<div class="notice">No archetypes match those filters.</div>`}</div></div>
-${metaMatchupPanel()}${metaComparePanel()}<div class="bottomnote">Competitive data compiled from publicly available tournament information. Pokémon Pocket Companion is an independent third-party companion and is not affiliated with The Pokémon Company or Limitless TCG.</div>`;
+${metaMatchupPanel()}${metaComparePanel()}<div class="bottomnote">Competitive data compiled from publicly available tournament information. PocketNexus is an independent third-party companion and is not affiliated with The Pokémon Company or Limitless TCG.</div>`;
 }
 function metaDiagnostics(){const a=MetaService.getArchetypes(),bad=[];for(const x of a){const issues=[];if(!x.id)issues.push("missing id");if(!x.name)issues.push("missing name");if(!Array.isArray(x.sampleDeck))issues.push("sampleDeck not array");if(x.sampleDeck?.length&&metaSampleTotal(x)!==20)issues.push(`sample total ${metaSampleTotal(x)}`);const c={};for(const y of x.sampleDeck||[]){const k=normalizedCardName(y.name);c[k]=(c[k]||0)+(Number(y.quantity)||0)}if(Object.values(c).some(q=>q>2))issues.push("copy limit");if(issues.length)bad.push({name:x.name,issues})}return{count:a.length,samples:a.filter(x=>metaSampleTotal(x)===20).length,usage:a.filter(x=>metaNum(x.stats?.usage)!=null).length,wr:a.filter(x=>metaNum(x.stats?.winRate)!=null).length,bad}}
 function runMetaDiagnostics(){const d=metaDiagnostics();ppcNotice(`META DIAGNOSTICS\n\nArchetypes: ${d.count}\n20-card samples: ${d.samples}\nWith usage: ${d.usage}\nWith win rate: ${d.wr}\nInvalid records: ${d.bad.length}`+(d.bad.length?`\n\n${d.bad.map(x=>`${x.name}: ${x.issues.join(", ")}`).join("\n")}`:""))}
@@ -648,24 +648,44 @@ function performClaimCurrentRarity(key){
  setCollectionBulkStatus(`${info.symbol} ${info.label}: ${claimed} newly claimed • ${cards.length} total cards now marked owned.`);
 }
 
-// V8.47 — Event-scoped Competitive Meta Center.
-const CompetitiveMeta847={events:[],meta:[],eventId:"",loading:false,error:"",loaded:false};
+// V8.47 / V8.64.1 — Combined Competitive Meta Center.
+// The public UI intentionally presents one aggregated competitive sample and does not
+// expose provider/source labels. The legacy event ID is retained only for older pairing RPCs.
+const CompetitiveMeta847={events:[],meta:[],matrix:[],eventId:"",days:30,view:"list",loading:false,error:"",loaded:false};
 window.CompetitiveMeta847=CompetitiveMeta847;
 async function loadCompetitiveMeta847(force=false){
  if(CompetitiveMeta847.loading||(!force&&CompetitiveMeta847.loaded))return;
  const client=window.getPPCCloudClient?.();if(!client)return;
  CompetitiveMeta847.loading=true;CompetitiveMeta847.error="";
  try{
-  const ev=await client.rpc("get_competitive_events");if(ev.error)throw ev.error;
-  CompetitiveMeta847.events=Array.isArray(ev.data)?ev.data:[];
+  state.metaIntel=state.metaIntel||{};
+  const savedDays=Number(state.metaIntel.combinedDays||30);
+  CompetitiveMeta847.days=[7,14,30,60,90].includes(savedDays)?savedDays:30;
+  CompetitiveMeta847.view=state.metaIntel.combinedView==="matrix"?"matrix":"list";
+  // Keep event metadata available for older tools that still use event-scoped matchup RPCs.
+  const ev=await client.rpc("get_competitive_events");
+  CompetitiveMeta847.events=ev.error?[]:(Array.isArray(ev.data)?ev.data:[]);
   const savedEvent=state.metaIntel?.competitiveEventId||"";
   if(!CompetitiveMeta847.eventId&&CompetitiveMeta847.events.some(e=>e.id===savedEvent))CompetitiveMeta847.eventId=savedEvent;
   if(!CompetitiveMeta847.eventId&&CompetitiveMeta847.events[0])CompetitiveMeta847.eventId=CompetitiveMeta847.events[0].id;
-  const mt=await client.rpc("get_competitive_meta",{p_event_id:CompetitiveMeta847.eventId||null,p_limit:100});if(mt.error)throw mt.error;
-  CompetitiveMeta847.meta=Array.isArray(mt.data)?mt.data:[];CompetitiveMeta847.loaded=true;
+  const [mt,mx]=await Promise.all([
+   client.rpc("get_combined_competitive_meta",{p_days:CompetitiveMeta847.days,p_limit:100}),
+   client.rpc("get_combined_matchup_matrix",{p_days:CompetitiveMeta847.days,p_top:12})
+  ]);
+  if(mt.error)throw mt.error;
+  if(mx.error)throw mx.error;
+  CompetitiveMeta847.meta=Array.isArray(mt.data)?mt.data:[];
+  CompetitiveMeta847.matrix=Array.isArray(mx.data)?mx.data:[];
+  CompetitiveMeta847.loaded=true;
  }catch(e){CompetitiveMeta847.error=e?.message||String(e)}finally{CompetitiveMeta847.loading=false;if(state.page==='meta')render()}
 }
-async function setCompetitiveEvent847(id){CompetitiveMeta847.eventId=id||"";state.metaIntel=state.metaIntel||{};state.metaIntel.competitiveEventId=CompetitiveMeta847.eventId;save();CompetitiveMeta847.loaded=false;pairingLiveIntel=null;pairingLiveIntelError="";await loadCompetitiveMeta847(true)}
+async function setCompetitiveEvent847(id){CompetitiveMeta847.eventId=id||"";state.metaIntel=state.metaIntel||{};state.metaIntel.competitiveEventId=CompetitiveMeta847.eventId;save();pairingLiveIntel=null;pairingLiveIntelError=""}
+async function setCompetitiveRange847(days){
+ const n=Number(days)||30;CompetitiveMeta847.days=n;state.metaIntel=state.metaIntel||{};state.metaIntel.combinedDays=n;save();CompetitiveMeta847.loaded=false;await loadCompetitiveMeta847(true)
+}
+function setCompetitiveView847(view){
+ CompetitiveMeta847.view=view==="matrix"?"matrix":"list";state.metaIntel=state.metaIntel||{};state.metaIntel.combinedView=CompetitiveMeta847.view;save();if(state.page==='meta')render()
+}
 
 function bigBossCompetitivePanel8506(){
  const lib=window.PPCArchetypeLibrary;
@@ -679,10 +699,18 @@ function bigBossCompetitivePanel8506(){
 
 function competitivePanel847(){
  const c=CompetitiveMeta847;if(!c.loaded&&!c.loading)setTimeout(()=>loadCompetitiveMeta847(),0);
- const event=c.events.find(x=>x.id===c.eventId)||c.events[0];
- const opts=c.events.map(e=>`<option value="${esc(e.id)}" ${e.id===c.eventId?'selected':''}>${esc([e.competition_name,e.season,e.week_number?`Week ${e.week_number}`:'',e.stage].filter(Boolean).join(' • '))}</option>`).join('');
- const rows=c.meta.slice(0,12).map((a,i)=>`<tr><td><strong>#${i+1} ${esc(a.archetype)}</strong></td><td>${Number(a.meta_share||0).toFixed(1)}%</td><td>${a.wins}-${a.losses}${a.ties?`-${a.ties}`:''}</td><td>${a.win_rate==null?'—':Number(a.win_rate).toFixed(1)+'%'}</td><td>${a.games}</td><td><span class="badge">${esc(a.confidence_label||'LOW')}</span></td></tr>`).join('');
- return `<section class="panel v847Competitive"><div class="between"><div><span class="eyebrow">LIVE EVENT INTELLIGENCE</span><h2>Competitive Event Meta</h2><p class="muted">Tournament results stay scoped by event instead of blending every season into one pool. Pairing Lab uses this same selected event.</p></div><select onchange="setCompetitiveEvent847(this.value)">${opts||'<option>No events yet</option>'}</select></div>${event?`<div class="metaHeroTags"><span>${esc(event.competition_name||'Event')}</span><span>${esc(event.season||'Season')}</span><span>${event.week_number?'Week '+event.week_number:esc(event.stage||'')}</span><span>${Number(event.match_count||0)} records</span></div>`:''}${c.loading?'<p class="muted">Loading competitive event…</p>':c.error?`<div class="notice">Competitive event data unavailable: ${esc(c.error)}</div>`:`<div class="tableScroll"><table class="metaLiveTable"><thead><tr><th>Archetype</th><th>Meta Share</th><th>Record</th><th>Win %</th><th>Games</th><th>Confidence</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No mapped games for this event.</td></tr>'}</tbody></table></div>`}</section>${bigBossCompetitivePanel8506()}`;
+ const sampleGames=Number(c.meta?.[0]?.sample_games||0);
+ const appearances=(c.meta||[]).reduce((sum,a)=>sum+Number(a.appearances||0),0);
+ const tournaments=(c.meta||[]).reduce((set,a)=>{if(Number(a.tournament_count||0))set.add(String(a.archetype));return set},new Set()).size;
+ const rows=(c.meta||[]).slice(0,24).map((a,i)=>`<tr><td><strong>#${i+1} ${esc(a.archetype)}</strong></td><td>${Number(a.meta_share||0).toFixed(1)}%</td><td>${Number(a.appearances||0).toLocaleString()}</td><td>${a.wins}-${a.losses}${a.ties?`-${a.ties}`:''}</td><td>${a.win_rate==null?'—':Number(a.win_rate).toFixed(1)+'%'}</td><td>${Number(a.games||0).toLocaleString()}</td><td><span class="badge">${esc(a.confidence_label||'LOW')}</span></td></tr>`).join('');
+ const names=(c.meta||[]).slice(0,12).map(x=>x.archetype);
+ const key=n=>String(n||'').trim().toLowerCase().replace(/\s+/g,' ');
+ const mm=new Map((c.matrix||[]).map(r=>[`${key(r.archetype)}|${key(r.opponent)}`,r]));
+ const matrixHead=names.map(n=>`<th title="${esc(n)}">${esc(n.split(' / ')[0].replace('Mega ','M. ').slice(0,14))}</th>`).join('');
+ const matrixRows=names.map(a=>`<tr><th>${esc(a)}</th>${names.map(b=>{const r=mm.get(`${key(a)}|${key(b)}`);if(!r)return '<td class="metaMatrixEmpty">—</td>';const wr=Number(r.win_rate),g=Number(r.games||0),low=g<10;const tone=low?'lowSample':wr>=55?'favored':wr<=45?'unfavored':'even';return `<td class="metaMatrixCell ${tone}" title="${esc(a)} vs ${esc(b)} • ${g} games${low?' • low sample':''}"><strong>${Number.isFinite(wr)?wr.toFixed(0)+'%':'—'}</strong><small>${g}${low?' • low':''}</small></td>`}).join('')}</tr>`).join('');
+ const list=`<div class="tableScroll"><table class="metaLiveTable"><thead><tr><th>Archetype</th><th>Meta Share</th><th>Decks</th><th>Record</th><th>Win %</th><th>Games</th><th>Confidence</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No mapped competitive games are available yet.</td></tr>'}</tbody></table></div>`;
+ const matrix=`<div class="metaMatrixLegend"><span><i class="favored"></i>55%+</span><span><i class="even"></i>46–54%</span><span><i class="unfavored"></i>45% or lower</span><span><i class="lowSample"></i>Low sample (&lt;10)</span><small>Cell = win rate • small number = games</small></div><div class="metaMatrixScroll"><table class="metaMatrixTable"><thead><tr><th>Archetype</th>${matrixHead}</tr></thead><tbody>${matrixRows||'<tr><td>No matchup data yet.</td></tr>'}</tbody></table></div>`;
+ return `<section class="panel v847Competitive combinedMetaPanel"><div class="between"><div><span class="eyebrow">COMPETITIVE META INTELLIGENCE</span><h2>Combined Competitive Meta</h2><p class="muted">A larger competitive sample is aggregated into one field view so individual events do not distort the read. Low-volume matchups are labeled instead of being presented with the same confidence as large samples.</p></div><div class="combinedMetaControls"><select onchange="setCompetitiveRange847(this.value)" aria-label="Competitive sample window"><option value="7" ${c.days===7?'selected':''}>Last 7 days</option><option value="14" ${c.days===14?'selected':''}>Last 14 days</option><option value="30" ${c.days===30?'selected':''}>Last 30 days</option><option value="60" ${c.days===60?'selected':''}>Last 60 days</option><option value="90" ${c.days===90?'selected':''}>Last 90 days</option></select><div class="metaViewToggle"><button class="secondary ${c.view==='list'?'active':''}" onclick="setCompetitiveView847('list')">List</button><button class="secondary ${c.view==='matrix'?'active':''}" onclick="setCompetitiveView847('matrix')">Matrix</button></div></div></div><div class="metaHeroTags combinedMetaTags"><span>${Number(appearances).toLocaleString()} deck entries</span><span>${Number(sampleGames).toLocaleString()} game-side records</span><span>${c.meta.length} mapped archetypes</span><span>${c.days}-day window</span></div>${c.loading?'<p class="muted">Refreshing competitive sample…</p>':c.error?`<div class="notice">Competitive meta data unavailable: ${esc(c.error)}</div>`:(c.view==='matrix'?matrix:list)}</section>${bigBossCompetitivePanel8506()}`;
 }
 const metaIntelPagePre847=metaIntelPage;
 metaIntelPage=function(){metaIntelPagePre847();const app=document.getElementById('app');if(!app)return;const panel=document.createElement('div');panel.innerHTML=competitivePanel847();const hero=app.querySelector('.metaHero');if(hero&&hero.nextSibling)app.insertBefore(panel.firstElementChild,hero.nextSibling);else app.prepend(panel.firstElementChild)};
