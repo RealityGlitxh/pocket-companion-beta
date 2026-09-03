@@ -8,6 +8,8 @@ const WINDOWS=[24,168,336,720];
 const CACHE_PREFIX="ppc_meta_live_";
 const WINDOW_KEY="ppc_meta_active_window";
 const FIVE_MIN=5*60*1000;
+const MAX_MATCHUPS=160;
+const MAX_ARCHETYPES=60;
 let activeWindow=168;
 try{activeWindow=Number(localStorage.getItem(WINDOW_KEY)||168)}catch{}
 if(!WINDOWS.includes(activeWindow))activeWindow=168;
@@ -23,8 +25,22 @@ function readCache(w){
     return row&&row.payload?row:null;
   }catch{return null}
 }
+function compactPayload(p){
+  if(!p||typeof p!=="object")return p;
+  const archetypes=(Array.isArray(p.archetypes)?p.archetypes:[]).slice(0,MAX_ARCHETYPES).map(a=>({
+    id:a.id,slug:a.slug,name:a.name,shortName:a.shortName,type:a.type,tier:a.tier,rank:a.rank,previousRank:a.previousRank,
+    deckCount:a.deckCount,usage:a.usage,wins:a.wins,losses:a.losses,draws:a.draws,matches:a.matches,winRate:a.winRate,
+    sampleSize:a.sampleSize,confidence:a.confidence,pokemon:Array.isArray(a.pokemon)?a.pokemon.slice(0,8):[],
+    keyCards:Array.isArray(a.keyCards)?a.keyCards.slice(0,8):[],aliases:Array.isArray(a.aliases)?a.aliases.slice(0,12):[]
+  }));
+  const matchups=(Array.isArray(p.matchups)?p.matchups:[]).slice(0,MAX_MATCHUPS).map(m=>({
+    archetypeAId:m.archetypeAId,archetypeBId:m.archetypeBId,archetypeA:m.archetypeA,archetypeB:m.archetypeB,
+    aWins:m.aWins,bWins:m.bWins,draws:m.draws,matches:m.matches,aWinRate:m.aWinRate,confidence:m.confidence
+  }));
+  return {ok:p.ok!==false,status:p.status||"live",windowHours:p.windowHours,snapshot:p.snapshot||null,overview:p.overview||{},archetypes,matchups};
+}
 function saveCache(w,p){
-  try{localStorage.setItem(cacheKey(w),JSON.stringify({payload:p,cachedAt:now()}))}catch{}
+  try{localStorage.setItem(cacheKey(w),JSON.stringify({payload:compactPayload(p),cachedAt:now()}))}catch{}
 }
 function bundled(){
   const list=typeof ARCHETYPE_DATA!=="undefined"&&Array.isArray(ARCHETYPE_DATA)?ARCHETYPE_DATA:[];
@@ -93,7 +109,7 @@ async function fetchWindow(w=activeWindow,{force=false}={}){
       finally{clearTimeout(timer)}
       const data=await res.json().catch(()=>null);
       if(!res.ok||!data?.ok)throw new Error(data?.error||data?.message||`Live Meta request failed (${res.status})`);
-      payload=data; source=["live","cached","stale"].includes(data.status)?data.status:"live"; error=""; lastFetchAt=now(); saveCache(w,data); return data;
+      payload=compactPayload(data); source=["live","cached","stale"].includes(data.status)?data.status:"live"; error=""; lastFetchAt=now(); saveCache(w,payload); return payload;
     }catch(e){
       error=e?.message||String(e);
       if(!setFromCache(w)){payload=bundled();source="fallback"}
@@ -107,7 +123,7 @@ function ensure(w=activeWindow){
   setWindow(w);
   if(!payload)setFromCache(w);
   if(!payload){payload=bundled();source="fallback"}
-  if(!inFlight&&(source==="fallback"||source==="stale"||!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
+  if(!inFlight&&(!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
   return payload;
 }
 function refresh(){return fetchWindow(activeWindow,{force:true})}
