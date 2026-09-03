@@ -18,14 +18,17 @@
 <link rel="stylesheet" href="css/training-polish-v8.64.1.css?v=864110">
 <link rel="stylesheet" href="css/training-uniform-v8.64.1.css?v=864110">
 <link rel="stylesheet" href="css/training-cleanup-v8.64.1.css?v=864111">
+<link rel="stylesheet" href="css/header-refine-v8.64.1.css?v=864112">
 </head>
 <body>
 <header class="appHeader"><div class="appHeaderBar">
   <button class="appBrand brandHome" type="button" onclick="if(state?.user||cloudSession?.user){headerNavigate('dashboard')}" aria-label="Go to Home"><strong>PocketNexus</strong></button>
   <div id="nav" class="headerNav" aria-label="Primary navigation"></div>
+  <div class="headerSearchCenter">
+    <button id="globalSearchButton" class="globalSearchButton" type="button" onclick="openGlobalSearch()" aria-label="Search PocketNexus"><span>⌕</span><span class="globalSearchButtonText">Search</span><kbd>Ctrl K</kbd></button>
+  </div>
   <div class="row headerTools">
-    <button id="globalSearchButton" class="globalSearchButton" type="button" onclick="openGlobalSearch()" aria-label="Search everything"><span>⌕</span><span class="globalSearchButtonText">Search everything</span><kbd>Ctrl K</kbd></button>
-    <div id="themeControl" class="themeControl"></div><div id="user"></div>
+    <div id="headerUtility"></div><div id="user"></div>
   </div>
 </div></header>
 <main id="app">
@@ -61,6 +64,7 @@
 <script src="js/app/streamer_rank_tools.js?v=86418"></script>
 <script src="js/app/ai_coach.js?v=86418"></script>
 <script src="js/app/profile_teamwars.js?v=86418"></script>
+<script src="js/features/header-search-profile-hotfix-v8.64.1.js?v=864112"></script>
 <script src="js/app/training.js?v=864111"></script>
 <script src="js/features/training-slide-hotfix-v8.64.1.js?v=86418"></script>
 <script src="js/features/training-cleanup-hotfix-v8.64.1.js?v=864111"></script>
