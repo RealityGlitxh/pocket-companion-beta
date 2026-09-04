@@ -1,0 +1,76 @@
+name: Performance Pass 2D Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/performance-pass-2d-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract-account-cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove legacy Account and Cloud blocks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('js/app/streamer_rank_tools.js')
+          text = path.read_text(encoding='utf-8')
+
+          account_start = 'const V8_SUPABASE_CONFIG={'
+          streamer_marker = '// V8.46.2 — Streamer Overlay 3.0 dedicated Supabase cloud sync.'
+          unified_marker = '// V8.48 — Unified Account + Cloud Sync status center.'
+
+          if account_start not in text:
+              raise SystemExit('Legacy Account/Cloud start marker not found')
+          if streamer_marker not in text:
+              raise SystemExit('Streamer cloud marker not found')
+
+          start = text.index(account_start)
+          streamer = text.index(streamer_marker, start)
+          text = (
+              text[:start].rstrip()
+              + '\n\n// Performance Pass 2D: Account/auth/backup/restore runtime moved to\n'
+              + '// js/core/account-cloud-core-v8.64.1.js and account-cloud-runtime-v8.64.1.js.\n\n'
+              + text[streamer:]
+          )
+
+          if unified_marker in text:
+              text = text[:text.index(unified_marker)].rstrip() + '\n'
+
+          if account_start in text:
+              raise SystemExit('Legacy Account/Cloud block still present after cleanup')
+          if unified_marker in text:
+              raise SystemExit('Legacy unified cloud status block still present after cleanup')
+          if streamer_marker not in text or 'function syncStreamerCloud' not in text:
+              raise SystemExit('Streamer cloud sync was accidentally removed')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Syntax checks
+        run: |
+          node --check js/app/streamer_rank_tools.js
+          node --check js/core/account-cloud-core-v8.64.1.js
+          node --check js/core/account-cloud-runtime-v8.64.1.js
+
+      - name: Commit cleanup
+        run: |
+          if git diff --quiet -- js/app/streamer_rank_tools.js; then
+            echo 'No cleanup changes needed.'
+            exit 0
+          fi
+          git config user.name 'PocketNexus Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add js/app/streamer_rank_tools.js
+          git commit -m 'perf: remove legacy account cloud code from streamer rank bundle'
+          git push
