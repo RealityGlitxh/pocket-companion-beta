@@ -123,7 +123,10 @@ function ensure(w=activeWindow){
   setWindow(w);
   if(!payload)setFromCache(w);
   if(!payload){payload=bundled();source="fallback"}
-  if(!inFlight&&(!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
+  // Re-entrant UI listeners can call ensure() while fetchWindow() is emitting its
+  // loading state, before inFlight has been assigned. loading is already true at
+  // that point, so use it as an additional guard to prevent recursive fetch/render loops.
+  if(!loading&&!inFlight&&(!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
   return payload;
 }
 function refresh(){return fetchWindow(activeWindow,{force:true})}
