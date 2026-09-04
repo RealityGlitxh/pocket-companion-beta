@@ -17,8 +17,8 @@ jobs:
       - name: Inspect Collection API and controls
         run: |
           echo '=== COLLECTION FUNCTIONS ==='
-          grep -oE 'function [A-Za-z0-9_]*Collection[A-Za-z0-9_]*\(' js/app/collection.js | sort -u || true
-          echo '=== COLLECTION BULK REFERENCES ==='
-          grep -nE 'collectionBulk|Bulk|Claim all|Claim All|Select all|Select All' js/app/collection.js | head -120 || true
-          echo '=== COLLECTION PREF/MODE REFERENCES ==='
-          grep -nE 'toggleCollectionQuickEdit|setCollectionMode|collectionFiltered|COLLECTION_PAGE_SIZE|collectionPageIndex' js/app/collection.js | head -120 || true
+          grep -RhoE 'function [A-Za-z0-9_]*Collection[A-Za-z0-9_]*\(' js | sort -u || true
+          echo '=== COLLECTION BULK DEFINITIONS/REFERENCES ==='
+          grep -RnE 'collectionBulkToolbarHtml|collectionBulkMode|toggleCollectionCardSelection|Claim all|Claim All|Select all|Select All|Bulk edit|bulk edit' js | head -220 || true
+          echo '=== COLLECTION PREF/MODE DEFINITIONS ==='
+          grep -RnE 'function toggleCollectionQuickEdit|function setCollectionMode|function collectionFiltered|COLLECTION_PAGE_SIZE|collectionPageIndex' js | head -180 || true
