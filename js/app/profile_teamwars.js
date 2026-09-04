@@ -189,7 +189,55 @@ async function teamWarsPage(force=false){
 }
 
 function standingsHtml(){return `<div class="standingsTable"><div class="standingsHead"><span>#</span><span>Team</span><span>W</span><span>L</span><span>PTS</span></div>${(teamWarsState.standings||[]).map((s,i)=>`<div><span>${i+1}</span><strong>[${esc(s.tag)}] ${esc(s.team_name)}</strong><span>${s.wins}</span><span>${s.losses}</span><b>${s.points}</b></div>`).join('')||`<p class="muted">Standings will appear after teams complete wars.</p>`}</div>`}
-window.resolveRankedDispute=resolveRankedDispute;window.profilePage=profilePage;window.profilesShowTab=profilesShowTab;window.searchPublicProfiles=searchPublicProfiles;window.openPublicProfileByPublicId=openPublicProfileByPublicId;window.teamWarsPage=teamWarsPage;window.loadProfileTeamData=loadProfileTeamData;window.openPublicProfile=openPublicProfile;window.openPublicProfileById=openPublicProfileById;window.openPublicTeam=openPublicTeam;window.closePublicIdentity=closePublicIdentity;
+
+// V8.64.1 runtime repair — public identity handlers.
+function renderPublicIdentityContext(){
+ if(state.page==='teamwars'||teamWarsState.publicTeam)return teamWarsPage(false);
+ return profilePage(false);
+}
+async function loadPublicProfileRpc(name,args){
+ const c=await ensurePublicClient();
+ if(!c?.rpc){ppcNotice('Public profiles are temporarily unavailable.');return null}
+ try{
+  const {data,error}=await c.rpc(name,args);if(error)throw error;
+  if(!data){ppcNotice('That public profile is unavailable or private.');return null}
+  return await hydratePublicProfileSessions(c,data);
+ }catch(e){console.warn('Public profile lookup',e);ppcNotice('Could not load that public profile.');return null}
+}
+async function openPublicProfile(username){
+ const value=String(username||'').trim();if(!value)return;
+ const data=await loadPublicProfileRpc('get_public_profile',{p_username:value});if(!data)return;
+ teamWarsState.publicTeam=null;teamWarsState.publicProfile=data;renderPublicIdentityContext();
+}
+async function openPublicProfileById(userId){
+ const value=String(userId||'').trim();if(!value)return;
+ const data=await loadPublicProfileRpc('get_public_profile_by_id',{p_user_id:value});if(!data)return;
+ teamWarsState.publicTeam=null;teamWarsState.publicProfile=data;renderPublicIdentityContext();
+}
+async function openPublicProfileByPublicId(publicId){
+ const value=String(publicId||'').trim();if(!value)return;
+ const data=await loadPublicProfileRpc('get_public_profile_by_public_id',{p_public_profile_id:value});if(!data)return;
+ teamWarsState.publicTeam=null;teamWarsState.publicProfile=data;renderPublicIdentityContext();
+}
+async function openPublicTeam(teamId){
+ const value=String(teamId||'').trim();if(!value)return;
+ const c=await ensurePublicClient();if(!c?.rpc)return ppcNotice('Public teams are temporarily unavailable.');
+ try{
+  const {data,error}=await c.rpc('get_public_team',{p_team_id:value});if(error)throw error;
+  if(!data)return ppcNotice('That public team is unavailable or private.');
+  if(!teamWarsState.publicReturnPage)teamWarsState.publicReturnPage=state.page||'teamwars';
+  teamWarsState.publicProfile=null;teamWarsState.publicTeam=data;state.page='teamwars';save();teamWarsPage(false);
+ }catch(e){console.warn('Public team lookup',e);ppcNotice('Could not load that public team.')}
+}
+function closePublicIdentity(){
+ const back=teamWarsState.publicReturnPage;
+ teamWarsState.publicProfile=null;teamWarsState.publicTeam=null;teamWarsState.publicReturnPage=null;
+ if(back==='profile'||back==='teamwars')state.page=back;
+ if(typeof save==='function')save();
+ if(state.page==='teamwars')teamWarsPage(false);else profilePage(false);
+}
+
+window.resolveRankedDispute=resolveRankedDispute;window.profilePage=profilePage;window.profilesShowTab=profilesShowTab;window.searchPublicProfiles=searchPublicProfiles;window.ensurePublicClient=ensurePublicClient;window.openPublicProfileByPublicId=openPublicProfileByPublicId;window.teamWarsPage=teamWarsPage;window.loadProfileTeamData=loadProfileTeamData;window.openPublicProfile=openPublicProfile;window.openPublicProfileById=openPublicProfileById;window.openPublicTeam=openPublicTeam;window.closePublicIdentity=closePublicIdentity;
 
 
 /* V8.54.2 — Team Management + Competitive Seasons */
