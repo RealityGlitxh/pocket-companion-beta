@@ -1,0 +1,103 @@
+name: PocketNexus Pass 3C Frontend Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pass3c-front-end-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pass3c-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Audit remaining tabs, accessibility, touch targets, states, motion and layout
+        run: |
+          mkdir -p qa-shots
+          cat > pass3c-audit.js <<'NODE'
+          const {chromium}=require('playwright');
+          const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
+          const routes=[
+            ['stats','performance'],['rank','rank'],['streamer','streamer'],['profile','profiles'],
+            ['teamwars','teamwars'],['training','training'],['sync','sync'],['more','more'],
+            ['account','account'],['about','about']
+          ];
+          const intentionalScroll=['.twTabBar','.analyticsTabs','.cohesiveAnalyticsTabs','.coachQuickPrompts','.managerRoster','.freeAgentGrid','.fixtureList','.streamPreview','.builderCatalog','.brainTabsCompact'];
+          (async()=>{
+            const browser=await chromium.launch({headless:true}); let failures=0;
+            const fail=(label,data)=>{failures++;console.log('FAIL',label,JSON.stringify(data||{}))};
+            for(const [vp,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block',reducedMotion:'reduce'});
+              const page=await context.newPage(); const errors=[];
+              page.on('pageerror',e=>errors.push(String(e.message||e)));
+              const clear=()=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(1400);
+              const guest=page.getByRole('button',{name:/continue as guest/i}); if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(500)}catch{}
+              await clear();
+              for(const [key,label] of routes){
+                await page.evaluate(k=>window.goPage?.(k),key); await page.waitForTimeout(650); await clear();
+                const m=await page.evaluate((intentionalScroll)=>{
+                  const rootOverflow=Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth;
+                  const visible=[...document.querySelectorAll('#app *')].filter(el=>{
+                    const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+                    return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';
+                  });
+                  const overflowers=visible.filter(el=>{
+                    if(intentionalScroll.some(sel=>el.matches(sel)||el.closest(sel)))return false;
+                    const r=el.getBoundingClientRect();return r.right>innerWidth+8||r.left<-8;
+                  }).slice(0,8).map(el=>({tag:el.tagName,cls:el.className,id:el.id,right:Math.round(el.getBoundingClientRect().right)}));
+                  const controls=visible.filter(el=>el.matches('button,a,input,select,textarea,[role="button"],[tabindex]'));
+                  const tiny=controls.filter(el=>{
+                    if(el.matches('input[type="checkbox"],input[type="radio"]'))return false;
+                    const r=el.getBoundingClientRect();return r.width<40||r.height<40;
+                  }).slice(0,12).map(el=>({tag:el.tagName,text:(el.innerText||el.getAttribute('aria-label')||el.id||'').trim().slice(0,60),w:Math.round(el.getBoundingClientRect().width),h:Math.round(el.getBoundingClientRect().height)}));
+                  const unlabeled=controls.filter(el=>{
+                    if(el.matches('input[type="hidden"]'))return false;
+                    const name=(el.getAttribute('aria-label')||el.getAttribute('title')||el.innerText||'').trim();
+                    if(name)return false;
+                    if(el.id&&document.querySelector(`label[for="${CSS.escape(el.id)}"]`))return false;
+                    return el.matches('button,a,[role="button"],input,select,textarea');
+                  }).slice(0,12).map(el=>({tag:el.tagName,id:el.id,cls:el.className}));
+                  const live=[...document.querySelectorAll('[aria-live], [role="status"], [role="alert"]')].length;
+                  const content=(document.querySelector('#app')?.innerText||'').trim();
+                  return {rootOverflow,overflowers,tiny,unlabeled,live,errorScreen:/This page hit an error/i.test(document.body.innerText),contentLen:content.length,h1:document.querySelector('#app h1')?.textContent?.trim()||''};
+                },intentionalScroll);
+                if(m.rootOverflow>8||m.overflowers.length||m.errorScreen||m.contentLen<30)fail(`${vp}:${label}:layout`,m);
+                // Desktop may use smaller text-link controls; enforce strict touch target threshold on tablet/mobile only.
+                if(vp!=='desktop'&&m.tiny.length)fail(`${vp}:${label}:touch-targets`,m.tiny);
+                if(m.unlabeled.length)fail(`${vp}:${label}:unlabeled-controls`,m.unlabeled);
+                await page.screenshot({path:`qa-shots/${vp}-${label}.png`,fullPage:true});
+                console.log('AUDIT_PAGE',vp,label,JSON.stringify(m));
+              }
+              if(errors.length)fail(`${vp}:page-errors`,errors);
+              await context.close();
+            }
+            await browser.close();
+            if(failures){console.error('PASS3C_AUDIT_FAILURES',failures);process.exit(1)}
+            console.log('PASS3C_AUDIT_OK');
+          })();
+          NODE
+          node pass3c-audit.js
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass3c-front-end-audit-shots
+          path: qa-shots
