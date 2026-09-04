@@ -1,12 +1,10 @@
-/* PocketNexus V8.64.1 Hotfix 12 — fast cached assets + background update */
-const VERSION='v8.64.1-hotfix12';
+/* PocketNexus V8.64.1 Hotfix 13 — interaction recovery + safe caching */
+const VERSION='v8.64.1-hotfix13';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;
 const ART_CACHE=`pocket-companion-art-${VERSION}`;
 
-// Keep the install shell intentionally small. Heavy app JS/CSS is cached at runtime
-// so a service-worker update does not re-download the entire application up front.
 const APP_SHELL=[
  './','./index.html','./offline.html','./privacy.html','./terms.html','./support.html','./manifest.webmanifest',
  './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'
@@ -43,11 +41,11 @@ async function cacheFirst(req,cacheName,max=180){
 async function networkFirst(req){
  const c=await caches.open(RUNTIME_CACHE);
  try{
-   const res=await fetch(req,{cache:'no-store'});
+   const res=await fetch(req);
    if(res&&res.ok)c.put(req,res.clone());
    return res;
  }catch{
-   return await c.match(req)||await caches.match(req,{ignoreSearch:true})||Response.error();
+   return await c.match(req)||await caches.match(req,{ignoreSearch:false})||Response.error();
  }
 }
 
@@ -83,20 +81,19 @@ self.addEventListener('fetch',event=>{
 
  if(url.origin!==self.location.origin)return;
 
- // HTML stays network-first so deployments are discovered quickly.
- if(req.mode==='navigate'){
+ // Always prefer the newest HTML and JS so index.html and event-handler code stay in sync.
+ if(req.mode==='navigate'||req.destination==='script'){
    event.respondWith(networkFirst(req).catch(async()=>await caches.match('./index.html')||caches.match('./offline.html')));
    return;
  }
 
- // JS/CSS should feel instant on repeat visits. Serve cache immediately and
- // refresh it in the background for the next navigation.
- if(req.destination==='script'||req.destination==='style'){
+ // CSS can safely be served instantly and refreshed in the background.
+ if(req.destination==='style'){
    event.respondWith(staleWhileRevalidate(req,RUNTIME_CACHE,120));
    return;
  }
 
- event.respondWith(caches.match(req,{ignoreSearch:true}).then(cached=>cached||fetch(req).then(res=>{
+ event.respondWith(caches.match(req,{ignoreSearch:false}).then(cached=>cached||fetch(req).then(res=>{
    if(res&&res.ok)caches.open(RUNTIME_CACHE).then(c=>{c.put(req,res.clone());trim(RUNTIME_CACHE,120);});
    return res;
  }).catch(()=>Response.error())));
