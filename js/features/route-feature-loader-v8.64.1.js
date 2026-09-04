@@ -1,10 +1,11 @@
 /* PocketNexus V8.64.1 — route-level classic-script loader
-   Performance Pass 2B: keep optional feature bundles out of the startup path.
+   Performance Pass 2C: keep optional feature bundles out of the startup path.
    This preserves the existing global-script architecture and loads each bundle
    in dependency order the first time its page is opened. */
 (function(){
   if(window.PPCFeatureLoader)return;
 
+  const profileTeamScripts=['js/app/profile_teamwars.js?v=864122'];
   const ROUTES={
     training:{
       ready:()=>typeof window.trainingPage==='function',
@@ -23,6 +24,16 @@
         'js/services/pocket-sync-orchestrator-service.js?v=864121',
         'js/app/pocket_sync.js?v=864121'
       ]
+    },
+    profile:{
+      ready:()=>typeof window.profilePage==='function',
+      label:'Profiles',
+      scripts:profileTeamScripts
+    },
+    teamwars:{
+      ready:()=>typeof window.teamWarsPage==='function',
+      label:'Team Wars',
+      scripts:profileTeamScripts
     }
   };
 
