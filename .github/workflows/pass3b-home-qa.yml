@@ -28,7 +28,7 @@ jobs:
       - name: Capture and validate Home
         run: |
           mkdir -p home-qa
-          cat > /tmp/home-qa.js <<'NODE'
+          cat > home-qa.js <<'NODE'
           const { chromium }=require('playwright');
           const fs=require('fs');
           const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
@@ -62,7 +62,7 @@ jobs:
             await browser.close();if(failures)process.exitCode=1;
           })();
           NODE
-          node /tmp/home-qa.js
+          node home-qa.js
       - name: Upload Home QA
         if: always()
         uses: actions/upload-artifact@v4
