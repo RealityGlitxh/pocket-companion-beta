@@ -1,0 +1,84 @@
+name: PocketNexus Pass 3B-3 Battle Wire + QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pass3b-battle-wire-qa.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  battle-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Wire Battle refinement locally
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          css='<link rel="stylesheet" href="css/pass3b-battle-v8.65.3.css?v=865301">'
+          js='<script defer src="js/features/battle-refine-v8.65.3.js?v=865301"></script>'
+          if css not in s:
+            s=s.replace('<link rel="stylesheet" href="css/pass3b-decks-v8.65.2.css?v=865201">','<link rel="stylesheet" href="css/pass3b-decks-v8.65.2.css?v=865201">\n'+css)
+          if js not in s:
+            s=s.replace('<script defer src="js/features/battle-streamer-v8.43.js?v=86418"></script>','<script defer src="js/features/battle-streamer-v8.43.js?v=86418"></script>\n'+js)
+          p.write_text(s)
+          PY
+          node --check js/features/battle-refine-v8.65.3.js
+          grep -q "pass3b-battle-v8.65.3.css?v=865301" index.html
+          grep -q "battle-refine-v8.65.3.js?v=865301" index.html
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Validate Battle at desktop tablet mobile
+        run: |
+          cat > battle-qa.js <<'NODE'
+          const { chromium }=require('playwright');
+          const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
+          (async()=>{const browser=await chromium.launch({headless:true});let failures=0;
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});await page.waitForTimeout(1400);
+              const guest=page.getByRole('button',{name:/continue as guest/i});if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(650)}catch{}
+              await page.evaluate(()=>{try{window.onboardingSkip?.()}catch{};document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop').forEach(x=>x.remove())});
+              await page.evaluate(()=>window.goPage?.('matches'));await page.waitForTimeout(650);
+              for(const tab of ['record','sessions','history']){
+                if(tab!=='record'){await page.evaluate(t=>window.setBattleViewTab?.(t),tab);await page.waitForTimeout(250)}
+                const m=await page.evaluate(()=>({page:!!document.querySelector('.battle3bPage'),focus:!!document.querySelector('.battle3bFocus'),tabs:!!document.querySelector('.battle3bTabs'),title:document.querySelector('.battle3bPage h1')?.textContent?.trim()||'',version:window.PPCBattleRefinement?.version||'',overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));
+                const broken=errors.length||!m.page||!m.focus||!m.tabs||m.title!=='Battle'||m.version!=='8.65.3'||m.overflow>8;
+                console.log(name,tab,JSON.stringify({m,errors,broken}));if(broken)failures++;
+              }
+              await context.close();
+            }
+            await browser.close();if(failures)process.exitCode=1;
+          })();
+          NODE
+          node battle-qa.js
+      - name: Commit wired refinement
+        run: |
+          git config user.name "PocketNexus Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "ui: wire Pass 3B-3 Battle refinement"
+          git push
+      - name: Remove one-time workflow
+        run: |
+          git rm .github/workflows/pass3b-battle-wire-qa.yml
+          git commit -m "chore: remove Pass 3B-3 Battle QA workflow"
+          git push
