@@ -1,0 +1,24 @@
+name: PocketNexus Pass 3B-5 Collection Inspect
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pass3b-collection-inspect.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Collection API and controls
+        run: |
+          echo '=== COLLECTION FUNCTIONS ==='
+          grep -oE 'function [A-Za-z0-9_]*Collection[A-Za-z0-9_]*\(' js/app/collection.js | sort -u || true
+          echo '=== COLLECTION BULK REFERENCES ==='
+          grep -nE 'collectionBulk|Bulk|Claim all|Claim All|Select all|Select All' js/app/collection.js | head -120 || true
+          echo '=== COLLECTION PREF/MODE REFERENCES ==='
+          grep -nE 'toggleCollectionQuickEdit|setCollectionMode|collectionFiltered|COLLECTION_PAGE_SIZE|collectionPageIndex' js/app/collection.js | head -120 || true
