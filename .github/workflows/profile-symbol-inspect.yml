@@ -1,0 +1,21 @@
+name: Profile Symbol Inspect
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/profile-symbol-inspect.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public profile symbol definitions
+        run: |
+          grep -nE "(async )?function (openPublicProfileByPublicId|openPublicProfileById|openPublicProfile|openPublicTeam|closePublicIdentity)" js/app/profile_teamwars.js || true
+          grep -n "get_public_profile" js/app/profile_teamwars.js || true
+          grep -n "public_id" js/app/profile_teamwars.js | head -40 || true
