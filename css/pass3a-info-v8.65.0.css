@@ -1,0 +1,94 @@
+/* PocketNexus v8.65.0 — Performance Pass 3A.4–3A.6
+   Meta, Performance, and Collection polish only. No feature behavior changes. */
+
+/* META — preserve compact/stable architecture, reduce visual bulk. */
+.metaCompactPage{gap:13px!important}
+.metaCompactTop{padding:17px 18px!important;gap:11px!important}
+.metaCompactTitle h1{font-size:clamp(2rem,3vw,3.05rem)!important}
+.metaCompactWindows{gap:5px!important}
+.metaCompactWindows button{min-height:34px!important;padding:6px 11px!important}
+.metaCompactStatus{gap:6px!important}
+.metaCompactStatus>span{padding:5px 8px!important;font-size:.72rem!important}
+.metaPrimaryTabs{padding:3px!important;border-radius:12px!important}
+.metaPrimaryTabs button{min-height:36px!important;min-width:132px!important;padding:7px 12px!important}
+.metaCompactMain{padding:17px 18px!important;gap:13px!important}
+.metaCompactSearch{max-width:560px!important}
+.metaCompactMain>.metaIntelGrid{gap:11px!important}
+.metaIntelCard,.archetypeCard{border-radius:13px!important}
+.metaMoreData>summary{padding:14px 16px!important}
+.metaMoreDataBody{gap:10px!important}
+.metaIntelFilters{gap:7px!important}
+.matrixWrap,.metaMatchupScroll{border:1px solid var(--line);border-radius:13px;background:#0b141e}
+.matrix th,.matrix td,.metaLiveTable th,.metaLiveTable td{padding:8px!important}
+
+/* PERFORMANCE — consistent tabs, compact metrics, readable tables. */
+.statsPageHeader{margin-bottom:12px!important}
+.statsPageHeader>div:first-child{max-width:820px}
+.performanceCoachFirst{margin-bottom:12px!important}
+.performanceNavShell{display:grid;gap:8px;margin-bottom:13px}
+.cohesiveAnalyticsTabs,.analyticsTabs{gap:5px!important;padding:4px!important;border:1px solid var(--line);border-radius:13px;background:#0b121b;overflow:auto}
+.cohesiveAnalyticsTabs>button,.analyticsTabs>button{min-height:36px!important;padding:7px 12px!important;white-space:nowrap}
+.performanceMore summary{min-height:36px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#121d2a;cursor:pointer;font-weight:800}
+.performanceMore>div{gap:6px!important}
+.statsHeroGrid{gap:10px!important;margin-bottom:12px}
+.statsHeroMetric{padding:14px!important;min-height:112px}
+.statsHeroMetric .n{font-size:1.65rem!important}
+.statsChartGrid,.uxOverviewGrid,.intelGrid{gap:12px!important}
+.performanceDataPanel,.intelligenceHeaderPanel,.intelPanel{padding:16px!important}
+.performanceTable{width:100%;border-collapse:collapse}
+.performanceTable th,.performanceTable td{padding:9px 10px!important;border-bottom:1px solid var(--line)}
+.performanceTable th{font-size:.69rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.performanceTable tr:last-child td{border-bottom:0}
+.intelRow{min-height:56px}
+.recentForm{display:flex;gap:6px;flex-wrap:wrap}
+
+/* COLLECTION — make the database dense but easy to scan. */
+#app:has(.collectionModes)>.between:first-child{margin-bottom:12px}
+#app:has(.collectionModes)>.metricgrid{gap:9px;margin-bottom:11px}
+#app:has(.collectionModes)>.metricgrid .metric{padding:11px 12px}
+#app:has(.collectionModes)>.metricgrid .metric .n{font-size:1.2rem}
+.collectionModes{gap:5px!important;margin:9px 0 11px!important;padding:3px;border:1px solid var(--line);border-radius:13px;background:#0b121b}
+.collectionModes button{min-height:35px!important;padding:7px 11px!important;white-space:nowrap}
+#app:has(.collectionModes)>.panel{padding:15px!important}
+#app:has(.collectionModes) .filtergrid{gap:7px!important;margin-bottom:10px}
+.collectionBrowserGrid{gap:8px!important}
+.collectionBrowseCard{border-radius:11px!important;padding:6px!important}
+.collectionBrowseBody{padding:7px 1px 1px!important;gap:2px!important}
+.collectionBrowseFlags{gap:3px!important}
+.collectionBrowseFlags em{font-size:.59rem!important;padding:2px 5px!important}
+.collectionQuickControls{padding:6px!important}
+.collectionQuickControls button{min-height:28px!important;padding:3px 7px!important}
+.pager{margin-top:12px!important;gap:8px!important}
+.setProgress{padding:8px 0;border-bottom:1px solid rgba(39,55,75,.55)}
+.setProgress:last-child{border-bottom:0}
+
+@media(max-width:900px){
+  .metaCompactPage{width:100%!important}
+  .performanceTable{min-width:680px}
+  .collectionBrowserGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+
+@media(max-width:700px){
+  .metaCompactTop,.metaCompactMain{padding:14px!important}
+  .metaCompactStatus{grid-template-columns:1fr!important}
+  .metaCompactStatus>span{text-align:left!important}
+  .metaPrimaryTabs button{min-width:0!important}
+  .statsPageHeader>button{width:100%}
+  .cohesiveAnalyticsTabs,.analyticsTabs{width:100%}
+  #app:has(.collectionModes)>.panel{padding:12px!important}
+  #app:has(.collectionModes) .filtergrid{grid-template-columns:1fr 1fr!important}
+}
+
+@media(max-width:520px){
+  .statsHeroGrid{grid-template-columns:1fr 1fr!important}
+  .collectionModes{overflow:auto}
+  #app:has(.collectionModes) .filtergrid{grid-template-columns:1fr!important}
+  .collectionBrowserGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  .pager{display:grid;grid-template-columns:1fr auto 1fr}
+}
+
+@media(max-width:380px){
+  .statsHeroGrid{grid-template-columns:1fr!important}
+  .pager{grid-template-columns:1fr 1fr}
+  .pager span{grid-column:1/-1;grid-row:1;text-align:center}
+}
