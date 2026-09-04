@@ -1,3 +1,10 @@
+PocketNexus V8.64.1 Hotfix 12 — Performance Cache Fix
+- Restores fast repeat loads by serving cached JavaScript and CSS immediately.
+- Refreshes scripts/styles in the background for the next navigation.
+- Keeps HTML navigation network-first so new deployments are discovered quickly.
+- Shrinks the service-worker install shell so updates no longer pre-download the entire app bundle.
+- Preserves card-data stale-while-revalidate and artwork cache-first behavior.
+
 PocketNexus V8.64.1 Hotfix 10 — Meta Refresh Stability
 - Stops stale Meta snapshots from triggering a refresh/render loop that could freeze or crash the site.
 - Throttles background Meta refreshes to the existing five-minute freshness window.
