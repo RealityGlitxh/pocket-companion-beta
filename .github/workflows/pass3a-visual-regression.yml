@@ -50,7 +50,8 @@ jobs:
           const intentionalScrollSelectors = [
             '.matrixWrap','.metaMatchupScroll','.winLossChartScroll','.rankChartWrap','.twTabBar',
             '.collectionModes','.analyticsTabs','.cohesiveAnalyticsTabs','.coachQuickPrompts',
-            '.managerRoster','.freeAgentGrid','.fixtureList','.streamPreview','.builderCatalog','.wtcArtFrame'
+            '.managerRoster','.freeAgentGrid','.fixtureList','.streamPreview','.builderCatalog',
+            '.wtcArtFrame','.brainTabsCompact'
           ];
           function safeName(s){ return s.replace(/[^a-z0-9_-]/gi,'-'); }
 
@@ -71,8 +72,8 @@ jobs:
               await page.waitForTimeout(1500);
               const guest = page.getByRole('button',{name:/continue as guest/i});
               if(await guest.count()) { try { await guest.click({timeout:3000}); await page.waitForTimeout(800); } catch{} }
-              const skip = page.getByRole('button',{name:/^skip$/i});
-              if(await skip.count()) { try { await skip.first().click({timeout:2000}); await page.waitForTimeout(500); } catch{} }
+              await page.evaluate(() => { try { if(typeof window.onboardingSkip==='function') window.onboardingSkip(); } catch{} });
+              await page.waitForTimeout(500);
 
               for (const [label, route] of routes){
                 pageErrors.length = 0; consoleErrors.length = 0;
