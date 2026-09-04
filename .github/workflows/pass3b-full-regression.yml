@@ -1,0 +1,122 @@
+name: PocketNexus Pass 3B Full Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pass3b-full-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pass3b-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Static Pass 3B wiring check
+        run: |
+          grep -q 'pass3b-home-v8.65.1.css' index.html
+          grep -q 'pass3b-decks-v8.65.2.css' index.html
+          grep -q 'pass3b-battle-v8.65.3.css' index.html
+          grep -q 'pass3b-meta-v8.65.4.css' index.html
+          grep -q 'pass3b-collection-v8.65.5.css' index.html
+          grep -q 'home-refine-v8.65.1.js' index.html
+          grep -q 'decks-refine-v8.65.2.js' index.html
+          grep -q 'battle-refine-v8.65.3.js' index.html
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Run full Home Decks Battle Meta Collection regression
+        run: |
+          mkdir -p qa-shots
+          cat > pass3b-regression.js <<'NODE'
+          const {chromium}=require('playwright');
+          const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
+          const routes=[
+            {key:'dashboard',label:'home',title:/Home|Welcome|Ready for your next game/i},
+            {key:'decks',label:'decks',title:/Deck/i},
+            {key:'matches',label:'battle',title:/Battle/i},
+            {key:'meta',label:'meta',title:/Competitive Meta/i},
+            {key:'collection',label:'collection',title:/Collection/i}
+          ];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});let failures=0;
+            const fail=(label,data)=>{failures++;console.log('FAIL',label,JSON.stringify(data||{}))};
+            for(const [vp,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+              const page=await context.newPage();const errors=[];
+              page.on('pageerror',e=>errors.push(String(e.message||e)));
+              const clear=()=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});await page.waitForTimeout(1400);
+              const guest=page.getByRole('button',{name:/continue as guest/i});if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(500)}catch{}
+              await clear();
+              // Count fetches so cached Meta window behavior remains protected in this integrated sweep.
+              await page.evaluate(()=>{window.__regFetches=0;const f=window.fetch;window.fetch=(...a)=>{window.__regFetches++;return f(...a)}});
+
+              for(const r of routes){
+                await page.evaluate(k=>window.goPage?.(k),r.key);await page.waitForTimeout(r.key==='collection'?650:350);await clear();
+                if(r.key==='collection')for(let i=0;i<12;i++){const n=await page.locator('.collectionBrowseCard').count();if(n)break;await page.waitForTimeout(180);await page.evaluate(()=>{try{window.collectionPage?.()}catch{}})}
+                const m=await page.evaluate(()=>({
+                  h1:document.querySelector('#app h1')?.textContent?.trim()||'',
+                  text:(document.querySelector('#app')?.innerText||'').slice(0,900),
+                  overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
+                  errorScreen:/This page hit an error/i.test(document.body.innerText),
+                  appChildren:document.querySelector('#app')?.children.length||0
+                }));
+                if(m.overflow>8||m.errorScreen||m.appChildren<1||!r.title.test(m.h1+' '+m.text))fail(`${vp}:${r.label}:render`,m);
+
+                // Page-level smoke interactions.
+                if(r.key==='dashboard'){
+                  const cta=await page.getByRole('button',{name:/Record Battle/i}).count();if(!cta)fail(`${vp}:home:record-cta`);
+                }
+                if(r.key==='decks'){
+                  const hasSearch=await page.locator('input[placeholder*="Search" i],input[type="search"]').count();
+                  const hasContent=(await page.locator('#app').innerText()).length>150;if(!hasContent)fail(`${vp}:decks:content`);
+                }
+                if(r.key==='matches'){
+                  for(const tab of ['record','sessions','history']){await page.evaluate(t=>window.setBattleViewTab?.(t),tab);await page.waitForTimeout(100);await clear();const b=await page.evaluate(()=>({error:/This page hit an error/i.test(document.body.innerText),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));if(b.error||b.overflow>8)fail(`${vp}:battle:${tab}`,b)}
+                }
+                if(r.key==='meta'){
+                  const before=await page.evaluate(()=>window.__regFetches);
+                  for(const w of [24,168,336,720]){await page.evaluate(x=>window.setMetaWindow?.(x),w);await page.waitForTimeout(90);await clear()}
+                  const meta=await page.evaluate(()=>({fetches:window.__regFetches,view:state.metaIntel?.primaryView,overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));
+                  if(meta.fetches!==before||meta.overflow>8)fail(`${vp}:meta:cached-windows`,{before,meta});
+                  await page.evaluate(()=>window.setMetaPrimaryView?.('matchups'));await page.waitForTimeout(120);await clear();
+                  const matrix=await page.evaluate(()=>({view:state.metaIntel?.primaryView,error:/This page hit an error/i.test(document.body.innerText)}));if(matrix.view!=='matchups'||matrix.error)fail(`${vp}:meta:matchups`,matrix);
+                  await page.evaluate(()=>window.setMetaPrimaryView?.('tiers'));await page.waitForTimeout(100);
+                }
+                if(r.key==='collection'){
+                  for(const mode of ['all','owned','missing','wishlist','trade']){await page.evaluate(x=>window.setCollectionMode?.(x),mode);await page.waitForTimeout(80);await clear();const c=await page.evaluate(()=>({error:/This page hit an error/i.test(document.body.innerText),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));if(c.error||c.overflow>8)fail(`${vp}:collection:${mode}`,c)}
+                  await page.evaluate(()=>window.setCollectionMode?.('all'));await page.waitForTimeout(80);
+                }
+                await page.screenshot({path:`qa-shots/${vp}-${r.label}.png`,fullPage:true});
+              }
+
+              // Rapid route switching to expose renderer/global collisions.
+              for(let cycle=0;cycle<3;cycle++)for(const r of routes){await page.evaluate(k=>window.goPage?.(k),r.key);await page.waitForTimeout(70);await clear()}
+              const rapid=await page.evaluate(()=>({page:state.page,error:/This page hit an error/i.test(document.body.innerText),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));
+              if(rapid.error||rapid.overflow>8)fail(`${vp}:rapid-switch`,rapid);
+              if(errors.length)fail(`${vp}:page-errors`,errors);
+              console.log('PASS_VIEWPORT',vp,JSON.stringify({rapid,errors}));await context.close();
+            }
+            await browser.close();if(failures){console.error('PASS3B_REGRESSION_FAILURES',failures);process.exit(1)}console.log('PASS3B_REGRESSION_OK');
+          })();
+          NODE
+          node pass3b-regression.js
+      - name: Upload Pass 3B screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass3b-full-regression-shots
+          path: qa-shots
