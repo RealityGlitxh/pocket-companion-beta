@@ -2,6 +2,7 @@
 (function(){
   'use strict';
   const originalMetaIntelPage=window.metaIntelPage;
+  let metaWindowSwitching=false;
 
   function ensurePrefs(){
     state.metaIntel=state.metaIntel||{};
@@ -14,10 +15,49 @@
     render?.();
   };
 
+  function setWindowUi(w,busy){
+    document.querySelectorAll('.metaCompactWindows button').forEach(btn=>{
+      const value=Number(btn.dataset.windowHours||0);
+      btn.classList.toggle('active',value===Number(w));
+      btn.disabled=!!busy;
+    });
+    const status=document.querySelector('.metaCompactLive');
+    if(status&&busy)status.innerHTML='<i></i>LOADING';
+  }
+
+  // Window changes used to trigger an immediate full Meta render, then another fetch/render
+  // cycle. On a large Meta payload that could lock the tab. Switch the data first and
+  // render only once when the selected window is ready.
+  window.setMetaWindow=async function(w){
+    ensurePrefs();
+    w=Number(w);
+    if(![24,168,336,720].includes(w))w=168;
+    if(metaWindowSwitching)return;
+    const current=Number(state.metaIntel.windowHours||168);
+    if(current===w && window.PPCMetaService?.getWindow?.()===w)return;
+
+    metaWindowSwitching=true;
+    state.metaIntel.windowHours=w;
+    save?.();
+    setWindowUi(w,true);
+
+    try{
+      if(window.PPCMetaService){
+        PPCMetaService.setWindow(w);
+        await PPCMetaService.fetchWindow(w,{force:false});
+      }
+    }catch(e){
+      console.warn('Meta window switch failed',e);
+    }finally{
+      metaWindowSwitching=false;
+      if(state.page==='meta')render?.();
+    }
+  };
+
   function topStatus(o,snap,st,w,ageText){
     return `<section class="metaCompactTop panel">
       <div class="metaCompactTitle"><div><span class="eyebrow">META</span><h1>Competitive Meta</h1><p class="muted">See what is defining the field, then open deeper data only when you need it.</p></div><button class="secondary" onclick="refreshMetaLive()">Refresh</button></div>
-      <div class="metaCompactWindows">${[[24,'24H'],[168,'7D'],[336,'14D'],[720,'30D']].map(([v,n])=>`<button class="secondary ${w===v?'active':''}" onclick="setMetaWindow(${v})">${n}</button>`).join('')}</div>
+      <div class="metaCompactWindows">${[[24,'24H'],[168,'7D'],[336,'14D'],[720,'30D']].map(([v,n])=>`<button data-window-hours="${v}" class="secondary ${w===v?'active':''}" onclick="setMetaWindow(${v})">${n}</button>`).join('')}</div>
       <div class="metaCompactStatus">
         <span class="metaCompactLive"><i class="${st.source==='live'?'isLive':''}"></i>${esc(metaSourceBadge())}</span>
         <span>Updated ${esc(ageText)}</span>
@@ -86,7 +126,7 @@
     .metaCompactPage{max-width:1500px;margin:0 auto;display:grid;gap:14px}
     .metaCompactTop{padding:18px 20px;display:grid;gap:14px}
     .metaCompactTitle{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.metaCompactTitle h1{margin:3px 0 6px;font-size:clamp(2rem,4vw,3.4rem)}.metaCompactTitle p{margin:0;max-width:700px}
-    .metaCompactWindows{display:flex;gap:6px;flex-wrap:wrap}.metaCompactWindows button{min-height:36px;padding:7px 12px}
+    .metaCompactWindows{display:flex;gap:6px;flex-wrap:wrap}.metaCompactWindows button{min-height:36px;padding:7px 12px}.metaCompactWindows button:disabled{opacity:.7;cursor:wait}
     .metaCompactStatus{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.metaCompactStatus>span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:#0c151f;color:var(--muted);font-size:.75rem}.metaCompactLive{color:var(--text)!important;font-weight:800}.metaCompactLive i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#8a96a4;margin-right:6px}.metaCompactLive i.isLive{background:#52d18a;box-shadow:0 0 0 4px rgba(82,209,138,.1)}
     .metaPrimaryTabs{display:flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:14px;background:#0b121b;width:max-content}.metaPrimaryTabs button{min-width:150px;box-shadow:none}
     .metaCompactMain{display:grid;gap:14px}.metaCompactSearch{max-width:520px}.metaCompactSearch input{min-height:42px}
