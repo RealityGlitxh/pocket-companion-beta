@@ -52,6 +52,8 @@ jobs:
           }
           """
           s=s[:start]+block+s[end:]
+          # The primary dashboard card lives later in this file and only needs number formatting.
+          s=s.replace('rankBorderFmt(rank.points)','dashboardRankFmt(rank.points)')
           p.write_text(s,encoding='utf-8')
           PY
           node --check js/app/home.js
