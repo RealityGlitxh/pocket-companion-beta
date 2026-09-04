@@ -1,0 +1,74 @@
+/* PocketNexus v8.65.3 — Pass 3B-3 Battle Refinement */
+.battle3bPage{display:grid;gap:12px;min-width:0}
+.battle3bHero{padding:24px 26px;border:1px solid #26394d;border-radius:20px;background:linear-gradient(145deg,rgba(19,33,48,.96),rgba(9,17,26,.98));box-shadow:0 16px 38px rgba(0,0,0,.16)}
+.battle3bHero h1{margin:4px 0 6px;font-size:clamp(2rem,3vw,3.15rem)}
+.battle3bHero p{max-width:720px;margin:0;line-height:1.55}
+.battle3bHero>.row,.battle3bHero>div>.row{gap:7px}
+
+.battle3bFocus{display:grid;grid-template-columns:1.35fr repeat(3,minmax(0,.72fr));gap:8px}
+.battle3bFocus>div{min-width:0;padding:11px 13px;border:1px solid #223447;border-radius:12px;background:#0d1722}
+.battle3bFocus span{display:block;color:var(--muted);font-size:.64rem;font-weight:800;letter-spacing:.07em}
+.battle3bFocus strong{display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
+
+.battle3bTabs{margin:0;gap:6px;padding:5px;border:1px solid #223447;border-radius:13px;background:#0b141e;width:max-content;max-width:100%;overflow:auto}
+.battle3bTabs button{min-width:105px;min-height:37px;border:0!important;border-radius:9px!important;background:transparent!important}
+.battle3bTabs button.active{background:#17283a!important;color:#fff!important;box-shadow:inset 0 0 0 1px #34516d!important}
+
+.battle3bRecordGrid{grid-template-columns:minmax(0,1.22fr) minmax(300px,.78fr);gap:12px;align-items:start}
+.battle3bRecordCard{padding:20px;border-radius:18px;border-color:#31506b;background:linear-gradient(160deg,#152536,#0c151f)}
+.battle3bRecordCard .quickRecordPanel{display:grid;gap:9px}
+.battle3bRecordCard label{font-size:.76rem;font-weight:750;color:#b7c5d4}
+.battle3bRecordCard input,.battle3bRecordCard select{background:#0b141e;border-color:#2a3d50}
+.battle3bResultActions{gap:9px;margin-top:4px}
+.battle3bResultActions button{min-height:56px;font-size:1rem;font-weight:900;border-radius:12px}
+
+.battle3bPage .battlePulseCard,.battle3bPage .battleRecentCard{padding:15px;border-radius:15px}
+.battle3bPage .battlePulseCard .metricgrid{gap:6px}
+.battle3bPage .battlePulseCard .metric{padding:10px}
+.battle3bPage .battleRecentCard{margin-top:10px!important}
+.battle3bPage .battleRecentCard .deckrow{padding:9px 0}
+
+.battle3bPage .liveSessionBar{margin:0;padding:10px 12px}
+.battle3bPage .sessionCard{padding:14px;border-radius:14px}
+.battle3bPage .sessionMetricGrid{gap:6px}
+.battle3bPage .sessionMetricGrid>div{padding:9px}
+.battle3bPage .sessionMatchups{gap:6px}
+
+.battle3bPage .historyFilters{border-radius:12px}
+.battle3bPage .historyToolbar{gap:7px}
+.battle3bPage .historyToolbar input,.battle3bPage .historyToolbar select{min-height:40px}
+.battle3bPage .battleHistoryList{display:grid;gap:7px;margin-top:10px}
+.battle3bPage .matchCard{border-radius:12px}
+.battle3bPage .matchCardRow{padding:11px 12px;gap:10px}
+.battle3bPage .resultPill{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;font-weight:900}
+.battle3bPage .matchCardMain strong{font-size:.86rem}
+.battle3bPage .matchCardMeta{gap:5px}
+.battle3bPage .matchCardMeta span{font-size:.66rem}
+.battle3bPage .matchCardSide{min-width:100px}
+
+@media(max-width:980px){
+ .battle3bFocus{grid-template-columns:1fr 1fr}
+ .battle3bRecordGrid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ .battle3bPage{gap:10px}
+ .battle3bHero{padding:18px;border-radius:16px}
+ .battle3bHero{display:grid!important;grid-template-columns:1fr!important}
+ .battle3bHero>.row,.battle3bHero>div>.row{width:100%}
+ .battle3bHero>.row button,.battle3bHero>div>.row button{flex:1 1 0}
+ .battle3bFocus{grid-template-columns:1fr 1fr;gap:6px}
+ .battle3bFocus>div{padding:9px 10px}
+ .battle3bTabs{width:100%}
+ .battle3bTabs button{min-width:0;flex:1 0 92px}
+ .battle3bRecordCard{padding:15px;border-radius:15px}
+ .battle3bResultActions button{min-height:54px}
+ .battle3bPage .matchCardRow{grid-template-columns:auto minmax(0,1fr);align-items:start}
+ .battle3bPage .matchCardSide{grid-column:2;min-width:0;text-align:left}
+}
+@media(max-width:440px){
+ .battle3bFocus{grid-template-columns:1fr}
+ .battle3bFocus>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+ .battle3bFocus strong{margin:0;max-width:62%;text-align:right}
+ .battle3bHero h1{font-size:2rem}
+ .battle3bResultActions{grid-template-columns:1fr 1fr}
+}
