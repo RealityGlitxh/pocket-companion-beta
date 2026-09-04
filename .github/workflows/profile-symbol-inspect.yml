@@ -16,6 +16,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Inspect public profile symbol definitions
         run: |
-          grep -nE "(async )?function (openPublicProfileByPublicId|openPublicProfileById|openPublicProfile|openPublicTeam|closePublicIdentity)" js/app/profile_teamwars.js || true
-          grep -n "get_public_profile" js/app/profile_teamwars.js || true
-          grep -n "public_id" js/app/profile_teamwars.js | head -40 || true
+          for sym in openPublicProfileByPublicId openPublicProfileById openPublicProfile openPublicTeam closePublicIdentity; do
+            echo "=== $sym ==="
+            grep -n "$sym" js/app/profile_teamwars.js || true
+          done
+          echo '=== public profile RPCs ==='
+          grep -nE "rpc\('[^']*public[^']*'|rpc\(\"[^\"]*public[^\"]*\"" js/app/profile_teamwars.js || true
+          echo '=== identity RPCs ==='
+          grep -nE "rpc\('[^']*(profile|identity)[^']*'|rpc\(\"[^\"]*(profile|identity)[^\"]*\"" js/app/profile_teamwars.js || true
