@@ -1,0 +1,152 @@
+name: Performance Pass 2D Streamer Extraction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/performance-pass-2d-streamer-extraction.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract-streamer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split runtime, utility and Streamer bundles
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          src_path=Path('js/app/streamer_rank_tools.js')
+          loader_path=Path('js/features/route-feature-loader-v8.64.1.js')
+          index_path=Path('index.html')
+          bootstrap_path=Path('js/app/bootstrap.js')
+          startup_path=Path('js/app/account_startup.js')
+          expansion_path=Path('js/features/expansion-v8.49.js')
+          runtime_path=Path('js/core/streamer-runtime-core-v8.64.1.js')
+          streamer_path=Path('js/app/streamer_tools-v8.64.1.js')
+          utility_path=Path('js/app/utility_pages-v8.64.1.js')
+
+          src=src_path.read_text(encoding='utf-8')
+          loader=loader_path.read_text(encoding='utf-8')
+          index=index_path.read_text(encoding='utf-8')
+          bootstrap=bootstrap_path.read_text(encoding='utf-8')
+          startup=startup_path.read_text(encoding='utf-8')
+          expansion=expansion_path.read_text(encoding='utf-8')
+
+          m_ui=src.index('function updateStreamerConnectionUI(){')
+          m_rank_const=src.index('const PPC_RANK_THRESHOLDS=[')
+          m_rank_ui=src.index('function streamerRankPointsPreview',m_rank_const)
+          m_diag=src.index('function fullDiagnosticResults(){')
+          m_cloud=src.index('// V8.46.2 — Streamer Overlay 3.0 dedicated Supabase cloud sync.')
+
+          runtime=src[:m_ui].rstrip()
+          # Startup needs buildStreamerOverlayState/publishStreamerOverlayState only.
+          if 'function buildStreamerOverlayState' not in runtime or 'function publishStreamerOverlayState' not in runtime:
+              raise SystemExit('Streamer runtime core boundary is unsafe')
+
+          # Shared rank helpers stay eager because More + Streamer both use them.
+          rank_block=src[m_rank_const:m_rank_ui].rstrip()
+          utility=rank_block+'\n\n'+src[m_diag:m_cloud].rstrip()+'\n'
+
+          # Streamer page excludes shared rank constants/helpers and utility pages.
+          streamer=(src[m_ui:m_rank_const].rstrip()+'\n\n'+src[m_rank_ui:m_diag].rstrip()+'\n\n'+src[m_cloud:].rstrip()+'\n')
+
+          if 'function streamerPage' not in streamer or 'function syncStreamerCloud' not in streamer:
+              raise SystemExit('Streamer bundle missing page/cloud symbols')
+          if 'function fullDiagnosticResults' in streamer or 'function aboutPage' in streamer or 'function morePage' in streamer:
+              raise SystemExit('Utility code leaked into Streamer bundle')
+          if 'function streamerPage' in utility or 'function syncStreamerCloud' in utility:
+              raise SystemExit('Streamer code leaked into utility bundle')
+
+          runtime_header='''/* PocketNexus V8.64.1 — Streamer runtime core\n   Performance Pass 2D. Eager, lightweight overlay-state publisher used by\n   Battle saves and startup. The heavy Streamer page is lazy-loaded. */\n\n'''
+          utility_header='''/* PocketNexus V8.64.1 — eager utility pages\n   Diagnostics, About/Privacy, More/Settings and shared rank-tier helpers. */\n\n'''
+          streamer_header='''/* PocketNexus V8.64.1 — Streamer route bundle\n   Performance Pass 2D. Loaded only when Streamer is opened. */\n\n'''
+
+          # The old diagnostic assumed Rank was always eager. It is lazy now.
+          utility=utility.replace(
+              'const svc=rankBorderService();\n   if(svc?.refresh){await svc.refresh();const d=svc.getData?.();const life=rankSeasonLifecycle(d?.season||{});add("Rank service request",d?"PASS":"WARN",d?`${d.season?.name||"Season"} • ${life.label}`:"No rank payload returned");}\n   else add("Rank service request","WARN","Rank service unavailable in this runtime");',
+              'const svc=(typeof window.rankBorderService==="function"?window.rankBorderService():null);\n   if(svc?.refresh){await svc.refresh();const d=svc.getData?.();const life=(typeof window.rankSeasonLifecycle==="function"?window.rankSeasonLifecycle(d?.season||{}):{label:"Rank bundle loaded on demand"});add("Rank service request",d?"PASS":"WARN",d?`${d.season?.name||"Season"} • ${life.label}`:"No rank payload returned");}\n   else add("Rank service request","INFO","Rank Intelligence is lazy-loaded and has not been opened yet.");'
+          )
+          utility=utility.replace(
+              'add("Overlay file URL",typeof streamerOverlayFileUrl==="function",streamerOverlayFileUrl());',
+              'add("Overlay file URL",typeof window.streamerOverlayFileUrl==="function",typeof window.streamerOverlayFileUrl==="function"?window.streamerOverlayFileUrl():"Available after Streamer opens");'
+          )
+
+          # Make the creator expansion re-attach after lazy Streamer load.
+          if 'window.PPCStreamerExpansionEnhance=injectStreamer;' not in expansion:
+              expansion=expansion.replace(
+                  " const oldStreamer=window.streamerPage;if(typeof oldStreamer==='function')window.streamerPage=function(){oldStreamer.apply(this,arguments);injectStreamer()};",
+                  " window.PPCStreamerExpansionEnhance=injectStreamer;\n const oldStreamer=window.streamerPage;if(typeof oldStreamer==='function')window.streamerPage=function(){oldStreamer.apply(this,arguments);injectStreamer()};"
+              )
+          streamer += '''\n// Re-attach eager expansion UI after this lazy bundle registers streamerPage.\nif(typeof window.PPCStreamerExpansionEnhance==='function'&&typeof window.streamerPage==='function'){\n const ppcBaseStreamerPage=window.streamerPage;\n window.streamerPage=function(){const out=ppcBaseStreamerPage.apply(this,arguments);window.PPCStreamerExpansionEnhance?.();return out};\n}\n'''
+
+          runtime_path.write_text(runtime_header+runtime+'\n',encoding='utf-8')
+          utility_path.write_text(utility_header+utility,encoding='utf-8')
+          streamer_path.write_text(streamer_header+streamer,encoding='utf-8')
+          expansion_path.write_text(expansion,encoding='utf-8')
+
+          # Bootstrap must never evaluate missing lazy page identifiers.
+          bootstrap=bootstrap.replace('rank:rankBorderPage,','rank:window.rankBorderPage||dashboard,')
+          bootstrap=bootstrap.replace('streamer:streamerPage,','streamer:window.streamerPage||dashboard,')
+          bootstrap_path.write_text(bootstrap,encoding='utf-8')
+
+          startup=startup.replace('if(state.page==="rank")rankBorderPage()','if(state.page==="rank")window.rankBorderPage?.()')
+          startup_path.write_text(startup,encoding='utf-8')
+
+          # Add lazy Streamer route.
+          if 'streamer:{' not in loader:
+              needle='    rank:{\n'
+              pos=loader.index(needle)
+              # insert after rank block, immediately before training
+              training='    training:{\n'
+              tpos=loader.index(training,pos)
+              route="""    streamer:{\n      ready:()=>typeof window.streamerPage==='function',\n      label:'Streamer Control Center',\n      scripts:['js/app/streamer_tools-v8.64.1.js?v=864125']\n    },\n"""
+              loader=loader[:tpos]+route+loader[tpos:]
+          loader_path.write_text(loader,encoding='utf-8')
+
+          # Replace eager monolith with tiny runtime + eager utility pages.
+          old='<script defer src="js/app/streamer_rank_tools.js?v=86418"></script>'
+          new='''<script defer src="js/core/streamer-runtime-core-v8.64.1.js?v=864125"></script>\n<script defer src="js/app/utility_pages-v8.64.1.js?v=864125"></script>'''
+          if old not in index:
+              raise SystemExit('Old eager streamer_rank_tools script tag not found')
+          index=index.replace(old,new,1)
+          index=re.sub(r'js/features/route-feature-loader-v8\.64\.1\.js\?v=\d+','js/features/route-feature-loader-v8.64.1.js?v=864125',index,count=1)
+          index_path.write_text(index,encoding='utf-8')
+
+          # Keep source only until all generated files validate; workflow deletes it below.
+          PY
+
+      - name: Syntax and architecture checks
+        run: |
+          node --check js/core/streamer-runtime-core-v8.64.1.js
+          node --check js/app/streamer_tools-v8.64.1.js
+          node --check js/app/utility_pages-v8.64.1.js
+          node --check js/app/bootstrap.js
+          node --check js/app/account_startup.js
+          node --check js/features/route-feature-loader-v8.64.1.js
+          node --check js/features/expansion-v8.49.js
+          grep -q "function publishStreamerOverlayState" js/core/streamer-runtime-core-v8.64.1.js
+          grep -q "function streamerPage" js/app/streamer_tools-v8.64.1.js
+          grep -q "function syncStreamerCloud" js/app/streamer_tools-v8.64.1.js
+          grep -q "function aboutPage" js/app/utility_pages-v8.64.1.js
+          grep -q "function morePage" js/app/utility_pages-v8.64.1.js
+          grep -q "streamer_tools-v8.64.1.js?v=864125" js/features/route-feature-loader-v8.64.1.js
+          ! grep -q "streamer_rank_tools.js" index.html
+          grep -q "window.rankBorderPage||dashboard" js/app/bootstrap.js
+          grep -q "window.streamerPage||dashboard" js/app/bootstrap.js
+
+      - name: Remove old combined bundle and commit
+        run: |
+          rm js/app/streamer_rank_tools.js
+          git config user.name 'PocketNexus Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add js/core/streamer-runtime-core-v8.64.1.js js/app/streamer_tools-v8.64.1.js js/app/utility_pages-v8.64.1.js js/app/bootstrap.js js/app/account_startup.js js/features/route-feature-loader-v8.64.1.js js/features/expansion-v8.49.js index.html js/app/streamer_rank_tools.js
+          git commit -m 'perf: lazy load Streamer and remove combined bundle'
+          git push
