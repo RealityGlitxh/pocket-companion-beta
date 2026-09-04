@@ -57,9 +57,8 @@
       }catch(e){console.warn('Cloud core signed-out state',e)}
     }
 
-    // These are optional here by design. During the staged extraction they are
-    // supplied by the legacy cloud bundle; later they can move into dedicated
-    // cloud-domain modules without changing startup behavior.
+    // Optional during the staged extraction. These are still supplied by the
+    // legacy combined bundle until their dedicated cloud modules are split out.
     try{if(typeof loadCloudProfile==='function')await loadCloudProfile()}catch(e){console.warn('Profile hydrate failed',e)}
     try{if(typeof loadCloudSyncState==='function')await loadCloudSyncState()}catch(e){console.warn('Cloud sync-state hydrate failed',e)}
 
@@ -127,11 +126,11 @@
 
   window.PPCAccountCloudCore={configured,init,client,session,hydrate,config:{url:CONFIG.url}};
 
-  // Compatibility exports let existing Account/entry code call the same names.
-  // The legacy combined bundle may temporarily overwrite these during the staged
-  // split; account_startup explicitly prefers PPCAccountCloudCore.init().
-  if(typeof window.cloudConfigured!=='function')window.cloudConfigured=configured;
-  if(typeof window.initCloudAuth!=='function')window.initCloudAuth=init;
-  if(typeof window.getPPCCloudClient!=='function')window.getPPCCloudClient=client;
-  if(typeof window.getPPCCloudSession!=='function')window.getPPCCloudSession=session;
+  // From this point forward the startup-critical auth path belongs to this core.
+  // The larger legacy Rank/Streamer file can still provide the rest of Account
+  // and cloud-sync features while we split them out incrementally.
+  window.cloudConfigured=configured;
+  window.initCloudAuth=init;
+  window.getPPCCloudClient=client;
+  window.getPPCCloudSession=session;
 })();
