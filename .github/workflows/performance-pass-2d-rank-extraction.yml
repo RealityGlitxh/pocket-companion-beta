@@ -1,0 +1,123 @@
+name: Performance Pass 2D Rank Extraction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/performance-pass-2d-rank-extraction.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract-rank:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Rank Intelligence bundle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          source_path = Path('js/app/streamer_rank_tools.js')
+          loader_path = Path('js/features/route-feature-loader-v8.64.1.js')
+          index_path = Path('index.html')
+          rank_path = Path('js/app/rank_tools-v8.64.1.js')
+
+          source = source_path.read_text(encoding='utf-8')
+          loader = loader_path.read_text(encoding='utf-8')
+          index = index_path.read_text(encoding='utf-8')
+
+          end_marker = 'async function runPrePublicEnvironmentTests(){'
+          if end_marker not in source:
+              raise SystemExit('Rank extraction end marker not found')
+
+          # Find the earliest rank-border-specific declaration. This intentionally
+          # leaves the tiny shared rank tier helpers and Streamer RP controls eager.
+          candidates = []
+          patterns = [
+              r'^state\.rankBorder\s*=',
+              r'^let\s+rankBorder',
+              r'^const\s+rankBorder',
+              r'^function\s+rankBorder',
+          ]
+          for pattern in patterns:
+              m = re.search(pattern, source, flags=re.M)
+              if m:
+                  candidates.append(m.start())
+          if not candidates:
+              raise SystemExit('Could not find Rank Intelligence start marker')
+
+          start = min(candidates)
+          end = source.index(end_marker, start)
+          block = source[start:end].strip()
+
+          required = [
+              'function rankBorderPage',
+              'function rankSessionPanel',
+              'function rankBorderService',
+          ]
+          missing = [x for x in required if x not in block]
+          if missing:
+              raise SystemExit('Rank block missing expected symbols: ' + ', '.join(missing))
+          if 'function streamerPage' in block or 'function syncStreamerCloud' in block:
+              raise SystemExit('Unsafe extraction boundary captured Streamer code')
+
+          rank_header = '''/* PocketNexus V8.64.1 — Rank Intelligence route bundle\n   Performance Pass 2D: loaded only when the Rank page is opened.\n   Shared rank-tier helpers remain in the lightweight eager runtime for now. */\n\n'''
+          rank_path.write_text(rank_header + block + '\n', encoding='utf-8')
+
+          source = (
+              source[:start].rstrip()
+              + '\n\n// Performance Pass 2D: Rank Intelligence UI moved to\n'
+              + '// js/app/rank_tools-v8.64.1.js and is loaded on demand by the route loader.\n\n'
+              + source[end:].lstrip()
+          )
+          if 'function rankBorderPage' in source:
+              raise SystemExit('Rank page still present in combined Streamer bundle')
+          source_path.write_text(source, encoding='utf-8')
+
+          # Add the lazy Rank route before Training.
+          if "rank:{" not in loader:
+              needle = '  const ROUTES={\n'
+              if needle not in loader:
+                  raise SystemExit('Route loader insertion point not found')
+              route = """  const ROUTES={\n    rank:{\n      ready:()=>typeof window.rankBorderPage==='function',\n      label:'Rank Intelligence',\n      scripts:['js/app/rank_tools-v8.64.1.js?v=864124']\n    },\n"""
+              loader = loader.replace(needle, route, 1)
+          loader = loader.replace('Performance Pass 2C:', 'Performance Pass 2D:')
+          loader_path.write_text(loader, encoding='utf-8')
+
+          # Cache-bust the route loader so browsers receive the new Rank route.
+          index = re.sub(
+              r'js/features/route-feature-loader-v8\.64\.1\.js\?v=\d+',
+              'js/features/route-feature-loader-v8.64.1.js?v=864124',
+              index,
+              count=1,
+          )
+          index_path.write_text(index, encoding='utf-8')
+          PY
+
+      - name: Syntax checks
+        run: |
+          node --check js/app/streamer_rank_tools.js
+          node --check js/app/rank_tools-v8.64.1.js
+          node --check js/features/route-feature-loader-v8.64.1.js
+
+      - name: Verify lazy Rank wiring
+        run: |
+          grep -q "rankBorderPage" js/app/rank_tools-v8.64.1.js
+          ! grep -q "function rankBorderPage" js/app/streamer_rank_tools.js
+          grep -q "rank_tools-v8.64.1.js?v=864124" js/features/route-feature-loader-v8.64.1.js
+          ! grep -q "rank_tools-v8.64.1.js" index.html
+
+      - name: Commit extraction
+        run: |
+          git config user.name 'PocketNexus Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add js/app/streamer_rank_tools.js js/app/rank_tools-v8.64.1.js js/features/route-feature-loader-v8.64.1.js index.html
+          git commit -m 'perf: lazy load Rank Intelligence route'
+          git push
