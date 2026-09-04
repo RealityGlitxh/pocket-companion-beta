@@ -1,0 +1,177 @@
+/* PocketNexus v8.65.0 — Performance Pass 3A.10–3A.12
+   Training, More/Settings, and Account & Cloud visual cleanup only.
+   No auth, sync, training, backup, restore, or navigation behavior changes. */
+
+/* ------------------------------------------------------------------
+   TRAINING — make today's challenge and progression easy to scan.
+   Keep challenge interaction first; progression/supporting content second.
+   ------------------------------------------------------------------ */
+#app:has(.trainingProgressPanel){max-width:1500px}
+.trainingProgressPanel{
+  padding:16px 17px!important;
+  margin-top:11px!important;
+  border-radius:15px!important;
+}
+.trainingProgressHead{gap:12px!important;align-items:center!important}
+.trainingProgressActions{gap:6px!important;flex-wrap:wrap}
+.trainingProgressActions button{min-height:36px!important;padding:7px 11px!important}
+.trainingProgressStats{gap:7px!important;margin-top:11px!important}
+.trainingProgressStats>div{padding:9px 10px!important;border-radius:10px!important}
+.trainingProgressStats strong{font-size:1.08rem!important}
+.trainingDailyMini{gap:5px!important;margin-top:9px!important;padding-top:9px!important}
+.trainingDailyTask{padding:4px 7px!important;font-size:.66rem!important}
+.trainingUnlockedRow{gap:5px!important;margin-top:9px!important}
+.trainingUnlockedBadge{padding:4px 7px!important}
+.wtcGame,
+.brainGame,
+.trainingChallengeCard,
+.trainingModuleCard{
+  border-radius:15px!important;
+}
+.wtcGame{padding:16px!important}
+.wtcSuggestions{border-radius:10px!important;max-height:230px!important}
+.wtcSuggestions button{min-height:38px!important;padding:8px 10px!important}
+.trainingChallengeGrid,
+.trainingModuleGrid,
+.brainPuzzleGrid{gap:10px!important}
+.trainingChallengeCard,
+.trainingModuleCard{padding:14px!important}
+.trainingChallengeCard h2,
+.trainingModuleCard h2{font-size:1.08rem!important}
+.trainingChallengeCard p,
+.trainingModuleCard p{font-size:.82rem;line-height:1.45}
+
+/* ------------------------------------------------------------------
+   MORE / SETTINGS — launcher first, settings second, troubleshooting last.
+   The existing page already has this structure; make the hierarchy obvious.
+   ------------------------------------------------------------------ */
+#app:has(.toolLaunchGrid){max-width:1500px}
+.pageHero.compact{
+  padding:8px 2px 13px!important;
+  margin-bottom:4px!important;
+}
+.pageHero.compact h1{font-size:clamp(2rem,3vw,3rem)!important;margin:3px 0 5px}
+.pageHero.compact p{max-width:760px;color:var(--muted)}
+.toolLaunchGrid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin-bottom:12px;
+}
+.toolLaunchCard{
+  min-height:118px;
+  padding:13px 14px!important;
+  border-radius:13px!important;
+  align-content:start;
+}
+.toolLaunchCard>span{font-size:1.05rem!important}
+.toolLaunchCard strong{font-size:.9rem}
+.toolLaunchCard small{font-size:.7rem;line-height:1.35;color:var(--muted)}
+.settingsGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-top:0!important;
+}
+.settingsGrid>.panel{padding:16px!important}
+.settingsGrid label{margin-top:8px}
+.settingsGrid input{margin-top:3px}
+.settingsGrid>.panel>.row{margin-top:10px;flex-wrap:wrap}
+.advancedTools{margin-top:11px!important;padding:0!important;overflow:hidden}
+.advancedTools>summary{
+  cursor:pointer;
+  padding:13px 15px;
+  font-weight:800;
+  list-style:none;
+}
+.advancedTools>summary::-webkit-details-marker{display:none}
+.advancedTools[open]{padding-bottom:14px!important}
+.advancedTools[open]>:not(summary){margin-left:15px;margin-right:15px}
+.advancedToolActions{display:flex!important;gap:6px!important;flex-wrap:wrap;margin-top:10px}
+.advancedToolActions button{min-height:36px!important;padding:7px 10px!important}
+
+/* ------------------------------------------------------------------
+   ACCOUNT & CLOUD — identity/security first, sync status second,
+   recovery/advanced operations third. Preserve every existing action.
+   ------------------------------------------------------------------ */
+#app:has(.v848SyncCenter),
+#app:has(.authGrid),
+#app:has(.recoveryPanel){max-width:1380px}
+.authGrid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.authGrid>div{min-width:0}
+.authGrid label{margin-bottom:4px}
+.recoveryPanel{padding:16px!important;border-radius:15px!important}
+.v848SyncCenter{
+  padding:17px!important;
+  margin-bottom:12px!important;
+  border-radius:15px!important;
+}
+.v848DomainGrid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin-top:11px!important;
+}
+.v848Domain{
+  padding:10px 11px!important;
+  border-radius:11px!important;
+  gap:3px!important;
+}
+.v848DomainCount{font-size:1.35rem!important}
+.v848Domain small{font-size:.68rem;line-height:1.35}
+.recoveryPoints{display:grid;gap:7px!important}
+.recoveryPoint{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:10px!important;
+  align-items:center;
+  padding:10px 11px!important;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#0b141e;
+}
+.recoveryPoint strong,.recoveryPoint small{display:block}
+.recoveryPoint small{margin-top:2px;color:var(--muted);font-size:.68rem}
+.comparisonGrid{gap:9px!important}
+.comparisonGrid>div{padding:11px 12px!important;border-radius:11px!important}
+#authMessage.successBox,#authMessage.dangerBox{margin-top:10px}
+
+/* Shared utility empty/info states */
+.trainingChallengeGrid .notice,
+.trainingModuleGrid .notice,
+.recoveryPoints+.notice,
+#authMessage{
+  border-radius:11px;
+}
+
+@media(max-width:1050px){
+  .toolLaunchGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .v848DomainGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+@media(max-width:760px){
+  .trainingProgressHead{align-items:flex-start!important}
+  .trainingProgressActions{width:100%}
+  .toolLaunchGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .settingsGrid{grid-template-columns:1fr!important}
+  .authGrid{grid-template-columns:1fr!important}
+  .v848DomainGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .advancedTools[open]>:not(summary){margin-left:12px;margin-right:12px}
+}
+
+@media(max-width:520px){
+  .trainingProgressPanel,.wtcGame{padding:14px!important}
+  .trainingProgressStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .toolLaunchGrid{grid-template-columns:1fr 1fr!important;gap:7px!important}
+  .toolLaunchCard{min-height:104px;padding:11px!important}
+  .v848DomainGrid{grid-template-columns:1fr 1fr!important}
+  .recoveryPoint{grid-template-columns:1fr!important}
+  .recoveryPoint button{width:100%}
+}
+
+@media(max-width:380px){
+  .toolLaunchGrid{grid-template-columns:1fr!important}
+  .v848DomainGrid{grid-template-columns:1fr!important}
+  .trainingProgressStats{grid-template-columns:1fr!important}
+}
