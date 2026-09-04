@@ -33,7 +33,7 @@ jobs:
       - name: Run visual regression sweep
         run: |
           mkdir -p visual-regression
-          cat > /tmp/pass3a-visual.js <<'NODE'
+          cat > pass3a-visual.js <<'NODE'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
@@ -159,7 +159,7 @@ jobs:
             if(failures) process.exitCode=1;
           })();
           NODE
-          node /tmp/pass3a-visual.js
+          node pass3a-visual.js
 
       - name: Upload screenshots and report
         if: always()
