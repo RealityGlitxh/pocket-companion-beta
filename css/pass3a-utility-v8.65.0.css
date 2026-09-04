@@ -175,3 +175,14 @@
   .v848DomainGrid{grid-template-columns:1fr!important}
   .trainingProgressStats{grid-template-columns:1fr!important}
 }
+
+
+/* Pass 3A visual-regression repair — keep Training inside narrow viewports. */
+@media(max-width:760px){
+  #app:has(.trainingHeroV864){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}
+  .trainingHeroV864,.wtcLayout,.wtcGame,.wtcLayout>aside,.trainingProgressPanel,.brainTrainingCompact{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+  .trainingHeroV864>*,.wtcLayout>*,.wtcGame>*,.brainTrainingCompact>*{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+  .wtcLayout{grid-template-columns:minmax(0,1fr)!important}
+  .wtcInputRow,.wtcAutocomplete,.wtcGuessBox,.wtcHistory{min-width:0!important;max-width:100%!important}
+  .wtcArtFrame{width:100%!important;max-width:100%!important;overflow:hidden!important}
+}

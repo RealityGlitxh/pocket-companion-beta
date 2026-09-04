@@ -61,15 +61,36 @@ function undoLastBattleMatch(){
 async function performUndoLastBattleMatch(){
  const id=battleSaveNotice?.matchId;if(!id)return;const idx=state.matches.findIndex(m=>String(m.id)===String(id));if(idx<0)return;const m=normalizeMatch(state.matches[idx]);
  if(m.rankSync==="cloud"){
-   try{const svc=rankSessionService(),payload=svc?.getData?.(),sid=payload?.session?.id;if(svc&&sid){const out=await svc.undoMatch(sid,m.id);if(!out?.ok)return ppcNotice(rankSessionStatusMessage(out?.status||out?.error));rankSessionApply(svc.getData?.())}}
+   try{const svc=battleRankSessionService(),payload=svc?.getData?.(),sid=payload?.session?.id;if(svc&&sid){const out=await svc.undoMatch(sid,m.id);if(!out?.ok)return ppcNotice(battleRankSessionStatusMessage(out?.status||out?.error));battleRankSessionApply(svc.getData?.())}}
    catch(e){return ppcNotice("Could not undo the synced RP result: "+(e?.message||String(e)))}
  }else if(m.gameMode==="ranked"&&Number.isFinite(Number(m.rankBefore?.points))){state.rank={...(state.rank||{}),tier:pocketRankTierFromRP(m.rankBefore.points),points:Number(m.rankBefore.points),streak:Number(m.rankStreakBefore||0)}}
  state.matches.splice(idx,1);deleteRankHistoryForMatch(id);battleSaveNotice=null;save();matches();
 }
 function dismissBattleNotice(){battleSaveNotice=null;matches()}
 // V8.21.1 Battle Sessions Cleanup
+function battleRankSessionService(){return window.PPCRankSessionService||null}
+function battleRankBorderService(){return window.PPCRankBorderService||null}
+function battleRankFmt(n){return Number.isFinite(Number(n))?Number(n).toLocaleString():"—"}
+function battleRankTargetLabel(rank){return rank===100?"Top 100":rank===1000?"Top 1K":rank===5000?"Top 5K":rank===10000?"Top 10K":`Top ${rank}`}
+function battleRankSessionStatusMessage(status){
+ const x=String(status||"");
+ if(x==="no-active-season")return "No ranked season is active yet.";
+ if(x==="authentication-required")return "Sign in to sync your Master Ball streak and RP.";
+ if(x==="no-session")return "Start your Master Ball session to enable streak-aware RP tracking.";
+ if(x==="session-not-found")return "This rank session could not be found for your account.";
+ if(x==="invalid-starting-rp")return "Enter a valid starting RP.";
+ return x||"Rank session is not available.";
+}
+function battleRankSessionApply(payload){
+ const sess=payload?.session;if(!sess)return;
+ state.rank=state.rank||{};
+ state.rank.tier="Master Ball";
+ state.rank.points=Number(sess.current_rp||0);
+ state.rank.streak=Number(sess.current_win_streak||0);
+ save();
+}
 function rankedBattleSnapshot(){
- const svc=rankSessionService(),payload=svc?.getData?.(),session=payload?.status==="session-active"?payload.session:null;
+ const svc=battleRankSessionService(),payload=svc?.getData?.(),session=payload?.status==="session-active"?payload.session:null;
  const ranked=completedMatches().filter(m=>m.gameMode==="ranked");
  const todayKey=new Date().toDateString(),today=ranked.filter(m=>new Date(m.timestamp).toDateString()===todayKey),todayRecord=wl(today);
  const historyStreak=streakInfo(ranked),currentStreak=Math.max(0,Number(session?.current_win_streak??state.rank?.streak??0)||0);
@@ -78,22 +99,22 @@ function rankedBattleSnapshot(){
  return {payload,session,ranked,today,todayRecord,currentStreak,bestStreak,currentRP};
 }
 function battleRankTargetInfo(rp){
- const data=rankBorderService()?.getData?.(),borders=Array.isArray(data?.borders)?data.borders.filter(b=>b.available):[];
+ const data=battleRankBorderService()?.getData?.(),borders=Array.isArray(data?.borders)?data.borders.filter(b=>b.available):[];
  if(!borders.length)return null;
  const wanted=Number(state.rankBorder?.targetRank||10000),target=borders.find(b=>b.targetRank===wanted)||borders.find(b=>b.targetRank===10000)||borders[0];
  if(!target)return null;
  const safe=Number(target.recommendedSafeRP||target.predictedFinalRP||0),pred=Number(target.predictedFinalRP||0);
- return {...target,label:rankBorderLabel(target.targetRank),safe,pred,gap:safe-Number(rp||0)};
+ return {...target,label:battleRankTargetLabel(target.targetRank),safe,pred,gap:safe-Number(rp||0)};
 }
 function battleRankOverviewHtml(){
  const x=rankedBattleSnapshot(),target=battleRankTargetInfo(x.currentRP),signedIn=!!cloudSession?.user;
- const targetHtml=target?`<div class="rankFlowTarget"><div><span>${esc(target.label)} estimated safe target</span><strong>${rankBorderFmt(target.safe)} RP</strong></div><div><span>Your gap</span><strong class="${target.gap<=0?'good':'bad'}">${target.gap<=0?'+':''}${rankBorderFmt(Math.abs(target.gap))}${target.gap<=0?' above':' to go'}</strong></div></div>`:`<div class="rankFlowTarget muted">Rank-border estimate will appear here when enough data is available.</div>`;
- return `<section class="panel battleRankOverview"><div class="between"><div><span class="eyebrow">RANKED PLAY</span><h2>${rankBorderFmt(x.currentRP)} RP</h2><p class="muted">Ranked results automatically update your RP, rank, streak, and progression history.</p></div><div class="row"><span class="pill">AUTO RP</span><button class="secondary" onclick="goPage('rank')">Rank Details →</button></div></div><div class="rankFlowMetrics"><div><span>Ranked Streak</span><strong>W${rankBorderFmt(x.currentStreak)}</strong><small>Best W${rankBorderFmt(x.bestStreak)}</small></div><div><span>Today's Ranked</span><strong>${x.todayRecord.w}-${x.todayRecord.l}</strong><small>${x.todayRecord.n?x.todayRecord.wr.toFixed(0)+'% WR':'No ranked games yet'}</small></div><div><span>RP Tracking</span><strong>Automatic</strong><small>Detailed mode can enter the exact RP shown in-game</small></div><div><span>Current RP</span><strong>${rankBorderFmt(x.currentRP)}</strong><small>Synced progression value</small></div></div>${targetHtml}<div class="notice"><strong>Rank progression:</strong> Ranked wins and losses update RP automatically. If Pokémon TCG Pocket shows a different value, use Detailed mode to enter the exact RP After value.</div></section>`;
+ const targetHtml=target?`<div class="rankFlowTarget"><div><span>${esc(target.label)} estimated safe target</span><strong>${battleRankFmt(target.safe)} RP</strong></div><div><span>Your gap</span><strong class="${target.gap<=0?'good':'bad'}">${target.gap<=0?'+':''}${battleRankFmt(Math.abs(target.gap))}${target.gap<=0?' above':' to go'}</strong></div></div>`:`<div class="rankFlowTarget muted">Rank-border estimate will appear here when enough data is available.</div>`;
+ return `<section class="panel battleRankOverview"><div class="between"><div><span class="eyebrow">RANKED PLAY</span><h2>${battleRankFmt(x.currentRP)} RP</h2><p class="muted">Ranked results automatically update your RP, rank, streak, and progression history.</p></div><div class="row"><span class="pill">AUTO RP</span><button class="secondary" onclick="goPage('rank')">Rank Details →</button></div></div><div class="rankFlowMetrics"><div><span>Ranked Streak</span><strong>W${battleRankFmt(x.currentStreak)}</strong><small>Best W${battleRankFmt(x.bestStreak)}</small></div><div><span>Today's Ranked</span><strong>${x.todayRecord.w}-${x.todayRecord.l}</strong><small>${x.todayRecord.n?x.todayRecord.wr.toFixed(0)+'% WR':'No ranked games yet'}</small></div><div><span>RP Tracking</span><strong>Automatic</strong><small>Detailed mode can enter the exact RP shown in-game</small></div><div><span>Current RP</span><strong>${battleRankFmt(x.currentRP)}</strong><small>Synced progression value</small></div></div>${targetHtml}<div class="notice"><strong>Rank progression:</strong> Ranked wins and losses update RP automatically. If Pokémon TCG Pocket shows a different value, use Detailed mode to enter the exact RP After value.</div></section>`;
 }
 function battleResultSummaryHtml(n){
  if(!n)return "";
  const ranked=n.gameMode==="ranked"||n.rankSync;
  if(!ranked)return `<div class="battleSaveBanner persistent"><div><strong>Casual match recorded</strong><div>${n.result==="win"?"WIN":"LOSS"} — ${esc(n.deckName)} vs ${esc(n.opponentArchetype)} • No RP change</div></div><div class="row"><button onclick="quickRematch()">Rematch</button><button class="secondary" onclick="undoLastBattleMatch()">Undo</button><button class="secondary" onclick="dismissBattleNotice()">Done</button></div></div>`;
  const after=Number(n.rankAfterPoints),before=Number(n.rankBeforePoints),streak=Number(n.currentStreak||0),hasRP=(n.rankSync==="manual"||n.rankSync==="auto")&&Number.isFinite(before)&&Number.isFinite(after),change=hasRP?after-before:0;
- return `<div class="battleSaveBanner persistent rankResultBanner"><div><strong>${n.result==="win"?'Ranked win recorded':'Ranked loss recorded'}</strong><div class="rankResultLine">${hasRP?`<span class="${change>=0?'good':'bad'}">${change>=0?'+':''}${rankBorderFmt(change)} RP</span><span>${rankBorderFmt(before)} → <b>${rankBorderFmt(after)} RP</b></span>`:`<span>Ranked result saved</span>`}<span>Tracked streak: <b>W${rankBorderFmt(streak)}</b></span></div></div><div class="row"><button onclick="quickRematch()">Rematch</button><button class="secondary" onclick="goPage('rank')">Rank Details</button><button class="secondary" onclick="undoLastBattleMatch()">Undo</button><button class="secondary" onclick="dismissBattleNotice()">Done</button></div></div>`;
+ return `<div class="battleSaveBanner persistent rankResultBanner"><div><strong>${n.result==="win"?'Ranked win recorded':'Ranked loss recorded'}</strong><div class="rankResultLine">${hasRP?`<span class="${change>=0?'good':'bad'}">${change>=0?'+':''}${battleRankFmt(change)} RP</span><span>${battleRankFmt(before)} → <b>${battleRankFmt(after)} RP</b></span>`:`<span>Ranked result saved</span>`}<span>Tracked streak: <b>W${battleRankFmt(streak)}</b></span></div></div><div class="row"><button onclick="quickRematch()">Rematch</button><button class="secondary" onclick="goPage('rank')">Rank Details</button><button class="secondary" onclick="undoLastBattleMatch()">Undo</button><button class="secondary" onclick="dismissBattleNotice()">Done</button></div></div>`;
 }
