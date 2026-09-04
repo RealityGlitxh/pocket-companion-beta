@@ -42,7 +42,6 @@ jobs:
           const {chromium}=require('playwright');
           const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
           const modes=[['all','All Cards'],['owned','Owned'],['missing','Missing'],['wishlist','Wishlist'],['trade','Trade Binder']];
-          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
             const browser=await chromium.launch({headless:true}); let failures=0;
             const fail=(label,data)=>{failures++;console.log('FAIL',label,JSON.stringify(data||{}))};
@@ -55,124 +54,46 @@ jobs:
               await page.waitForTimeout(1400);
               const guest=page.getByRole('button',{name:/continue as guest/i});
               if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(600)}catch{}
-              await clear();
-              await page.evaluate(()=>window.goPage?.('collection'));
-              await page.waitForTimeout(800);await clear();
-              // Collection may initialize card data asynchronously. Give it a short bounded wait.
+              await clear();await page.evaluate(()=>window.goPage?.('collection'));await page.waitForTimeout(800);await clear();
               for(let i=0;i<20;i++){
-                const ready=await page.evaluate(()=>Array.isArray(window.CARDS)&&CARDS.length>0&&!!document.querySelector('.collectionModes'));
+                const ready=await page.evaluate(()=>Array.isArray(CARDS)&&CARDS.length>0&&!!document.querySelector('.collectionModes'));
                 if(ready)break;
-                await page.waitForTimeout(250);
-                await page.evaluate(()=>{try{window.collectionPage?.()}catch{}});
+                await page.waitForTimeout(250);await page.evaluate(()=>{try{window.collectionPage?.()}catch{}});
               }
-              const base=await page.evaluate(()=>({
-                title:document.querySelector('#app h1')?.textContent?.trim()||'',
-                modes:document.querySelectorAll('.collectionModes button').length,
-                cards:document.querySelectorAll('.collectionBrowseCard').length,
-                allCards:Array.isArray(window.CARDS)?CARDS.length:0,
-                setProgress:document.querySelectorAll('.setProgress').length,
-                bulk:!!document.querySelector('.collectionBulkBar'),
-                overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
-                errorScreen:/This page hit an error/i.test(document.body.innerText)
-              }));
+              const base=await page.evaluate(()=>({title:document.querySelector('#app h1')?.textContent?.trim()||'',modes:document.querySelectorAll('.collectionModes button').length,cards:document.querySelectorAll('.collectionBrowseCard').length,allCards:Array.isArray(CARDS)?CARDS.length:0,setProgress:document.querySelectorAll('.setProgress').length,bulk:!!document.querySelector('.collectionBulkBar'),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,errorScreen:/This page hit an error/i.test(document.body.innerText)}));
               if(base.title!=='Collection'||base.modes!==5||base.cards<1||base.allCards<1||base.setProgress<1||!base.bulk||base.overflow>8||base.errorScreen)fail(`${name}:base`,base);
 
-              // Modes: verify all five can render and become active without exceptions.
-              for(const [key,label] of modes){
-                await page.evaluate(k=>window.setCollectionMode?.(k),key);await page.waitForTimeout(120);await clear();
-                const m=await page.evaluate(l=>({active:[...document.querySelectorAll('.collectionModes button.active')].some(b=>b.textContent.trim()===l),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,error:/This page hit an error/i.test(document.body.innerText)}),label);
-                if(!m.active||m.overflow>8||m.error)fail(`${name}:mode:${key}`,m);
-              }
+              for(const [key,label] of modes){await page.evaluate(k=>window.setCollectionMode?.(k),key);await page.waitForTimeout(120);await clear();const m=await page.evaluate(l=>({active:[...document.querySelectorAll('.collectionModes button.active')].some(b=>b.textContent.trim()===l),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,error:/This page hit an error/i.test(document.body.innerText)}),label);if(!m.active||m.overflow>8||m.error)fail(`${name}:mode:${key}`,m)}
               await page.evaluate(()=>window.setCollectionMode?.('all'));await page.waitForTimeout(120);
 
-              // Search: real match + empty result state.
-              const firstName=await page.evaluate(()=>CARDS[0]?.name||'');
-              const search=page.locator('#cq');
+              const firstName=await page.evaluate(()=>CARDS[0]?.name||'');const search=page.locator('#cq');
               if(await search.count()){
-                const q=firstName.slice(0,Math.min(4,firstName.length));await search.fill(q);await page.waitForTimeout(120);
-                const matched=await page.locator('.collectionBrowseCard').count();if(matched<1)fail(`${name}:search-match`,{firstName,q,matched});
-                await search.fill('zzzz-no-such-card-8655');await page.waitForTimeout(120);
-                const empty=await page.evaluate(()=>({cards:document.querySelectorAll('.collectionBrowseCard').length,text:document.querySelector('#collectionGrid')?.innerText||''}));
-                if(empty.cards!==0||!/0 matching cards/i.test(empty.text))fail(`${name}:search-empty`,empty);
-                await search.fill('');await page.waitForTimeout(120);
-              }else fail(`${name}:search-missing`);
+                const q=firstName.slice(0,Math.min(4,firstName.length));await search.fill(q);await page.waitForTimeout(120);const matched=await page.locator('.collectionBrowseCard').count();if(matched<1)fail(`${name}:search-match`,{firstName,q,matched});
+                await search.fill('zzzz-no-such-card-8655');await page.waitForTimeout(120);const empty=await page.evaluate(()=>({cards:document.querySelectorAll('.collectionBrowseCard').length,text:document.querySelector('#collectionGrid')?.innerText||''}));if(empty.cards!==0||!/0 matching cards/i.test(empty.text))fail(`${name}:search-empty`,empty);await search.fill('');await page.waitForTimeout(120);
+              } else fail(`${name}:search-missing`);
 
-              // Every filter: select one concrete value where available, verify render survives, then clear.
-              for(const id of ['cset','crarity','ckind','cstage']){
-                const sel=page.locator('#'+id);if(!await sel.count()){fail(`${name}:filter-missing:${id}`);continue}
-                const opts=await sel.locator('option').evaluateAll(os=>os.map(o=>o.value).filter(Boolean));
-                if(opts.length){await sel.selectOption(opts[0]);await page.waitForTimeout(110);const ok=await page.evaluate(()=>({grid:!!document.querySelector('#collectionGrid'),error:/This page hit an error/i.test(document.body.innerText),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));if(!ok.grid||ok.error||ok.overflow>8)fail(`${name}:filter:${id}`,ok);await sel.selectOption('');await page.waitForTimeout(90)}
-              }
-              // Every sort option.
-              const sort=page.locator('#csort');
-              const sortOpts=await sort.locator('option').evaluateAll(os=>os.map(o=>o.value));
-              for(const v of sortOpts){await sort.selectOption(v);await page.waitForTimeout(75);const e=await page.evaluate(()=>/This page hit an error/i.test(document.body.innerText));if(e)fail(`${name}:sort:${v}`)}
+              for(const id of ['cset','crarity','ckind','cstage']){const sel=page.locator('#'+id);if(!await sel.count()){fail(`${name}:filter-missing:${id}`);continue}const opts=await sel.locator('option').evaluateAll(os=>os.map(o=>o.value).filter(Boolean));if(opts.length){await sel.selectOption(opts[0]);await page.waitForTimeout(110);const ok=await page.evaluate(()=>({grid:!!document.querySelector('#collectionGrid'),error:/This page hit an error/i.test(document.body.innerText),overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));if(!ok.grid||ok.error||ok.overflow>8)fail(`${name}:filter:${id}`,ok);await sel.selectOption('');await page.waitForTimeout(90)}}
+              const sort=page.locator('#csort');const sortOpts=await sort.locator('option').evaluateAll(os=>os.map(o=>o.value));for(const v of sortOpts){await sort.selectOption(v);await page.waitForTimeout(75);const e=await page.evaluate(()=>/This page hit an error/i.test(document.body.innerText));if(e)fail(`${name}:sort:${v}`)}await sort.selectOption('name');await page.waitForTimeout(100);
 
-              // Pagination forward/back when enough cards exist.
-              await page.evaluate(()=>window.setCollectionMode?.('all'));await page.waitForTimeout(100);
-              const next=page.getByRole('button',{name:/Next/});
-              if(await next.count()&&!(await next.isDisabled())){
-                await next.click();await page.waitForTimeout(100);const p2=await page.locator('#collectionGrid>p.muted').first().innerText();if(!/page 2\//i.test(p2))fail(`${name}:pagination-next`,{p2});
-                const prev=page.getByRole('button',{name:/Previous/});await prev.click();await page.waitForTimeout(100);const p1=await page.locator('#collectionGrid>p.muted').first().innerText();if(!/page 1\//i.test(p1))fail(`${name}:pagination-prev`,{p1});
-              }
+              await page.evaluate(()=>window.setCollectionMode?.('all'));await page.waitForTimeout(100);const next=page.getByRole('button',{name:/Next/});if(await next.count()&&!(await next.isDisabled())){await next.click();await page.waitForTimeout(100);const p2=await page.locator('#collectionGrid>p.muted').first().innerText();if(!/page 2\//i.test(p2))fail(`${name}:pagination-next`,{p2});const prev=page.getByRole('button',{name:/Previous/});await prev.click();await page.waitForTimeout(100);const p1=await page.locator('#collectionGrid>p.muted').first().innerText();if(!/page 1\//i.test(p1))fail(`${name}:pagination-prev`,{p1})}
 
-              // Quick Edit + persistence-safe quantity mutation.
-              await page.evaluate(()=>{if(!state.collectionPrefs.quickEdit)window.toggleCollectionQuickEdit?.()});await page.waitForTimeout(130);
-              const quick=await page.evaluate(()=>({on:!!state.collectionPrefs.quickEdit,cards:document.querySelectorAll('.collectionQuickCard').length}));
-              if(!quick.on||quick.cards<1)fail(`${name}:quick-edit-on`,quick);
-              const target=await page.evaluate(()=>CARDS[0].id);
-              const before=await page.evaluate(id=>window.collectionRead(id),target);
-              await page.evaluate(id=>window.quickCollectionAdjust(id,'owned',1,{stopPropagation(){}}),target);await page.waitForTimeout(80);
-              const after=await page.evaluate(id=>window.collectionRead(id),target);
-              if(after.owned!==before.owned+1)fail(`${name}:quick-edit-owned`,{before,after});
+              await page.evaluate(()=>{if(!state.collectionPrefs.quickEdit)window.toggleCollectionQuickEdit?.()});await page.waitForTimeout(130);const quick=await page.evaluate(()=>({on:!!state.collectionPrefs.quickEdit,cards:document.querySelectorAll('.collectionQuickCard').length}));if(!quick.on||quick.cards<1)fail(`${name}:quick-edit-on`,quick);
+              const target=await page.evaluate(()=>CARDS[0].id);const before=await page.evaluate(id=>window.collectionRead(id),target);await page.evaluate(id=>window.quickCollectionAdjust(id,'owned',1,{stopPropagation(){}}),target);await page.waitForTimeout(80);const after=await page.evaluate(id=>window.collectionRead(id),target);if(after.owned!==before.owned+1)fail(`${name}:quick-edit-owned`,{before,after});
 
-              // Modal editing.
-              await page.evaluate(id=>window.openCollectionCard(id),target);await page.waitForTimeout(90);
-              const modal=await page.evaluate(()=>({shown:getComputedStyle(document.querySelector('#cardModal')).display!=='none',editors:document.querySelectorAll('.v822CardDetail .quantityEditor').length}));
-              if(!modal.shown||modal.editors!==3)fail(`${name}:modal-open`,modal);
-              const wb=await page.evaluate(id=>window.collectionRead(id).wanted,target);
-              await page.evaluate(id=>window.changeCollectionModal(id,'wanted',1),target);await page.waitForTimeout(80);
-              const wa=await page.evaluate(id=>window.collectionRead(id).wanted,target);
-              if(wa!==wb+1)fail(`${name}:modal-edit`,{wb,wa});
-              await page.evaluate(()=>window.closeCardModal?.());
+              await page.evaluate(id=>window.openCollectionCard(id),target);await page.waitForTimeout(90);const modal=await page.evaluate(()=>({shown:getComputedStyle(document.querySelector('#cardModal')).display!=='none',editors:document.querySelectorAll('.v822CardDetail .quantityEditor').length}));if(!modal.shown||modal.editors!==3)fail(`${name}:modal-open`,modal);const wb=await page.evaluate(id=>window.collectionRead(id).wanted,target);await page.evaluate(id=>window.changeCollectionModal(id,'wanted',1),target);await page.waitForTimeout(80);const wa=await page.evaluate(id=>window.collectionRead(id).wanted,target);if(wa!==wb+1)fail(`${name}:modal-edit`,{wb,wa});await page.evaluate(()=>window.closeCardModal?.());
 
-              // Multi-select + selected-card claim.
-              await page.evaluate(()=>{if(!window.collectionBulkMode)window.toggleCollectionBulkMode?.()});await page.waitForTimeout(100);
-              const ids=await page.evaluate(()=>CARDS.slice(0,2).map(c=>c.id));
-              await page.evaluate(ids=>ids.forEach(id=>window.toggleCollectionCardSelection(id)),ids);await page.waitForTimeout(100);
-              const bulk=await page.evaluate(()=>({selected:window.collectionSelected?.size??-1,visual:document.querySelectorAll('.collectionBrowseCard.bulkSelected').length,text:document.querySelector('.collectionBulkBar')?.innerText||''}));
-              // Lexical consts are not always window properties; visual/text checks are authoritative.
-              if(bulk.visual!==2||!/2 selected/i.test(bulk.text))fail(`${name}:bulk-select`,bulk);
-              await page.evaluate(()=>window.performClaimSelectedCards?.());await page.waitForTimeout(120);
-              const claimed=await page.evaluate(ids=>ids.map(id=>window.collectionRead(id).owned),ids);if(claimed.some(n=>n<1))fail(`${name}:bulk-claim`,{claimed});
+              // Multi-select: use the currently visible filtered order so selected cards must be on-page.
+              await page.evaluate(()=>window.toggleCollectionBulkMode?.());await page.waitForTimeout(100);const ids=await page.evaluate(()=>window.collectionFiltered().slice(0,2).map(c=>c.id));await page.evaluate(ids=>ids.forEach(id=>window.toggleCollectionCardSelection(id)),ids);await page.waitForTimeout(100);const bulk=await page.evaluate(()=>({visual:document.querySelectorAll('.collectionBrowseCard.bulkSelected').length,text:document.querySelector('.collectionBulkBar')?.innerText||''}));if(bulk.visual!==2||!/2 selected/i.test(bulk.text))fail(`${name}:bulk-select`,bulk);await page.evaluate(()=>window.performClaimSelectedCards?.());await page.waitForTimeout(120);const claimed=await page.evaluate(ids=>ids.map(id=>window.collectionRead(id).owned),ids);if(claimed.some(n=>n<1))fail(`${name}:bulk-claim`,{claimed});
 
-              // Claim-all set + rarity, exercising existing bulk operations in an isolated test browser.
-              const set=await page.evaluate(()=>[...new Set(CARDS.map(c=>c.setCode).filter(Boolean))][0]||'');
-              if(set){await page.evaluate(s=>window.performClaimCurrentSet?.(s),set);await page.waitForTimeout(120);const setCheck=await page.evaluate(s=>{const a=CARDS.filter(c=>c.setCode===s);return {n:a.length,owned:a.filter(c=>window.collectionRead(c.id).owned>0).length}},set);if(!setCheck.n||setCheck.owned!==setCheck.n)fail(`${name}:claim-set`,setCheck)}
-              const rarity=await page.evaluate(()=>{const a=window.availableRarities?.()||[];return a[0]?.key||''});
-              if(rarity){await page.evaluate(r=>window.performClaimCurrentRarity?.(r),rarity);await page.waitForTimeout(120);const rCheck=await page.evaluate(r=>{const a=CARDS.filter(c=>window.rarityKey(c.rarity)===r);return {n:a.length,owned:a.filter(c=>window.collectionRead(c.id).owned>0).length}},rarity);if(!rCheck.n||rCheck.owned!==rCheck.n)fail(`${name}:claim-rarity`,rCheck)}
-
-              // Set completion remains rendered after mutations.
+              const set=await page.evaluate(()=>[...new Set(CARDS.map(c=>c.setCode).filter(Boolean))][0]||'');if(set){await page.evaluate(s=>window.performClaimCurrentSet?.(s),set);await page.waitForTimeout(120);const setCheck=await page.evaluate(s=>{const a=CARDS.filter(c=>c.setCode===s);return {n:a.length,owned:a.filter(c=>window.collectionRead(c.id).owned>0).length}},set);if(!setCheck.n||setCheck.owned!==setCheck.n)fail(`${name}:claim-set`,setCheck)}
+              const rarity=await page.evaluate(()=>{const a=window.availableRarities?.()||[];return a[0]?.key||''});if(rarity){await page.evaluate(r=>window.performClaimCurrentRarity?.(r),rarity);await page.waitForTimeout(120);const rCheck=await page.evaluate(r=>{const a=CARDS.filter(c=>window.rarityKey(c.rarity)===r);return {n:a.length,owned:a.filter(c=>window.collectionRead(c.id).owned>0).length}},rarity);if(!rCheck.n||rCheck.owned!==rCheck.n)fail(`${name}:claim-rarity`,rCheck)}
               const setsAfter=await page.locator('.setProgress').count();if(setsAfter<1)fail(`${name}:set-completion-after`,{setsAfter});
 
-              // Verify persistence through reload (owned + wishlist + quick-edit preference).
-              const persistedBefore=await page.evaluate(id=>({r:window.collectionRead(id),quick:state.collectionPrefs.quickEdit}),target);
-              await page.reload({waitUntil:'domcontentloaded'});await page.waitForTimeout(1400);await clear();
-              // If reload returns to entry, continue local mode; storage remains in same context.
-              const guest2=page.getByRole('button',{name:/continue as guest/i});if(await guest2.count())try{await guest2.click({timeout:1800});await page.waitForTimeout(400)}catch{}
-              await clear();await page.evaluate(()=>window.goPage?.('collection'));await page.waitForTimeout(500);await clear();
-              const persistedAfter=await page.evaluate(id=>({r:window.collectionRead(id),quick:state.collectionPrefs.quickEdit}),target);
-              if(persistedAfter.r.owned<persistedBefore.r.owned||persistedAfter.r.wanted<persistedBefore.r.wanted||persistedAfter.quick!==persistedBefore.quick)fail(`${name}:persistence`,{persistedBefore,persistedAfter});
+              const persistedBefore=await page.evaluate(id=>({r:window.collectionRead(id),quick:state.collectionPrefs.quickEdit}),target);await page.reload({waitUntil:'domcontentloaded'});await page.waitForTimeout(1400);await clear();const guest2=page.getByRole('button',{name:/continue as guest/i});if(await guest2.count())try{await guest2.click({timeout:1800});await page.waitForTimeout(400)}catch{}await clear();await page.evaluate(()=>window.goPage?.('collection'));await page.waitForTimeout(500);await clear();const persistedAfter=await page.evaluate(id=>({r:window.collectionRead(id),quick:state.collectionPrefs.quickEdit}),target);if(persistedAfter.r.owned<persistedBefore.r.owned||persistedAfter.r.wanted<persistedBefore.r.wanted||persistedAfter.quick!==persistedBefore.quick)fail(`${name}:persistence`,{persistedBefore,persistedAfter});
 
-              const final=await page.evaluate(()=>({overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,errorScreen:/This page hit an error/i.test(document.body.innerText),cards:document.querySelectorAll('.collectionBrowseCard').length,title:document.querySelector('#app h1')?.textContent?.trim()||''}));
-              if(final.overflow>8||final.errorScreen||final.title!=='Collection'||errors.length)fail(`${name}:final`,{final,errors});
-              await page.screenshot({path:`qa-shots/collection-${name}.png`,fullPage:true});
-              console.log('PASS_VIEWPORT',name,JSON.stringify({base,quick,modal,bulk,final,errors}));
-              await context.close();
+              const final=await page.evaluate(()=>({overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,errorScreen:/This page hit an error/i.test(document.body.innerText),cards:document.querySelectorAll('.collectionBrowseCard').length,title:document.querySelector('#app h1')?.textContent?.trim()||''}));if(final.overflow>8||final.errorScreen||final.title!=='Collection'||errors.length)fail(`${name}:final`,{final,errors});await page.screenshot({path:`qa-shots/collection-${name}.png`,fullPage:true});console.log('PASS_VIEWPORT',name,JSON.stringify({base,quick,modal,bulk,final,errors}));await context.close();
             }
-            await browser.close();
-            if(failures){console.error('COLLECTION_QA_FAILURES',failures);process.exit(1)}
-            console.log('COLLECTION_QA_OK');
+            await browser.close();if(failures){console.error('COLLECTION_QA_FAILURES',failures);process.exit(1)}console.log('COLLECTION_QA_OK');
           })();
           NODE
           node collection-qa.js
