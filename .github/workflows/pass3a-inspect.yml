@@ -1,0 +1,26 @@
+name: PocketNexus Pass 3A Inspector
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pass3a-inspect.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Training layout selectors
+        run: |
+          echo '=== TRAINING CSS ==='
+          grep -RInE 'trainingHero|wtcLayout|wtcGame|wtcArtFrame|trainingPage|brainTrainingCompact' css | head -n 250 || true
+      - name: Battle lazy-rank references
+        run: |
+          echo '=== PERFORMANCE RANK REFERENCES ==='
+          grep -nE 'rankSessionService|rankSessionStatusMessage|rankSessionApply|rankBorderService|rankBorderLabel|rankBorderFmt' js/app/performance.js || true
+      - name: Account compact controls
+        run: |
+          echo '=== ACCOUNT LINK/BUTTON CSS ==='
+          grep -RInE 'authLink|entryLink|Forgot password|Create an account|auth.*button|account.*button' css js/core/account-cloud-runtime-v8.64.1.js | head -n 160 || true
