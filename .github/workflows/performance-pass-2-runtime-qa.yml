@@ -50,7 +50,11 @@ jobs:
 
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            // Service workers intentionally reload the page when a new controller claims it.
+            // Block them in this deterministic route test so PWA update behavior does not
+            // destroy the Playwright execution context while the app routes are being tested.
+            const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+            const page=await context.newPage();
 
             page.on('pageerror',e=>fatal.push(String(e?.stack||e)));
             page.on('console',msg=>{
@@ -137,6 +141,7 @@ jobs:
             ok('No uncaught browser runtime errors');
 
             console.log(`Runtime QA completed: ${checks.length} checks passed.`);
+            await context.close();
             await browser.close();
           })().catch(async e=>{
             console.error('RUNTIME_QA_FAILED');
