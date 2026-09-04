@@ -14,13 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect public profile symbol definitions
+      - name: Inspect public identity backend contracts
         run: |
-          for sym in openPublicProfileByPublicId openPublicProfileById openPublicProfile openPublicTeam closePublicIdentity; do
-            echo "=== $sym ==="
-            grep -n "$sym" js/app/profile_teamwars.js || true
-          done
-          echo '=== public profile RPCs ==='
-          grep -nE "rpc\('[^']*public[^']*'|rpc\(\"[^\"]*public[^\"]*\"" js/app/profile_teamwars.js || true
-          echo '=== identity RPCs ==='
-          grep -nE "rpc\('[^']*(profile|identity)[^']*'|rpc\(\"[^\"]*(profile|identity)[^\"]*\"" js/app/profile_teamwars.js || true
+          echo '=== likely SQL/RPC contracts ==='
+          grep -RInE "get_.*public_(profile|team)|public_(profile|team).*function|search_public_profiles|public_id" supabase sql migrations . --include='*.sql' --include='*.js' 2>/dev/null | head -160 || true
