@@ -151,3 +151,4 @@ jobs:
         if: always()
         run: |
           echo 'Performance Pass 2 runtime QA exercised startup, repeated Rank/Streamer lazy loading, Training, Pocket Sync, Profiles, Team Wars, Account/Cloud, utility pages, and rapid route switching.'
+          echo 'Run includes the Meta re-entrancy regression discovered during Pass 2 QA.'
