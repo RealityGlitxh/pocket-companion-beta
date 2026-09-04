@@ -30,7 +30,7 @@ jobs:
 
       - name: Browser runtime regression sweep
         run: |
-          cat > /tmp/ppc-runtime-qa.js <<'JS'
+          cat > .ppc-runtime-qa.cjs <<'JS'
           const { chromium } = require('playwright');
 
           const fatal=[];
@@ -65,7 +65,6 @@ jobs:
             await page.waitForFunction(()=>typeof window.render==='function'&&document.getElementById('app'),null,{timeout:30000});
             ok('Startup runtime loaded');
 
-            // Enter a deterministic local guest state without touching cloud data.
             await page.evaluate(()=>{
               state.user='Runtime QA';
               state.page='dashboard';
@@ -89,15 +88,13 @@ jobs:
               await page.waitForFunction(r=>state?.page===r,route,{timeout:10000});
               await page.waitForTimeout(120);
               const snapshot=await page.evaluate(()=>({
-                text:(document.getElementById('app')?.innerText||'').slice(0,5000),
-                html:(document.getElementById('app')?.innerHTML||'').slice(0,5000)
+                text:(document.getElementById('app')?.innerText||'').slice(0,5000)
               }));
               if(/This page hit an error|could not load|Startup Recovery/i.test(snapshot.text)) fail(`${label} render`,snapshot.text.slice(0,220));
               if(fatal.length>before) fail(`${label} runtime`,fatal.slice(before).join('\n'));
               ok(`${label} render`);
             }
 
-            // High-risk lazy routes, including repeat visits.
             await visit('rank','rankBorderPage','Rank first load');
             await visit('dashboard',null,'Dashboard after Rank');
             await visit('rank','rankBorderPage','Rank repeat load');
@@ -112,12 +109,10 @@ jobs:
             await visit('profile','profilePage','Profiles lazy load');
             await visit('teamwars','teamWarsPage','Team Wars shared lazy load');
 
-            // Eager utility/account pages affected by the extraction work.
             await visit('account','accountPage','Account & Cloud');
             await visit('about','aboutPage','About & Privacy');
             await visit('more','morePage','More / Settings');
 
-            // Rapid switching regression test.
             for(const r of ['dashboard','rank','streamer','more','profile','dashboard','streamer','rank','dashboard']){
               await page.evaluate(route=>{state.page=route;render();},r);
               await page.waitForTimeout(70);
@@ -126,7 +121,6 @@ jobs:
             if(rapidError)fail('Rapid tab switching','runtime recovery UI appeared');
             ok('Rapid tab switching');
 
-            // Lazy bundles must load once, not on every revisit.
             const counts={};
             for(const name of wantedLazy)counts[name]=lazyRequests.filter(u=>u.includes(name)).length;
             for(const [name,count] of Object.entries(counts)){
@@ -150,7 +144,8 @@ jobs:
             process.exit(1);
           });
           JS
-          node /tmp/ppc-runtime-qa.js
+          node .ppc-runtime-qa.cjs
+          rm .ppc-runtime-qa.cjs
 
       - name: Runtime QA summary
         if: always()
