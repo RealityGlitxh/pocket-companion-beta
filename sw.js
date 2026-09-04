@@ -1,5 +1,5 @@
-/* PocketNexus V8.64.1 — closed beta validation service worker */
-const VERSION='v8.64.1-rc1';
+/* PocketNexus V8.64.1 Hotfix 11 — cache invalidation */
+const VERSION='v8.64.1-hotfix11';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;
@@ -19,6 +19,7 @@ const ART_HOSTS=new Set(['limitlesstcg.nyc3.cdn.digitaloceanspaces.com']);
 async function trim(cacheName,max){const c=await caches.open(cacheName),keys=await c.keys();if(keys.length>max)await Promise.all(keys.slice(0,keys.length-max).map(k=>c.delete(k)));}
 async function staleWhileRevalidate(req,cacheName){const c=await caches.open(cacheName),cached=await c.match(req);const fresh=fetch(req).then(res=>{if(res&&res.ok){c.put(req,res.clone());trim(cacheName,cacheName===ART_CACHE?180:12);}return res;}).catch(()=>null);return cached||await fresh||Response.error();}
 async function cacheFirst(req,cacheName){const c=await caches.open(cacheName),cached=await c.match(req);if(cached)return cached;try{const res=await fetch(req);if(res&&res.ok){c.put(req,res.clone());trim(cacheName,180);}return res;}catch{return Response.error();}}
+async function networkFirst(req){const c=await caches.open(RUNTIME_CACHE);try{const res=await fetch(req,{cache:'no-store'});if(res&&res.ok)c.put(req,res.clone());return res;}catch{return await c.match(req)||await caches.match(req,{ignoreSearch:true})||Response.error();}}
 self.addEventListener('install',e=>e.waitUntil(caches.open(SHELL_CACHE).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('pocket-companion-')&&![SHELL_CACHE,RUNTIME_CACHE,DATA_CACHE,ART_CACHE].includes(k)).map(k=>caches.delete(k)))),self.clients.claim()])));
 self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWaiting();});
@@ -27,6 +28,7 @@ self.addEventListener('fetch',event=>{
  if(url.hostname===CARD_DATA_HOST && /pokemon-tcg-pocket-database\/dist\/cards(?:\.extra)?\.json$/.test(url.pathname)){event.respondWith(staleWhileRevalidate(req,DATA_CACHE));return;}
  if(ART_HOSTS.has(url.hostname) && req.destination==='image'){event.respondWith(cacheFirst(req,ART_CACHE));return;}
  if(url.origin!==self.location.origin)return;
- if(req.mode==='navigate'){event.respondWith(fetch(req).then(res=>{if(res.ok)caches.open(RUNTIME_CACHE).then(c=>c.put(req,res.clone()));return res;}).catch(async()=>await caches.match(req)||await caches.match('./index.html')||caches.match('./offline.html')));return;}
+ if(req.mode==='navigate'){event.respondWith(networkFirst(req).catch(async()=>await caches.match('./index.html')||caches.match('./offline.html')));return;}
+ if(req.destination==='script'||req.destination==='style'){event.respondWith(networkFirst(req));return;}
  event.respondWith(caches.match(req,{ignoreSearch:true}).then(cached=>cached||fetch(req).then(res=>{if(res.ok)caches.open(RUNTIME_CACHE).then(c=>c.put(req,res.clone()));return res;}).catch(()=>Response.error())));
 });
