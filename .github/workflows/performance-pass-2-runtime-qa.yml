@@ -76,4 +76,4 @@ jobs:
         if: always()
         run: |
           echo 'Performance Pass 2 runtime QA exercised startup, repeated Rank/Streamer lazy loading, Training, Pocket Sync, Profiles, Team Wars, Account/Cloud, utility pages, and rapid route switching.'
-          echo 'Regression coverage includes Meta re-entrancy, public-profile lazy loading, and eager dashboard Rank formatting.'
+          echo 'Regression coverage includes Meta re-entrancy, public-profile lazy loading, and all eager dashboard Rank dependencies.'
