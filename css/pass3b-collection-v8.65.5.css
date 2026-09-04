@@ -1,0 +1,117 @@
+/* PocketNexus v8.65.5 — Performance Pass 3B-5
+   Collection refinement only. Preserve existing collection behavior/data. */
+
+/* Clear hierarchy: summary -> modes -> browser -> supporting panels. */
+#app:has(.collectionModes){max-width:1540px}
+#app:has(.collectionModes)>.between:first-child{align-items:flex-end;gap:16px}
+#app:has(.collectionModes)>.between:first-child>div:first-child{max-width:720px}
+#app:has(.collectionModes)>.between:first-child h1{margin-bottom:3px}
+#app:has(.collectionModes)>.between:first-child>.row{justify-content:flex-end;gap:7px}
+
+#app:has(.collectionModes)>.metricgrid{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px!important}
+#app:has(.collectionModes)>.metricgrid .metric{min-height:78px;display:flex;flex-direction:column;justify-content:center}
+#app:has(.collectionModes)>.metricgrid .metric .l{font-size:.67rem;letter-spacing:.055em;text-transform:uppercase}
+#app:has(.collectionModes)>.metricgrid .metric .n{font-size:1.28rem!important;line-height:1.1}
+
+.collectionModes{display:flex;align-items:center;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:thin}
+.collectionModes button{flex:0 0 auto;border-radius:9px!important}
+.collectionModes button.active{box-shadow:inset 0 0 0 1px rgba(125,211,252,.22)}
+
+/* Browser is the main workspace. */
+#app:has(.collectionModes)>.panel:has(#collectionGrid){padding:16px!important;border-color:rgba(83,111,143,.62)}
+#app:has(.collectionModes) .filtergrid{grid-template-columns:minmax(220px,1.65fr) repeat(4,minmax(135px,1fr));align-items:center}
+#app:has(.collectionModes) .filtergrid input,
+#app:has(.collectionModes) .filtergrid select{width:100%;min-width:0}
+#collectionBulkTools:empty{display:none}
+#collectionBulkTools:not(:empty){margin:2px 0 10px}
+#collectionGrid>p.muted:first-child{margin:3px 0 9px;font-size:.75rem}
+
+.collectionBrowserGrid{grid-template-columns:repeat(6,minmax(0,1fr))!important;align-items:stretch}
+.collectionBrowseCard{height:100%;min-width:0;overflow:hidden;text-align:left;transition:transform .14s ease,border-color .14s ease,background .14s ease}
+@media(hover:hover){.collectionBrowseCard:hover{transform:translateY(-2px);border-color:rgba(125,211,252,.48)}}
+.collectionBrowseCard.bulkSelected{outline:2px solid rgba(125,211,252,.72);outline-offset:-2px}
+.collectionBrowseCard .cardimgwrap{position:relative;overflow:hidden;border-radius:8px;background:#09111a}
+.collectionBrowseCard .cardimgwrap img{display:block;width:100%;height:auto}
+.collectionBrowseBody{min-width:0}
+.collectionBrowseBody>strong{display:block;font-size:.78rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collectionBrowseBody>span{display:block;color:var(--muted);font-size:.63rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collectionBrowseFlags{display:flex;flex-wrap:wrap;min-height:20px;align-items:center}
+.collectionBrowseFlags em{font-style:normal;line-height:1.25}
+.collectionSelectCheck{position:absolute;right:7px;top:7px;display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:rgba(7,15,24,.88);border:1px solid rgba(125,211,252,.55);font-weight:900}
+
+/* Quick Edit stays useful without overpowering the artwork. */
+.collectionQuickCard{display:flex;flex-direction:column}
+.collectionQuickOpen{display:block;width:100%;padding:0;background:transparent;border:0;text-align:left;min-height:0}
+.collectionQuickControls{margin-top:auto;border-top:1px solid rgba(39,55,75,.7);display:grid;gap:6px}
+.collectionQuickControls>div:first-child{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:5px}
+.collectionQuickControls>div:first-child>b{min-width:22px;text-align:center}
+.collectionQuickSecondary{display:grid!important;grid-template-columns:1fr 1fr;gap:4px!important}
+.collectionQuickSecondary button{width:100%;font-size:.62rem!important;white-space:nowrap}
+
+.pager{align-items:center;justify-content:center}
+.pager>span{min-width:120px;text-align:center}
+.pager button{min-width:112px}
+
+/* Supporting information should read as secondary to the card browser. */
+#app:has(.collectionModes)>.panel:last-child{margin-top:14px}
+#app:has(.collectionModes)>.panel:last-child>h2{margin-bottom:9px}
+.setProgress{display:grid;gap:5px}
+.setProgress .between{gap:12px}
+.setProgress .between span{font-size:.72rem;color:var(--muted);white-space:nowrap}
+
+/* Card editor modal: keep quantities easy to hit and scan. */
+.v822CardDetail{gap:18px!important;align-items:start}
+.v822CardDetail>.metricgrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+.v822CardDetail .quantityEditor{display:grid;grid-template-columns:minmax(86px,1fr) 38px 38px 38px;align-items:center;gap:6px;margin-top:7px}
+.v822CardDetail .quantityEditor button{min-width:38px;min-height:36px;padding:5px}
+.v822CardDetail .quantityEditor span{text-align:center;font-weight:800}
+
+@media(max-width:1200px){
+ #app:has(.collectionModes)>.metricgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #app:has(.collectionModes) .filtergrid{grid-template-columns:minmax(220px,1.5fr) repeat(2,minmax(140px,1fr))}
+ .collectionBrowserGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+}
+
+@media(max-width:900px){
+ #app:has(.collectionModes)>.between:first-child{align-items:flex-start}
+ #app:has(.collectionModes)>.between:first-child>.row{justify-content:flex-start}
+ #app:has(.collectionModes)>.metricgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #app:has(.collectionModes) .filtergrid{grid-template-columns:1fr 1fr!important}
+ #app:has(.collectionModes) .filtergrid>input:first-child{grid-column:1/-1}
+ .collectionBrowserGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+
+@media(max-width:700px){
+ #app:has(.collectionModes)>.between:first-child{display:grid!important;grid-template-columns:1fr}
+ #app:has(.collectionModes)>.between:first-child>.row{width:100%;display:flex;flex-wrap:wrap}
+ #app:has(.collectionModes)>.between:first-child>.row button{flex:1 1 150px}
+ #app:has(.collectionModes)>.metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #app:has(.collectionModes)>.metricgrid .metric{min-height:70px}
+ #app:has(.collectionModes) .filtergrid{grid-template-columns:1fr!important}
+ #app:has(.collectionModes) .filtergrid>input:first-child{grid-column:auto}
+ .collectionBrowserGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .v822CardDetail{grid-template-columns:1fr!important}
+}
+
+@media(max-width:520px){
+ #app:has(.collectionModes)>.metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #app:has(.collectionModes)>.metricgrid .metric:last-child{grid-column:1/-1}
+ .collectionModes{width:100%;padding-bottom:4px}
+ #app:has(.collectionModes)>.panel:has(#collectionGrid){padding:11px!important}
+ .collectionBrowserGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .collectionBrowseBody>strong{font-size:.75rem}
+ .collectionQuickSecondary{grid-template-columns:1fr!important}
+ .pager{display:grid!important;grid-template-columns:1fr 1fr!important}
+ .pager>span{grid-column:1/-1;grid-row:1;min-width:0}
+ .pager button{min-width:0;width:100%}
+ .v822CardDetail>.metricgrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .v822CardDetail .quantityEditor{grid-template-columns:1fr 36px 34px 36px}
+}
+
+@media(max-width:360px){
+ #app:has(.collectionModes)>.metricgrid{grid-template-columns:1fr}
+ #app:has(.collectionModes)>.metricgrid .metric:last-child{grid-column:auto}
+ .collectionBrowserGrid{gap:6px!important}
+}
+
+@media(prefers-reduced-motion:reduce){.collectionBrowseCard{transition:none}.collectionBrowseCard:hover{transform:none}}
