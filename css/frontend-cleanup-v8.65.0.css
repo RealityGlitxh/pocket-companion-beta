@@ -1,0 +1,192 @@
+/* PocketNexus v8.65.0 — Performance Pass 3 / Frontend Cleanup
+   Foundation-only polish. No navigation, data, or feature behavior changes. */
+
+:root{
+  --pn-page-max:1540px;
+  --pn-page-gutter:22px;
+  --pn-section-gap:16px;
+  --pn-card-pad:18px;
+  --pn-control-h:44px;
+  --pn-radius:16px;
+  --pn-radius-sm:11px;
+}
+
+/* Consistent application canvas */
+#app{
+  width:min(var(--pn-page-max),calc(100% - (var(--pn-page-gutter) * 2)));
+  padding:26px 0 104px;
+}
+
+/* Give top-level page sections a predictable rhythm without forcing
+   nested component grids to change their own spacing. */
+#app>section+section,
+#app>section+div,
+#app>div+section{
+  margin-top:var(--pn-section-gap);
+}
+
+/* Typography hierarchy */
+#app h1{
+  font-size:clamp(2rem,3.3vw,3.35rem);
+  line-height:1.02;
+  letter-spacing:-.045em;
+  margin-bottom:10px;
+}
+#app h2{
+  line-height:1.15;
+  letter-spacing:-.018em;
+}
+#app h3{
+  line-height:1.2;
+}
+#app p:last-child{margin-bottom:0}
+#app .muted{line-height:1.5}
+
+/* Uniform surfaces */
+.panel{
+  border-radius:var(--pn-radius);
+  padding:var(--pn-card-pad);
+  box-shadow:0 9px 24px rgba(0,0,0,.14);
+}
+.panel>.between:first-child{
+  margin-bottom:12px;
+}
+.panel>.between:first-child h1,
+.panel>.between:first-child h2,
+.panel>.between:first-child h3{
+  margin-bottom:4px;
+}
+
+/* Prevent the common "everything is jumbo/jammed together" look. */
+.grid,
+.form2,
+.form3,
+.metricgrid{
+  gap:12px;
+}
+.between{
+  gap:14px;
+}
+.row{
+  gap:8px;
+}
+
+/* Consistent controls */
+button,
+input,
+select{
+  min-height:var(--pn-control-h);
+}
+button{
+  border-radius:var(--pn-radius-sm);
+  padding:9px 14px;
+  line-height:1.15;
+}
+button.secondary{
+  background:#121d2a;
+}
+input,
+select,
+textarea{
+  border-radius:var(--pn-radius-sm);
+  padding:10px 12px;
+}
+label{
+  line-height:1.25;
+}
+
+/* Toolbar rows should wrap cleanly rather than crush controls. */
+#app .between>.row,
+#app .panel>.row{
+  max-width:100%;
+}
+#app .row>input,
+#app .row>select,
+#app .row>label{
+  min-width:0;
+}
+
+/* Common status and empty-state presentation */
+.notice,
+.successBox,
+.warningBox,
+.dangerBox{
+  border-radius:13px;
+  padding:13px 15px;
+}
+.cardplaceholder,
+.commandEmpty,
+.profileSearchEmpty,
+.coachEmptySide,
+.simEmpty,
+.deckManagerEmpty{
+  line-height:1.5;
+}
+
+/* Keep long labels/data from widening cards or causing horizontal scroll. */
+.panel,
+.metric,
+.cardplaceholder,
+button,
+label,
+input,
+select,
+textarea{
+  min-width:0;
+}
+.panel strong,
+.panel small,
+.panel span,
+.panel p{
+  overflow-wrap:anywhere;
+}
+
+/* Desktop keeps the full-width application feel. */
+@media(min-width:901px){
+  #app{--pn-page-gutter:28px}
+  .panel{--pn-card-pad:18px}
+}
+
+/* Tablet */
+@media(max-width:900px){
+  :root{
+    --pn-page-gutter:14px;
+    --pn-section-gap:13px;
+    --pn-card-pad:16px;
+  }
+  #app{
+    width:calc(100% - (var(--pn-page-gutter) * 2));
+    padding-top:18px;
+  }
+  #app h1{font-size:clamp(1.85rem,7vw,2.6rem)}
+  .between{gap:11px}
+}
+
+/* Phone */
+@media(max-width:520px){
+  :root{
+    --pn-page-gutter:8px;
+    --pn-card-pad:14px;
+    --pn-section-gap:11px;
+  }
+  #app{padding-top:14px}
+  #app h1{font-size:2.05rem}
+  #app h2{font-size:1.12rem}
+  .panel{border-radius:14px}
+  .between{
+    align-items:stretch;
+  }
+  .between>.row{
+    width:100%;
+  }
+  .between>.row>button{
+    flex:1 1 auto;
+  }
+  button{
+    padding-inline:12px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  button{transition:none}
+}
