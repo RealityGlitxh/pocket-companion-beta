@@ -190,3 +190,294 @@ textarea{
 @media(prefers-reduced-motion:reduce){
   button{transition:none}
 }
+
+/* ------------------------------------------------------------------
+   Pass 3A.1 — Home
+   Keep the command-center identity, but reduce jumbo spacing and make
+   each tier read like the same app instead of separate redesigns.
+   ------------------------------------------------------------------ */
+#app:has(.pocketCommandHero),
+#app:has(.foundationHero){
+  max-width:var(--pn-page-max);
+}
+.pocketCommandHero{
+  gap:14px;
+  margin-bottom:14px;
+}
+.pocketCommandCopy,
+.pocketCommandToday{
+  min-height:270px;
+  border-radius:20px;
+}
+.pocketCommandCopy{
+  padding:30px 32px;
+}
+.pocketCommandCopy h1{
+  font-size:clamp(2.65rem,4vw,4.15rem);
+  max-width:760px;
+}
+.pocketCommandCopy p{
+  max-width:670px;
+  font-size:.98rem;
+  line-height:1.55;
+}
+.pocketCommandToday{
+  padding:24px;
+}
+.pocketCommandToday>div:first-child>strong{
+  font-size:clamp(3.5rem,5vw,4.85rem);
+}
+.pocketHubGrid,
+.foundationIntelGrid{
+  gap:12px;
+  margin-bottom:14px;
+}
+.pocketHubCard{
+  min-height:218px;
+  padding:18px;
+  border-radius:16px;
+}
+.pocketHubCard h2{
+  font-size:1.08rem;
+}
+.foundationIntelGrid>.panel,
+.homeRecent{
+  padding:18px;
+  border-radius:16px;
+}
+.commandMetric strong{
+  font-size:2rem;
+}
+.commandStatRow{
+  gap:6px;
+}
+.homeRecent .deckrow{
+  min-height:54px;
+  padding:9px 2px;
+}
+
+/* ------------------------------------------------------------------
+   Pass 3A.2 — Decks + Deck Builder
+   Stronger hierarchy: page controls first, deck cards second, dense
+   builder tools third. Preserve all existing drag/drop and actions.
+   ------------------------------------------------------------------ */
+.deckManagerPage,
+.builderWorkspacePage{
+  gap:12px;
+}
+.deckManagerToolbar{
+  grid-template-columns:minmax(220px,1.15fr) minmax(320px,1.7fr) minmax(150px,.55fr);
+  gap:10px;
+  padding:15px 16px;
+}
+.deckManagerMeta{
+  padding:0 2px;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.deckManagerGrid{
+  gap:12px;
+}
+.deckManagerCard{
+  border-radius:16px;
+}
+.deckManagerCardBody{
+  padding:13px 14px 14px;
+}
+.deckManagerMetrics{
+  gap:5px;
+  margin:9px 0 11px;
+}
+.deckManagerMetrics span{
+  padding:7px 8px;
+}
+.deckManagerFooter .row{
+  justify-content:flex-end;
+}
+.deckManagerEmpty{
+  min-height:220px;
+  display:grid;
+  place-content:center;
+  justify-items:center;
+  padding:34px 24px;
+}
+.builderTopbar{
+  gap:12px;
+}
+.builderStatusBar{
+  padding:10px 13px;
+}
+.builderSplit{
+  gap:12px;
+}
+.builderDeckPane,
+.builderSearchPane{
+  border-radius:16px;
+  padding:14px;
+}
+.builderPaneHeader{
+  margin-bottom:9px;
+}
+.builderFilterRow{
+  gap:6px;
+}
+.builderCatalog.cards{
+  gap:9px;
+}
+.builderCatalog .card,
+.decktile{
+  border-radius:11px;
+}
+.builderLowerPanels{
+  gap:10px;
+}
+
+/* ------------------------------------------------------------------
+   Pass 3A.3 — Battle
+   Make Record the visual primary action while Sessions/History remain
+   clearly secondary. Reduce excess vertical bulk in repeated panels.
+   ------------------------------------------------------------------ */
+.battleTabs{
+  gap:6px;
+  margin:10px 0 13px;
+  padding:4px;
+  width:max-content;
+  max-width:100%;
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#0b121b;
+}
+.battleTabs button{
+  min-height:36px;
+  padding:7px 13px;
+  border-color:transparent;
+  background:transparent;
+  box-shadow:none;
+  white-space:nowrap;
+}
+.battleTabs button.active{
+  background:#152436;
+  border-color:#315577;
+}
+.battleRecordGrid{
+  grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);
+  gap:12px;
+  align-items:start;
+}
+.battleRecordCard{
+  padding:16px;
+  border-radius:16px;
+}
+.quickRecordPanel>label{
+  margin-top:8px;
+}
+.quickResultActions,
+.streamResultButtons,
+.gymResultButtons{
+  gap:7px;
+  margin-top:10px;
+}
+.quickResultActions button{
+  min-height:48px;
+}
+.liveSessionBar{
+  margin:8px 0 10px;
+  padding:9px 11px;
+}
+.battlePulseCard,
+.battleRecentCard{
+  padding:16px;
+}
+.battleRecentCard .deckrow{
+  padding:8px 0;
+}
+
+/* Unified empty/loading treatment for the first Pass 3A group. */
+.deckManagerEmpty,
+.builderEmptySlot,
+.commandEmpty,
+.simEmpty,
+.profileSearchEmpty{
+  border:1px dashed #33485d;
+  background:rgba(8,17,26,.58);
+  color:var(--muted);
+}
+.builderEmptySlot{
+  min-height:76px;
+}
+
+@media(max-width:1100px){
+  .deckManagerToolbar{
+    grid-template-columns:1fr 1fr;
+  }
+  .deckManagerToolbar>label:last-child{
+    grid-column:2;
+  }
+  .battleRecordGrid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:800px){
+  .pocketCommandCopy,
+  .pocketCommandToday{
+    min-height:auto;
+  }
+  .pocketCommandCopy{
+    padding:25px;
+  }
+  .deckManagerToolbar{
+    grid-template-columns:1fr;
+  }
+  .deckManagerToolbar>*{
+    grid-column:1!important;
+  }
+  .deckManagerGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .builderDeckPane,
+  .builderSearchPane{
+    padding:13px;
+  }
+}
+
+@media(max-width:520px){
+  .pocketCommandCopy{
+    padding:21px 18px;
+  }
+  .pocketCommandCopy h1{
+    font-size:2.3rem;
+  }
+  .pocketCommandToday{
+    padding:20px 18px;
+  }
+  .pocketHubCard{
+    min-height:190px;
+  }
+  .deckManagerGrid{
+    grid-template-columns:1fr;
+  }
+  .deckManagerCardBody{
+    padding:12px;
+  }
+  .deckManagerFooter .row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+  .deckManagerFooter .row button{
+    width:100%;
+  }
+  .battleTabs{
+    width:100%;
+  }
+  .battleTabs button{
+    flex:1 0 auto;
+  }
+  .battleRecordCard,
+  .battlePulseCard,
+  .battleRecentCard{
+    padding:14px;
+  }
+}
