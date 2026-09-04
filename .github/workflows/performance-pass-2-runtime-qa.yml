@@ -1,0 +1,158 @@
+name: Performance Pass 2 Runtime QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/performance-pass-2-runtime-qa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/ppc-npm.log 2>&1
+          npx playwright install chromium >/tmp/ppc-browser-install.log 2>&1
+
+      - name: Start local PocketNexus server
+        run: |
+          python3 -m http.server 8123 >/tmp/ppc-http.log 2>&1 &
+          echo $! > /tmp/ppc-http.pid
+          sleep 1
+          curl --fail --silent --show-error http://127.0.0.1:8123/index.html >/dev/null
+
+      - name: Browser runtime regression sweep
+        run: |
+          cat > /tmp/ppc-runtime-qa.js <<'JS'
+          const { chromium } = require('playwright');
+
+          const fatal=[];
+          const consoleErrors=[];
+          const lazyRequests=[];
+          const checks=[];
+          const wantedLazy=[
+            'rank_tools-v8.64.1.js',
+            'streamer_tools-v8.64.1.js',
+            'training.js',
+            'pocket_sync.js',
+            'profile_teamwars.js'
+          ];
+
+          function ok(name, detail=''){checks.push({name,detail});console.log(`PASS: ${name}${detail?` — ${detail}`:''}`)}
+          function fail(name, detail=''){throw new Error(`${name}${detail?`: ${detail}`:''}`)}
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+
+            page.on('pageerror',e=>fatal.push(String(e?.stack||e)));
+            page.on('console',msg=>{
+              if(msg.type()==='error')consoleErrors.push(msg.text());
+            });
+            page.on('request',req=>{
+              const u=req.url();
+              if(wantedLazy.some(x=>u.includes(x)))lazyRequests.push(u);
+            });
+
+            await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>typeof window.render==='function'&&document.getElementById('app'),null,{timeout:30000});
+            ok('Startup runtime loaded');
+
+            // Enter a deterministic local guest state without touching cloud data.
+            await page.evaluate(()=>{
+              state.user='Runtime QA';
+              state.page='dashboard';
+              state.onboarding=state.onboarding||{};
+              state.onboarding.completed=true;
+              if(typeof save==='function')save();
+              render();
+            });
+            await page.waitForFunction(()=>state?.page==='dashboard'&&document.getElementById('app')?.children.length>0);
+            ok('Guest/local dashboard render');
+
+            async function visit(route, readyFn, label){
+              const before=fatal.length;
+              await page.evaluate(r=>{
+                if(typeof window.goPage==='function')window.goPage(r);
+                else { state.page=r; if(typeof save==='function')save(); render(); }
+              },route);
+              if(readyFn){
+                await page.waitForFunction(fn=>typeof window[fn]==='function',readyFn,{timeout:20000});
+              }
+              await page.waitForFunction(r=>state?.page===r,route,{timeout:10000});
+              await page.waitForTimeout(120);
+              const snapshot=await page.evaluate(()=>({
+                text:(document.getElementById('app')?.innerText||'').slice(0,5000),
+                html:(document.getElementById('app')?.innerHTML||'').slice(0,5000)
+              }));
+              if(/This page hit an error|could not load|Startup Recovery/i.test(snapshot.text)) fail(`${label} render`,snapshot.text.slice(0,220));
+              if(fatal.length>before) fail(`${label} runtime`,fatal.slice(before).join('\n'));
+              ok(`${label} render`);
+            }
+
+            // High-risk lazy routes, including repeat visits.
+            await visit('rank','rankBorderPage','Rank first load');
+            await visit('dashboard',null,'Dashboard after Rank');
+            await visit('rank','rankBorderPage','Rank repeat load');
+
+            await visit('streamer','streamerPage','Streamer first load');
+            await visit('dashboard',null,'Dashboard after Streamer');
+            await visit('streamer','streamerPage','Streamer repeat load');
+
+            await visit('training','trainingPage','Training lazy load');
+            await visit('dashboard',null,'Dashboard after Training');
+            await visit('sync','pocketSyncPage','Pocket Sync lazy load');
+            await visit('profile','profilePage','Profiles lazy load');
+            await visit('teamwars','teamWarsPage','Team Wars shared lazy load');
+
+            // Eager utility/account pages affected by the extraction work.
+            await visit('account','accountPage','Account & Cloud');
+            await visit('about','aboutPage','About & Privacy');
+            await visit('more','morePage','More / Settings');
+
+            // Rapid switching regression test.
+            for(const r of ['dashboard','rank','streamer','more','profile','dashboard','streamer','rank','dashboard']){
+              await page.evaluate(route=>{state.page=route;render();},r);
+              await page.waitForTimeout(70);
+            }
+            const rapidError=await page.evaluate(()=>/This page hit an error|could not load|Startup Recovery/i.test(document.getElementById('app')?.innerText||''));
+            if(rapidError)fail('Rapid tab switching','runtime recovery UI appeared');
+            ok('Rapid tab switching');
+
+            // Lazy bundles must load once, not on every revisit.
+            const counts={};
+            for(const name of wantedLazy)counts[name]=lazyRequests.filter(u=>u.includes(name)).length;
+            for(const [name,count] of Object.entries(counts)){
+              if(count!==1)fail('Lazy request dedupe',`${name} requested ${count} times`);
+            }
+            ok('Lazy request dedupe',JSON.stringify(counts));
+
+            const criticalConsole=consoleErrors.filter(x=>
+              /ReferenceError|SyntaxError|TypeError|Failed to load|Uncaught/i.test(x) &&
+              !/favicon|supabase|Failed to fetch|ERR_NAME_NOT_RESOLVED|NetworkError/i.test(x)
+            );
+            if(criticalConsole.length)fail('Browser console',criticalConsole.join('\n'));
+            if(fatal.length)fail('Page errors',fatal.join('\n'));
+            ok('No uncaught browser runtime errors');
+
+            console.log(`Runtime QA completed: ${checks.length} checks passed.`);
+            await browser.close();
+          })().catch(async e=>{
+            console.error('RUNTIME_QA_FAILED');
+            console.error(e?.stack||e);
+            process.exit(1);
+          });
+          JS
+          node /tmp/ppc-runtime-qa.js
+
+      - name: Runtime QA summary
+        if: always()
+        run: |
+          echo 'Performance Pass 2 runtime QA exercised startup, repeated Rank/Streamer lazy loading, Training, Pocket Sync, Profiles, Team Wars, Account/Cloud, utility pages, and rapid route switching.'
