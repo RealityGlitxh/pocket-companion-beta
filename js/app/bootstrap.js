@@ -1289,7 +1289,7 @@ function render(){
    nav();
    if(!state.user&&!cloudSession?.user)return entryScreen();
    if(["decks","collection","trade"].includes(state.page)&&!cardsRequested)loadCards();
-   const pages={dashboard,decks,collection:collectionPage,optimizer:optimizerPage,matches,stats:statsPage,meta:metaPage,tournaments:window.tournamentsPage||dashboard,rank:rankBorderPage,trade:tradePage,streamer:streamerPage,coach:window.pocketCoachPage||dashboard,training:window.trainingPage||dashboard,profile:window.profilePage||accountPage,teamwars:window.teamWarsPage||dashboard,sync:window.pocketSyncPage||accountPage,account:accountPage,about:aboutPage,more:morePage};
+   const pages={dashboard,decks,collection:collectionPage,optimizer:optimizerPage,matches,stats:statsPage,meta:metaPage,tournaments:window.tournamentsPage||dashboard,rank:window.rankBorderPage||dashboard,trade:tradePage,streamer:window.streamerPage||dashboard,coach:window.pocketCoachPage||dashboard,training:window.trainingPage||dashboard,profile:window.profilePage||accountPage,teamwars:window.teamWarsPage||dashboard,sync:window.pocketSyncPage||accountPage,account:accountPage,about:aboutPage,more:morePage};
    (pages[state.page]||dashboard)();
    const pageRoot=document.getElementById('app');
    if(pageRoot){pageRoot.classList.remove('ppcPageEnter');void pageRoot.offsetWidth;pageRoot.classList.add('ppcPageEnter');}

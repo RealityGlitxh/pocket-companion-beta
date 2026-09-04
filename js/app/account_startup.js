@@ -97,4 +97,4 @@ startPocketNexus();
 
 
 // V8.11 Rank Intelligence auto-refresh
-window.addEventListener("load",()=>{try{window.PPCRankBorderService?.startAutoRefresh?.(()=>{if(state.page==="rank")rankBorderPage()})}catch(e){console.warn("Rank auto-refresh unavailable",e)}});
+window.addEventListener("load",()=>{try{window.PPCRankBorderService?.startAutoRefresh?.(()=>{if(state.page==="rank")window.rankBorderPage?.()})}catch(e){console.warn("Rank auto-refresh unavailable",e)}});

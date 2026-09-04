@@ -44,6 +44,7 @@
   const target=[...app.querySelectorAll('.panel')].find(x=>x.textContent.includes('Scene Rotation'))||app.querySelector('.bottomnote');
   target?.parentNode?.insertBefore(panel,target);
  }
+ window.PPCStreamerExpansionEnhance=injectStreamer;
  const oldStreamer=window.streamerPage;if(typeof oldStreamer==='function')window.streamerPage=function(){oldStreamer.apply(this,arguments);injectStreamer()};
  async function sharedDeckLanding(){
   const token=new URLSearchParams(location.search).get('deck');if(!token)return;

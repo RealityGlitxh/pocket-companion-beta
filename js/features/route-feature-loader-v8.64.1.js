@@ -12,6 +12,11 @@
       label:'Rank Intelligence',
       scripts:['js/app/rank_tools-v8.64.1.js?v=864124']
     },
+    streamer:{
+      ready:()=>typeof window.streamerPage==='function',
+      label:'Streamer Control Center',
+      scripts:['js/app/streamer_tools-v8.64.1.js?v=864125']
+    },
     training:{
       ready:()=>typeof window.trainingPage==='function',
       label:'Brain Teasers',
