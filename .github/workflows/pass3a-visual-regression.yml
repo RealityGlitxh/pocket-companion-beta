@@ -50,9 +50,8 @@ jobs:
           const intentionalScrollSelectors = [
             '.matrixWrap','.metaMatchupScroll','.winLossChartScroll','.rankChartWrap','.twTabBar',
             '.collectionModes','.analyticsTabs','.cohesiveAnalyticsTabs','.coachQuickPrompts',
-            '.managerRoster','.freeAgentGrid','.fixtureList','.streamPreview','.builderCatalog'
+            '.managerRoster','.freeAgentGrid','.fixtureList','.streamPreview','.builderCatalog','.wtcArtFrame'
           ];
-
           function safeName(s){ return s.replace(/[^a-z0-9_-]/gi,'-'); }
 
           (async()=>{
@@ -71,11 +70,13 @@ jobs:
               await page.goto('http://127.0.0.1:8123/index.html', {waitUntil:'domcontentloaded', timeout:30000});
               await page.waitForTimeout(1500);
               const guest = page.getByRole('button',{name:/continue as guest/i});
-              if(await guest.count()) { try { await guest.click({timeout:3000}); await page.waitForTimeout(900); } catch{} }
+              if(await guest.count()) { try { await guest.click({timeout:3000}); await page.waitForTimeout(800); } catch{} }
+              const skip = page.getByRole('button',{name:/^skip$/i});
+              if(await skip.count()) { try { await skip.first().click({timeout:2000}); await page.waitForTimeout(500); } catch{} }
 
               for (const [label, route] of routes){
                 pageErrors.length = 0; consoleErrors.length = 0;
-                const routeResult = await page.evaluate(async (route) => {
+                const routeResult = await page.evaluate((route) => {
                   try {
                     if (typeof window.goPage === 'function') window.goPage(route);
                     else { window.state.page = route; window.render?.(); }
@@ -94,48 +95,37 @@ jobs:
                   const offenders=[];
                   for(const el of document.querySelectorAll('body *')){
                     if(!visible(el)||intentional(el)) continue;
-                    const r=el.getBoundingClientRect();
-                    const style=getComputedStyle(el);
+                    const r=el.getBoundingClientRect(), style=getComputedStyle(el);
                     if(style.position==='fixed' || style.position==='absolute') continue;
                     const right=r.right-innerWidth, left=-r.left;
-                    if(right>6 || left>6){
-                      offenders.push({tag:el.tagName, cls:String(el.className||'').slice(0,100), right:Math.round(right), left:Math.round(left), width:Math.round(r.width)});
-                    }
+                    if(right>6 || left>6) offenders.push({tag:el.tagName,cls:String(el.className||'').slice(0,100),right:Math.round(right),left:Math.round(left),width:Math.round(r.width)});
                   }
                   const tinyControls=[];
                   for(const el of document.querySelectorAll('button,input,select,textarea,a')){
                     if(!visible(el)||intentional(el)) continue;
+                    if(el.matches('input[type="checkbox"],input[type="radio"]')) continue;
                     const r=el.getBoundingClientRect();
-                    if(r.height<28 || r.width<28) tinyControls.push({tag:el.tagName, text:(el.textContent||el.getAttribute('aria-label')||'').trim().slice(0,60), w:Math.round(r.width), h:Math.round(r.height)});
+                    if(r.height<28 || r.width<28) tinyControls.push({tag:el.tagName,text:(el.textContent||el.getAttribute('aria-label')||'').trim().slice(0,60),w:Math.round(r.width),h:Math.round(r.height)});
                   }
                   const clippedText=[];
                   for(const el of document.querySelectorAll('h1,h2,h3,p,strong,small,button,label')){
                     if(!visible(el)||intentional(el)) continue;
                     const s=getComputedStyle(el);
-                    if(s.overflow==='hidden' && el.scrollWidth>el.clientWidth+4 && s.textOverflow!=='ellipsis'){
-                      clippedText.push({tag:el.tagName, cls:String(el.className||'').slice(0,90), text:(el.textContent||'').trim().slice(0,70)});
-                    }
+                    if(s.overflow==='hidden' && el.scrollWidth>el.clientWidth+4 && s.textOverflow!=='ellipsis') clippedText.push({tag:el.tagName,cls:String(el.className||'').slice(0,90),text:(el.textContent||'').trim().slice(0,70)});
                   }
                   const app=document.getElementById('app');
-                  return {
-                    title:document.querySelector('#app h1')?.textContent?.trim()||'',
-                    rootOverflow:Math.round(rootOverflow),
-                    offenders:offenders.slice(0,12),
-                    tinyControls:tinyControls.slice(0,12),
-                    clippedText:clippedText.slice(0,12),
-                    appHeight:app?Math.round(app.getBoundingClientRect().height):0,
-                    bodyHeight:document.body.scrollHeight
-                  };
+                  return {title:document.querySelector('#app h1')?.textContent?.trim()||'',rootOverflow:Math.round(rootOverflow),offenders:offenders.slice(0,12),tinyControls:tinyControls.slice(0,12),clippedText:clippedText.slice(0,12),appHeight:app?Math.round(app.getBoundingClientRect().height):0,bodyHeight:document.body.scrollHeight};
                 }, intentionalScrollSelectors);
 
                 const shot = `visual-regression/${vp.name}-${safeName(label)}.png`;
                 await page.screenshot({path:shot, fullPage:true});
                 const severeOverflow = metrics.rootOverflow > 8;
+                const errorScreen = /this page hit an error/i.test(metrics.title);
                 const noContent = metrics.appHeight < 80 || !metrics.title;
-                const runtimeBroken = !routeResult.ok || pageErrors.length>0;
+                const runtimeBroken = !routeResult.ok || pageErrors.length>0 || errorScreen;
                 if(severeOverflow || noContent || runtimeBroken) failures++;
-                report.push({viewport:vp.name,route,label,routeResult,metrics,pageErrors:[...new Set(pageErrors)].slice(0,8),consoleErrors:[...new Set(consoleErrors)].slice(0,8),severeOverflow,noContent,runtimeBroken,shot});
-                console.log(`${vp.name.padEnd(7)} ${label.padEnd(12)} overflow=${metrics.rootOverflow}px offenders=${metrics.offenders.length} tiny=${metrics.tinyControls.length} clipped=${metrics.clippedText.length} errors=${pageErrors.length} title=${JSON.stringify(metrics.title)}`);
+                report.push({viewport:vp.name,route,label,routeResult,metrics,pageErrors:[...new Set(pageErrors)].slice(0,8),consoleErrors:[...new Set(consoleErrors)].slice(0,8),severeOverflow,errorScreen,noContent,runtimeBroken,shot});
+                console.log(`${vp.name.padEnd(7)} ${label.padEnd(12)} overflow=${metrics.rootOverflow}px offenders=${metrics.offenders.length} tiny=${metrics.tinyControls.length} clipped=${metrics.clippedText.length} errors=${pageErrors.length} errorScreen=${errorScreen} title=${JSON.stringify(metrics.title)}`);
               }
               await context.close();
             }
@@ -150,6 +140,7 @@ jobs:
               lines.push(`- tiny controls: ${r.metrics.tinyControls.length}`);
               lines.push(`- clipped text suspects: ${r.metrics.clippedText.length}`);
               lines.push(`- page errors: ${r.pageErrors.length}`);
+              lines.push(`- error screen: ${r.errorScreen?'yes':'no'}`);
               if(r.metrics.offenders.length) lines.push('```json\n'+JSON.stringify(r.metrics.offenders,null,2)+'\n```');
               if(r.pageErrors.length) lines.push('```text\n'+r.pageErrors.join('\n')+'\n```');
               lines.push('');
