@@ -1,4 +1,4 @@
-/* PocketNexus V8.67.4 — Ranked Stream Control Center
+/* PocketNexus V8.67.5 — Ranked Stream Control Center
    UI-only refinement layered on the existing Streamer renderer/workspace split.
    Existing session, match, RP, OBS, persistence and workspace handlers are reused. */
 (function(){
@@ -11,7 +11,7 @@
     if(document.querySelector('link[data-streamer-ranked-refine]'))return;
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='css/streamer-ranked-refine-v8.67.2.css?v=867404';
+    link.href='css/streamer-ranked-refine-v8.67.2.css?v=867505';
     link.dataset.streamerRankedRefine='true';
     document.head.appendChild(link);
   }
@@ -70,12 +70,47 @@
   function buildSecondaryGrid(app){
     let grid=app.querySelector('.rankedSecondaryGrid');
     if(!grid){grid=document.createElement('div');grid.className='rankedSecondaryGrid'}
-    const recent=section(app,'recent-matches'),obs=section(app,'obs');
-    if(!recent||!obs)return;
-    recent.classList.add('rankedRecentCard');obs.classList.add('rankedObsCard');
+    const recent=section(app,'recent-matches');
+    if(!recent)return;
+    recent.classList.add('rankedRecentCard');
     const primary=app.querySelector('.rankedControlGrid');
     if(!grid.isConnected)primary?.after(grid);
-    grid.append(recent,obs);
+    grid.append(recent);
+  }
+
+  function buildOverlayStudio(app){
+    const obs=section(app,'obs'),settings=section(app,'overlay-settings');
+    if(!obs||!settings)return;
+    obs.classList.add('rankedObsCard');
+    settings.classList.add('rankedOverlaySettingsCard');
+
+    let studio=app.querySelector('.rankedOverlayStudio');
+    if(!studio){
+      studio=document.createElement('section');
+      studio.className='rankedOverlayStudio';
+      studio.innerHTML='<div class="rankedOverlayStudioHeader"><div><span>LIVE OVERLAY EDITOR</span><h2>OBS Preview & Settings</h2><p>Change your overlay and see the result immediately — no workspace swapping required.</p></div><span class="rankedLiveEditBadge"><i></i>LIVE PREVIEW</span></div><div class="rankedOverlayStudioGrid"></div>';
+    }
+    const secondary=app.querySelector('.rankedSecondaryGrid');
+    if(!studio.isConnected)secondary?.after(studio);
+    studio.querySelector('.rankedOverlayStudioGrid')?.append(obs,settings);
+
+    settings.classList.remove('rankedCollapsible');
+    settings.dataset.rankedCollapsible='0';
+    settings.querySelectorAll('.rankedCollapseToggle').forEach(x=>x.remove());
+    const oldBody=settings.querySelector('.rankedCollapsibleBody');
+    if(oldBody){
+      oldBody.hidden=false;
+      while(oldBody.firstChild)settings.appendChild(oldBody.firstChild);
+      oldBody.remove();
+    }
+    if(!settings.querySelector('.rankedLivePreviewHint')){
+      const hint=document.createElement('div');
+      hint.className='rankedLivePreviewHint';
+      hint.innerHTML='<span class="rankedHintDot"></span><div><strong>Live editing enabled</strong><small>Layout, theme, recent matches and visibility toggles update the preview instantly.</small></div>';
+      const head=settings.querySelector('.between')||settings.querySelector('h2,h3');
+      head?.insertAdjacentElement('afterend',hint);
+    }
+
     const preview=obs.querySelector('#streamPreview,.streamPreview');
     if(preview)preview.classList.add('rankedObsPreview');
   }
@@ -109,11 +144,10 @@
     rankVisual(app);
     performanceEmpty(app);
     buildSecondaryGrid(app);
-    makeCollapsible(section(app,'overlay-settings'),'Overlay Settings');
+    buildOverlayStudio(app);
     makeCollapsible(section(app,'diagnostics'),'Advanced / Diagnostics');
-    const settings=section(app,'overlay-settings'),diag=section(app,'diagnostics'),secondary=app.querySelector('.rankedSecondaryGrid');
-    if(secondary&&settings)secondary.after(settings);
-    if(settings&&diag)settings.after(diag);
+    const diag=section(app,'diagnostics'),studio=app.querySelector('.rankedOverlayStudio');
+    if(studio&&diag)studio.after(diag);
     window.PPCAccessibilityRepair?.repair?.();
   }
 
@@ -126,5 +160,5 @@
 
   ensureStyles();
   if(!install()){let tries=0;const t=setInterval(()=>{if(install()||++tries>200)clearInterval(t)},50)}
-  window.PPCStreamerRankedRefine={version:'8.67.4',apply,install};
+  window.PPCStreamerRankedRefine={version:'8.67.5',apply,install};
 })();
