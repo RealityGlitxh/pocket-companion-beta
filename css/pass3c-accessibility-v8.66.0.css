@@ -2,30 +2,39 @@
    No page redesign: touch targets, responsive media containment, focus visibility. */
 
 @media (max-width: 900px){
-  #app button:not(.iconBtn):not(.collectionCard):not(.ppcRankForecastCard),
+  #app button:not(.iconBtn):not(.collectionCard),
   #app [role="button"]:not(.collectionCard),
   #app select{
-    min-height:44px;
+    min-height:44px !important;
   }
 
   #app .entryLink,
   #app button.entryLink{
-    min-height:44px;
+    min-height:44px !important;
     padding-block:10px;
   }
 
-  /* Rank charts may be wider internally, but must stay inside their card on phones. */
+  /* Rank SVG internals use fixed drawing coordinates; scale the SVG viewport itself. */
   #app svg{
-    max-width:100%;
+    max-width:100% !important;
+  }
+  #app svg:not([width]),
+  #app svg[width]{
+    width:100% !important;
   }
 
-  /* Training artwork must never escape its panel. */
   #app img{
-    max-width:100%;
+    max-width:100% !important;
+    height:auto;
   }
 }
 
-/* Keyboard focus should remain obvious throughout the app. */
+/* Training artwork is fixed-width in its renderer; contain it without changing layout. */
+#app img{
+  max-width:100%;
+  height:auto;
+}
+
 #app :is(button,a,input,select,textarea,[role="button"],[tabindex]):focus-visible,
 .appHeader :is(button,a,input,select,textarea,[role="button"],[tabindex]):focus-visible,
 .mobileBottomNav :is(button,a,[role="button"],[tabindex]):focus-visible{
@@ -33,7 +42,6 @@
   outline-offset:3px;
 }
 
-/* Preserve reduced-motion preference even for feature-specific polish layers. */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{
     scroll-behavior:auto !important;
