@@ -1,0 +1,100 @@
+name: PocketNexus Beta Functional QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/beta-functional-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  functional-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated local beta
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-beta-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Run functional beta QA
+        run: |
+          mkdir -p qa-functional-shots
+          cat > beta-functional-qa.js <<'NODE'
+          const {chromium}=require('playwright');
+          const vps=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
+          const routes=['dashboard','decks','matches','meta','collection','stats','rank','streamer','profile','teamwars','training','sync','more','account','about'];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            let failures=[];
+            for(const [vp,width,height] of vps){
+              const ctx=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+              const page=await ctx.newPage(); const errors=[];
+              page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(1400);
+              const guest=page.getByRole('button',{name:/continue as guest/i});
+              if(await guest.count()) try{await guest.click({timeout:2500});await page.waitForTimeout(500)}catch{}
+              const clear=()=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              await clear();
+              for(const route of routes){
+                await page.evaluate(r=>window.goPage?.(r),route); await page.waitForTimeout(550); await clear();
+                const state=await page.evaluate(()=>({
+                  text:(document.querySelector('#app')?.innerText||'').trim().slice(0,250),
+                  error:/This page hit an error/i.test(document.body.innerText),
+                  overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth
+                }));
+                if(state.error||state.text.length<20||state.overflow>12) failures.push({severity:'P1',vp,route,type:'route-render',state});
+              }
+
+              // Exercise known Battle tabs without mutating real/cloud data.
+              await page.evaluate(()=>window.goPage?.('matches')); await page.waitForTimeout(450); await clear();
+              for(const name of [/sessions/i,/history/i,/record/i]){
+                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click();await page.waitForTimeout(250)}catch(e){failures.push({severity:'P2',vp,route:'matches',type:'tab-click',detail:String(e.message).slice(0,160)})}
+              }
+
+              // Exercise Meta cached window controls and verify they don't explode navigation.
+              await page.evaluate(()=>window.goPage?.('meta')); await page.waitForTimeout(500); await clear();
+              for(const label of ['24H','7D','14D','30D']){
+                const b=page.getByRole('button',{name:label,exact:true}); if(await b.count()) try{await b.click();await page.waitForTimeout(150)}catch(e){failures.push({severity:'P1',vp,route:'meta',type:'window-click',label,detail:String(e.message).slice(0,160)})}
+              }
+
+              // Exercise Collection modes and quick-edit toggle; isolated browser only.
+              await page.evaluate(()=>window.goPage?.('collection')); await page.waitForTimeout(500); await clear();
+              for(const name of [/all cards/i,/owned/i,/missing/i,/wishlist/i,/trade binder/i]){
+                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click();await page.waitForTimeout(130)}catch(e){failures.push({severity:'P2',vp,route:'collection',type:'mode-click',detail:String(e.message).slice(0,160)})}
+              }
+
+              // Browser navigation and rapid route switching for global renderer collisions.
+              for(let cycle=0;cycle<2;cycle++) for(const r of ['dashboard','decks','matches','meta','collection','rank','training','account']){
+                await page.evaluate(x=>window.goPage?.(x),r); await page.waitForTimeout(90);
+              }
+              const rapid=await page.evaluate(()=>({error:/This page hit an error/i.test(document.body.innerText),text:(document.querySelector('#app')?.innerText||'').trim().length}));
+              if(rapid.error||rapid.text<20) failures.push({severity:'P0',vp,type:'rapid-navigation',rapid});
+              if(errors.length) failures.push({severity:'P1',vp,type:'page-errors',errors});
+              await page.screenshot({path:`qa-functional-shots/${vp}-final.png`,fullPage:true});
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('BETA_FUNCTIONAL_QA_RESULTS',JSON.stringify(failures,null,2));
+            if(failures.length){console.error('BETA_FUNCTIONAL_QA_FAILURES',failures.length);process.exit(1)}
+            console.log('BETA_FUNCTIONAL_QA_OK');
+          })();
+          NODE
+          node beta-functional-qa.js
+      - name: Upload functional QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-functional-qa-shots
+          path: qa-functional-shots
