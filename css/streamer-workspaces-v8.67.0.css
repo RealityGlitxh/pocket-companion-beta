@@ -1,0 +1,40 @@
+/* PocketNexus V8.67.0 — Streamer workspace split */
+.streamerWorkspacePage{max-width:1540px;margin:0 auto;padding-bottom:28px}
+.streamerWorkspaceHeader{align-items:flex-start;gap:16px;margin-bottom:14px}
+.streamerWorkspaceHeader h1{margin-bottom:4px}
+.streamerWorkspaceTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.streamerWorkspaceTab{min-height:76px;padding:13px 15px;text-align:left;border:1px solid #2b4057;background:#0c1621;border-radius:14px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.streamerWorkspaceTab span{font-size:1rem;font-weight:800}
+.streamerWorkspaceTab small{font-size:.74rem;line-height:1.25;color:var(--muted,#9eacbc);font-weight:500}
+.streamerWorkspaceTab.active{border-color:#55b7ff;background:linear-gradient(135deg,#142b3d,#0e1c29);box-shadow:inset 0 0 0 1px rgba(85,183,255,.18)}
+.streamerWorkspaceTab.active small{color:#c9d9e8}
+.streamerWorkspaceIntro{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;margin-bottom:12px;border:1px solid #2b4057;border-radius:14px;background:linear-gradient(135deg,#121e2b,#0b141e)}
+.streamerWorkspaceIntro h2{margin:3px 0 4px;font-size:1.25rem}
+.streamerWorkspaceIntro p{margin:0;color:var(--muted,#9eacbc);max-width:820px}
+.streamerWorkspaceEyebrow{font-size:.7rem;letter-spacing:.08em;color:#77c7ff;font-weight:800}
+.streamerWorkspacePage>.panel{margin-top:10px}
+.streamerLegacyModeSwitch{display:none!important}
+.streamerModeSetup{border-color:#34506b}
+.streamerModeSetup>.between{margin-bottom:8px}
+.streamerRankedModePanel{display:none!important}
+.streamerWorkspacePage [hidden]{display:none!important}
+.streamerWorkspacePage [data-streamer-section="creator-expansion"]{border-color:#3b4c61}
+.streamerWorkspacePage [data-streamer-section="scene-rotation"]{border-color:#3b4c61}
+.streamerWorkspacePage [data-streamer-section="obs"],
+.streamerWorkspacePage [data-streamer-section="overlay-settings"],
+.streamerWorkspacePage [data-streamer-section="diagnostics"]{background:#101b27}
+.streamerWorkspacePage[data-streamer-workspace="caster"] .streamerWorkspaceIntro{background:linear-gradient(135deg,#172131,#0d151f)}
+.streamerWorkspacePage[data-streamer-workspace="tournament"] .streamerWorkspaceIntro{background:linear-gradient(135deg,#182531,#0d171f)}
+@media (max-width:900px){
+  .streamerWorkspacePage{width:calc(100% - 16px)}
+  .streamerWorkspaceTabs{grid-template-columns:1fr;gap:8px}
+  .streamerWorkspaceTab{min-height:58px}
+  .streamerWorkspaceIntro{padding:14px}
+}
+@media (max-width:560px){
+  .streamerWorkspaceHeader{display:block}
+  .streamerWorkspaceHeader>.badge{margin-top:8px}
+  .streamerWorkspaceTab{padding:11px 12px}
+  .streamerWorkspaceIntro h2{font-size:1.1rem}
+}
+@media (prefers-reduced-motion:reduce){.streamerWorkspaceTab{transition:none!important}}
