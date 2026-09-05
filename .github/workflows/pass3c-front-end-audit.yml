@@ -101,4 +101,4 @@ jobs:
           name: pass3c-front-end-audit-shots
           path: qa-shots
 
-# rerun marker: Pass 3C-1 repairs wired
+# rerun marker: isolated Pass 3C-1 fixes v2
