@@ -1,0 +1,72 @@
+/* PocketNexus V8.67.2 — Ranked Stream Control Center */
+.rankled-placeholder{display:none}
+.streamerWorkspacePage.rankedStreamControlCenter{max-width:1540px}
+.rankedStreamControlCenter .rankedControlHero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px}
+.rankedStreamControlCenter .rankedControlHero>div:first-child{min-width:0}
+.rankedStatusTray{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.rankedStatusChip{min-width:92px;padding:9px 11px;border:1px solid #31465c;border-radius:12px;background:#0c1621;display:flex;flex-direction:column;gap:2px}
+.rankedStatusChip small{font-size:.62rem;letter-spacing:.08em;color:var(--muted,#9eacbc);font-weight:800}
+.rankedStatusChip strong{font-size:.88rem;line-height:1.15}
+.rankedStatusChip.live{border-color:#49c98c;background:rgba(73,201,140,.08)}
+.rankedControlGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);grid-template-areas:'live rank' 'quick perf';gap:12px;margin-top:12px}
+.rankedControlGrid>.panel{margin:0!important;min-width:0}
+.rankedLiveCard{grid-area:live}
+.rankedQuickCard{grid-area:quick;border-color:#3f6f97!important;box-shadow:inset 0 0 0 1px rgba(85,183,255,.08)}
+.rankedRankCard{grid-area:rank}
+.rankedPerformanceCard{grid-area:perf}
+.rankedStreamControlCenter .rankedQuickCard h2,.rankedStreamControlCenter .rankedQuickCard h3{font-size:1.25rem;margin-bottom:8px}
+.rankedStreamControlCenter .rankedQuickCard label,.rankedStreamControlCenter .rankedLiveCard label{font-size:.75rem;font-weight:700;color:#c8d5e2}
+.rankedStreamControlCenter .rankedQuickCard select,.rankedStreamControlCenter .rankedLiveCard select{min-height:44px}
+.rankedStreamControlCenter .rankedQuickCard button{min-height:44px}
+.rankedRankVisual{margin:8px 0 12px;padding:12px 13px;border:1px solid #2e4257;background:#0c1621;border-radius:12px}
+.rankedRankHeadline{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.rankedRankHeadline strong{font-size:1.25rem}
+.rankedRankHeadline span{font-weight:800;color:#b8dfff}
+.rankedRankProgress{height:8px;margin:10px 0 7px;background:#172536;border-radius:999px;overflow:hidden}
+.rankedRankProgress i{display:block;height:100%;background:linear-gradient(90deg,#4ba9ef,#6fc9ff);border-radius:inherit}
+.rankedRankVisual small{color:var(--muted,#9eacbc)}
+.rankedPerformanceMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 8px}
+.rankedPerformanceMetrics>div{padding:10px;border:1px solid #2d4054;border-radius:10px;background:#0d1722;display:flex;flex-direction:column;gap:2px}
+.rankedPerformanceMetrics strong{font-size:1.05rem}
+.rankedPerformanceMetrics small{font-size:.68rem;color:var(--muted,#9eacbc)}
+.rankedSecondaryGrid{display:grid;grid-template-columns:minmax(280px,.75fr) minmax(0,1.25fr);gap:12px;margin-top:12px}
+.rankedSecondaryGrid>.panel{margin:0!important;min-width:0}
+.rankedRecentCard{min-height:0!important}
+.rankedObsCard{border-color:#34506b!important;background:linear-gradient(180deg,#111d2a,#0d1721)!important}
+.rankedObsCard .between{gap:10px}
+.rankedObsPreview{margin-top:12px;padding:16px!important;border:1px solid #30465d!important;border-radius:14px;background:#08111a!important;min-height:180px}
+.rankedObsPreview .streamOverlay{max-width:100%}
+.rankedStreamControlCenter .streamOverlay.full{display:grid;gap:12px}
+.rankedStreamControlCenter .streamTop,.rankedStreamControlCenter .streamStats{gap:10px}
+.rankedStreamControlCenter .streamTop>div,.rankedStreamControlCenter .streamStats>div{padding:10px 12px;border:1px solid #24384b;border-radius:10px;background:#0d1823}
+.rankedCollapsible{margin-top:12px!important;background:#101b27!important}
+.rankedCollapseHeader,.rankedCollapsible>.between{align-items:center}
+.rankedCollapseToggle{min-width:104px}
+.rankedCollapsibleBody{margin-top:12px}
+.rankedCollapsibleBody[hidden]{display:none!important}
+.rankedStreamControlCenter [data-streamer-section='overlay-settings'] .rankedCollapsibleBody .row{gap:8px;flex-wrap:wrap}
+.rankedStreamControlCenter [data-streamer-section='overlay-settings'] label{min-width:0}
+.rankedStreamControlCenter [data-streamer-section='diagnostics']{opacity:.96}
+@media (max-width:1100px){
+ .rankedControlGrid{grid-template-columns:1fr 1fr;grid-template-areas:'live rank' 'quick quick' 'perf perf'}
+ .rankedSecondaryGrid{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+ .rankedStreamControlCenter .rankedControlHero{align-items:flex-start;flex-direction:column}
+ .rankedStatusTray{justify-content:flex-start;width:100%}
+ .rankedStatusChip{flex:1 1 120px}
+ .rankedControlGrid{grid-template-columns:1fr;grid-template-areas:'live' 'quick' 'rank' 'perf'}
+ .rankedPerformanceMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+ .rankedStreamControlCenter .rankedControlHero{padding:14px}
+ .rankedStatusTray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+ .rankedStatusChip{min-width:0;padding:8px}
+ .rankedStatusChip strong{font-size:.78rem}
+ .rankedPerformanceMetrics{grid-template-columns:1fr 1fr}
+ .rankedStreamControlCenter .rankedQuickCard .row{flex-wrap:wrap}
+ .rankedStreamControlCenter .rankedQuickCard .row>button{flex:1 1 100px}
+ .rankedCollapsible>.between{align-items:flex-start;gap:8px;flex-wrap:wrap}
+ .rankedCollapseToggle{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.rankedRankProgress i{transition:none!important}}
