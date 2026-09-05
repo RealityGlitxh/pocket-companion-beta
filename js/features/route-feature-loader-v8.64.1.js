@@ -5,7 +5,10 @@
 (function(){
   if(window.PPCFeatureLoader)return;
 
-  const profileTeamScripts=['js/app/profile_teamwars.js?v=864122'];
+  const profileTeamScripts=[
+    'js/app/profile_teamwars.js?v=864122',
+    'js/features/teamwars-scouting-dropdown-v8.66.1.js?v=866101'
+  ];
   const ROUTES={
     rank:{
       ready:()=>typeof window.rankBorderPage==='function',
@@ -44,7 +47,7 @@
       scripts:profileTeamScripts
     },
     teamwars:{
-      ready:()=>typeof window.teamWarsPage==='function',
+      ready:()=>typeof window.teamWarsPage==='function'&&!!window.PPCTeamWarsScoutingDropdown,
       label:'Team Wars',
       scripts:profileTeamScripts
     }
