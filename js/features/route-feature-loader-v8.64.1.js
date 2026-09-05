@@ -7,7 +7,7 @@
 
   const profileTeamScripts=[
     'js/app/profile_teamwars.js?v=864122',
-    'js/features/teamwars-scouting-dropdown-v8.66.1.js?v=866101'
+    'js/features/teamwars-scouting-dropdown-v8.66.1.js?v=866201'
   ];
   const ROUTES={
     rank:{
