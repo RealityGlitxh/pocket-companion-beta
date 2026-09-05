@@ -21,7 +21,7 @@
       scripts:[
         'js/app/streamer_tools-v8.64.1.js?v=864125',
         'js/features/streamer-workspaces-v8.67.0.js?v=867102',
-        'js/features/streamer-ranked-refine-v8.67.2.js?v=867404'
+        'js/features/streamer-ranked-refine-v8.67.2.js?v=867505'
       ]
     },
     training:{
