@@ -14,7 +14,7 @@
     if(document.querySelector('link[data-streamer-workspaces]'))return;
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='css/streamer-workspaces-v8.67.0.css?v=867001';
+    link.href='css/streamer-workspaces-v8.67.0.css?v=867102';
     link.dataset.streamerWorkspaces='true';
     document.head.appendChild(link);
   }
@@ -51,14 +51,18 @@
     const wrap=document.createElement('div');
     wrap.className='streamerWorkspaceTabs';
     wrap.setAttribute('role','tablist');
-    [['ranked','Ranked','Track RP, sessions and ranked matches'],['tournament','Tournament','Manage your tournament run'],['caster','Tournament Caster','Control scores and broadcast scenes']].forEach(([key,label,sub])=>{
+    [
+      ['ranked','Ranked','Track RP, sessions and ranked matches','▥'],
+      ['tournament','Tournament','Manage your tournament run','♛'],
+      ['caster','Tournament Caster','Control scores and broadcast scenes','◉']
+    ].forEach(([key,label,sub,icon])=>{
       const b=document.createElement('button');
       b.type='button';
       b.className='streamerWorkspaceTab'+(mode===key?' active':'');
       b.setAttribute('role','tab');
       b.setAttribute('aria-selected',mode===key?'true':'false');
       b.setAttribute('aria-label',label+' workspace');
-      b.innerHTML=`<span>${label}</span><small>${sub}</small>`;
+      b.innerHTML=`<span class="streamerWorkspaceIcon" aria-hidden="true">${icon}</span><span class="streamerWorkspaceCopy"><strong>${label}</strong><small>${sub}</small></span>`;
       b.onclick=()=>window.streamerMode?.(key);
       wrap.appendChild(b);
     });
@@ -118,23 +122,14 @@
     }
 
     const modePanel=panels.find(p=>p.dataset.streamerSection==='mode');
-    if(modePanel && mode==='ranked'){
-      // The original ranked mode panel only repeats the selected mode. Keep it accessible
-      // to the renderer but visually collapse it so Ranked starts at Live Session.
-      modePanel.classList.add('streamerRankedModePanel');
-    }
-
+    if(modePanel && mode==='ranked')modePanel.classList.add('streamerRankedModePanel');
     window.PPCAccessibilityRepair?.repair?.();
   }
 
   function install(){
     if(typeof window.streamerPage!=='function'||window.streamerPage.__workspaceSplit)return false;
     const base=window.streamerPage;
-    function wrapped(){
-      const out=base.apply(this,arguments);
-      requestAnimationFrame(apply);
-      return out;
-    }
+    function wrapped(){const out=base.apply(this,arguments);requestAnimationFrame(apply);return out;}
     wrapped.__workspaceSplit=true;
     wrapped.__base=base;
     window.streamerPage=wrapped;
