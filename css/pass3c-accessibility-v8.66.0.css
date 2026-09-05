@@ -1,0 +1,44 @@
+/* PocketNexus Pass 3C-1 — surgical accessibility + responsive repair.
+   No page redesign: touch targets, responsive media containment, focus visibility. */
+
+@media (max-width: 900px){
+  #app button:not(.iconBtn):not(.collectionCard):not(.ppcRankForecastCard),
+  #app [role="button"]:not(.collectionCard),
+  #app select{
+    min-height:44px;
+  }
+
+  #app .entryLink,
+  #app button.entryLink{
+    min-height:44px;
+    padding-block:10px;
+  }
+
+  /* Rank charts may be wider internally, but must stay inside their card on phones. */
+  #app svg{
+    max-width:100%;
+  }
+
+  /* Training artwork must never escape its panel. */
+  #app img{
+    max-width:100%;
+  }
+}
+
+/* Keyboard focus should remain obvious throughout the app. */
+#app :is(button,a,input,select,textarea,[role="button"],[tabindex]):focus-visible,
+.appHeader :is(button,a,input,select,textarea,[role="button"],[tabindex]):focus-visible,
+.mobileBottomNav :is(button,a,[role="button"],[tabindex]):focus-visible{
+  outline:2px solid currentColor;
+  outline-offset:3px;
+}
+
+/* Preserve reduced-motion preference even for feature-specific polish layers. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto !important;
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+  }
+}
