@@ -80,7 +80,6 @@ jobs:
                   return {rootOverflow,overflowers,tiny,unlabeled,live,errorScreen:/This page hit an error/i.test(document.body.innerText),contentLen:content.length,h1:document.querySelector('#app h1')?.textContent?.trim()||''};
                 },intentionalScroll);
                 if(m.rootOverflow>8||m.overflowers.length||m.errorScreen||m.contentLen<30)fail(`${vp}:${label}:layout`,m);
-                // Desktop may use smaller text-link controls; enforce strict touch target threshold on tablet/mobile only.
                 if(vp!=='desktop'&&m.tiny.length)fail(`${vp}:${label}:touch-targets`,m.tiny);
                 if(m.unlabeled.length)fail(`${vp}:${label}:unlabeled-controls`,m.unlabeled);
                 await page.screenshot({path:`qa-shots/${vp}-${label}.png`,fullPage:true});
@@ -101,3 +100,5 @@ jobs:
         with:
           name: pass3c-front-end-audit-shots
           path: qa-shots
+
+# rerun marker: Pass 3C-1 repairs wired
