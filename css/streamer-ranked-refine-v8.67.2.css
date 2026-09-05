@@ -1,4 +1,4 @@
-/* PocketNexus V8.67.4 — Ranked Stream Control Center hierarchy pass */
+/* PocketNexus V8.67.5 — Ranked Stream Control Center hierarchy pass */
 .streamerWorkspacePage.rankedStreamControlCenter{max-width:1420px;margin:0 auto;padding-bottom:32px}
 .rankedStreamControlCenter .streamerWorkspaceTabs{margin-bottom:10px}
 .rankedStreamControlCenter .rankedControlHero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 17px;margin-bottom:12px}
@@ -42,16 +42,41 @@
 .rankedPerformanceMetrics strong{font-size:1rem}
 .rankedPerformanceMetrics small{font-size:.64rem;color:var(--muted,#9eacbc)}
 
-.rankedSecondaryGrid{display:grid;grid-template-columns:minmax(250px,.65fr) minmax(0,1.35fr);gap:10px;margin-top:10px;align-items:start}
+/* Recent matches stays compact and independent from the overlay editor. */
+.rankedSecondaryGrid{display:block;margin-top:10px}
 .rankedSecondaryGrid>.panel{margin:0!important;min-width:0;padding:15px 16px!important;border-radius:13px!important}
 .rankedRecentCard{min-height:0!important}
 .rankedRecentCard p{margin-bottom:0}
+
+/* OBS + Overlay Settings are one live editing workspace. */
+.rankedOverlayStudio{margin-top:10px;padding:14px;border:1px solid #34506b;border-radius:15px;background:linear-gradient(180deg,#101d2a,#0b151f);box-shadow:inset 0 0 0 1px rgba(87,182,247,.04)}
+.rankedOverlayStudioHeader{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:2px 2px 12px}
+.rankedOverlayStudioHeader>div{min-width:0}
+.rankedOverlayStudioHeader span:first-child{display:block;font-size:.62rem;font-weight:900;letter-spacing:.11em;color:#76c7ff}
+.rankedOverlayStudioHeader h2{margin:3px 0 3px;font-size:1.15rem}
+.rankedOverlayStudioHeader p{margin:0;color:var(--muted,#9eacbc);font-size:.8rem;line-height:1.35}
+.rankedLiveEditBadge{display:inline-flex!important;align-items:center;gap:7px;white-space:nowrap;padding:7px 10px;border:1px solid rgba(73,201,140,.45);border-radius:999px;background:rgba(73,201,140,.08);font-size:.64rem!important;font-weight:900!important;letter-spacing:.07em!important;color:#9be7bf!important}
+.rankedLiveEditBadge i,.rankedHintDot{width:7px;height:7px;border-radius:999px;background:#49c98c;box-shadow:0 0 0 4px rgba(73,201,140,.10)}
+.rankedOverlayStudioGrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr);gap:10px;align-items:start}
+.rankedOverlayStudioGrid>.panel{margin:0!important;min-width:0;padding:15px 16px!important;border-radius:13px!important}
 .rankedObsCard{border-color:#34506b!important;background:linear-gradient(180deg,#111d2a,#0d1721)!important}
 .rankedObsCard .between{gap:10px;align-items:flex-start}
 .rankedObsCard .between>.row{gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.rankedOverlaySettingsCard{position:sticky;top:12px;border-color:#2e455c!important;background:#0f1a26!important}
+.rankedOverlaySettingsCard>.between{margin-bottom:8px!important}
+.rankedOverlaySettingsCard .form3{grid-template-columns:1fr!important;gap:9px!important}
+.rankedOverlaySettingsCard .form2{grid-template-columns:1fr!important;gap:9px!important}
+.rankedOverlaySettingsCard select,.rankedOverlaySettingsCard input{width:100%;min-height:40px}
+.rankedOverlaySettingsCard .row{gap:6px!important;flex-wrap:wrap!important}
+.rankedOverlaySettingsCard label{min-width:0!important}
+.rankedLivePreviewHint{display:flex;align-items:flex-start;gap:10px;margin:8px 0 11px;padding:9px 10px;border:1px solid rgba(73,201,140,.24);border-radius:10px;background:rgba(73,201,140,.055)}
+.rankedLivePreviewHint>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rankedLivePreviewHint strong{font-size:.74rem;color:#dff8ea}
+.rankedLivePreviewHint small{font-size:.65rem;line-height:1.3;color:#9fb8aa}
+.rankedLivePreviewHint .rankedHintDot{flex:0 0 auto;margin-top:4px}
 
-/* OBS preview now behaves like a broadcast canvas instead of raw stacked data. */
-.rankedObsPreview{position:relative;margin-top:12px!important;padding:34px 18px 18px!important;border:1px solid #34506b!important;border-radius:14px;background:linear-gradient(135deg,#07111b 0%,#0b1825 48%,#071019 100%)!important;min-height:270px;max-height:none!important;overflow:hidden!important;display:flex;align-items:flex-end;justify-content:flex-start;isolation:isolate}
+/* OBS preview behaves like a broadcast canvas instead of raw stacked data. */
+.rankedObsPreview{position:relative;margin-top:12px!important;padding:34px 18px 18px!important;border:1px solid #34506b!important;border-radius:14px;background:linear-gradient(135deg,#07111b 0%,#0b1825 48%,#071019 100%)!important;min-height:310px;max-height:none!important;overflow:hidden!important;display:flex;align-items:flex-end;justify-content:flex-start;isolation:isolate}
 .rankedObsPreview::before{content:'LIVE OVERLAY PREVIEW';position:absolute;top:11px;left:14px;z-index:2;font-size:.62rem;font-weight:900;letter-spacing:.11em;color:#8bb3d4}
 .rankedObsPreview::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(91,132,166,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(91,132,166,.055) 1px,transparent 1px),radial-gradient(circle at 76% 24%,rgba(53,150,221,.12),transparent 32%);background-size:34px 34px,34px 34px,auto;pointer-events:none}
 .rankedObsPreview .streamOverlay{width:min(100%,560px)!important;max-width:560px!important;margin:0!important;padding:16px!important;border:1px solid rgba(105,185,240,.34)!important;border-radius:15px!important;background:rgba(8,17,27,.90)!important;box-shadow:0 18px 45px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.025);backdrop-filter:blur(8px);color:#f3f8fc!important}
@@ -73,18 +98,20 @@
 .rankedCollapseToggle{min-width:96px;min-height:38px!important}
 .rankedCollapsibleBody{margin-top:10px;padding-top:10px;border-top:1px solid #26394c}
 .rankedCollapsibleBody[hidden]{display:none!important}
-.rankedStreamControlCenter [data-streamer-section='overlay-settings'] .rankedCollapsibleBody .row{gap:7px;flex-wrap:wrap}
-.rankedStreamControlCenter [data-streamer-section='overlay-settings'] label{min-width:0}
 .rankedStreamControlCenter [data-streamer-section='diagnostics']{opacity:.95}
 
 .rankedStreamControlCenter .panel h2,.rankedStreamControlCenter .panel h3{line-height:1.15}
 .rankedStreamControlCenter .panel p.muted{line-height:1.35}
 .rankedStreamControlCenter .panel>.between{gap:10px}
 
+@media (max-width:1180px){
+ .rankedOverlayStudioGrid{grid-template-columns:1fr}
+ .rankedOverlaySettingsCard{position:static}
+ .rankedOverlaySettingsCard .form3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
 @media (max-width:1100px){
  .rankedControlGrid{grid-template-columns:1fr 1fr;grid-template-areas:'quick quick' 'live rank' 'perf perf'}
- .rankedSecondaryGrid{grid-template-columns:1fr}
- .rankedObsPreview{min-height:250px}
+ .rankedObsPreview{min-height:270px}
 }
 @media (max-width:900px){
  .streamerWorkspacePage.rankedStreamControlCenter{width:calc(100% - 16px)}
@@ -92,7 +119,8 @@
  .rankedStatusTray{width:100%;min-width:0}
  .rankedControlGrid{grid-template-columns:1fr;grid-template-areas:'quick' 'live' 'rank' 'perf'}
  .rankedPerformanceMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
- .rankedSecondaryGrid{grid-template-columns:1fr}
+ .rankedOverlayStudioHeader{align-items:flex-start}
+ .rankedOverlaySettingsCard .form3{grid-template-columns:1fr!important}
 }
 @media (max-width:560px){
  .rankedStreamControlCenter .rankedControlHero{padding:13px}
@@ -103,6 +131,9 @@
  .rankedPerformanceMetrics{grid-template-columns:1fr 1fr}
  .rankedStreamControlCenter .rankedQuickCard .row{flex-wrap:wrap}
  .rankedStreamControlCenter .rankedQuickCard .row>button{flex:1 1 120px}
+ .rankedOverlayStudio{padding:10px}
+ .rankedOverlayStudioHeader{display:block}
+ .rankedLiveEditBadge{margin-top:9px}
  .rankedObsCard .between{display:block}
  .rankedObsCard .between>.row{margin-top:8px;justify-content:flex-start}
  .rankedObsPreview{min-height:220px;padding:34px 10px 10px!important}
