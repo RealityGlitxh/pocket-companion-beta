@@ -1,4 +1,4 @@
-/* PocketNexus V8.67.0 — Streamer workspace split
+/* PocketNexus V8.67.1 — Streamer workspace split
    UI-only refinement around the existing Streamer renderer. Existing match, session,
    RP, OBS, tournament journey, sharing and overlay handlers remain untouched. */
 (function(){
@@ -19,11 +19,15 @@
     document.head.appendChild(link);
   }
 
-  function directPanels(app){return [...app.children].filter(el=>el.classList?.contains('panel'));}
+  function workspacePanels(app){
+    const all=[...app.querySelectorAll('.panel')];
+    return all.filter(panel=>!panel.closest('.rankedControlGrid,.rankedSecondaryGrid,.rankedOverlayStudio,.rankedCollapsibleBody'));
+  }
   function panelTitle(panel){return (panel.querySelector('h1,h2,h3')?.textContent||'').trim();}
   function hasText(panel,needle){return (panel.textContent||'').toLowerCase().includes(needle.toLowerCase());}
 
   function classify(panel){
+    if(panel.id==='streamMatchupPanel')return 'matchup-panel';
     const t=(panelTitle(panel)+' '+(panel.textContent||'')).toLowerCase();
     if(t.includes('overlay mode'))return 'mode';
     if(t.includes('live session'))return 'live-session';
@@ -41,7 +45,7 @@
 
   function allowed(mode,type){
     if(type==='mode'||type==='shared'||type==='obs'||type==='overlay-settings'||type==='diagnostics')return true;
-    if(mode==='ranked')return ['live-session','quick-match','session-performance','current-rank','recent-matches'].includes(type);
+    if(mode==='ranked')return ['live-session','quick-match','session-performance','current-rank','recent-matches','matchup-panel'].includes(type);
     if(mode==='tournament')return ['creator-expansion','scene-rotation'].includes(type);
     if(mode==='caster')return ['scene-rotation'].includes(type);
     return true;
@@ -112,7 +116,7 @@
     anchor?.after(workspaceTabs(mode));
     app.querySelector('.streamerWorkspaceTabs')?.after(workspaceIntro(mode));
 
-    const panels=directPanels(app);
+    const panels=workspacePanels(app);
     for(const panel of panels){
       const type=classify(panel);
       panel.dataset.streamerSection=type;
@@ -142,5 +146,5 @@
     let tries=0;
     const timer=setInterval(()=>{if(install()||++tries>200)clearInterval(timer)},50);
   }
-  window.PPCStreamerWorkspaces={version:'8.67.0',apply,install};
+  window.PPCStreamerWorkspaces={version:'8.67.1',apply,install};
 })();
