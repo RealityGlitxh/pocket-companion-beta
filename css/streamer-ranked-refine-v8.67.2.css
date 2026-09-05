@@ -1,4 +1,4 @@
-/* PocketNexus V8.67.3 — Ranked Stream Control Center hierarchy pass */
+/* PocketNexus V8.67.4 — Ranked Stream Control Center hierarchy pass */
 .streamerWorkspacePage.rankedStreamControlCenter{max-width:1420px;margin:0 auto;padding-bottom:32px}
 .rankedStreamControlCenter .streamerWorkspaceTabs{margin-bottom:10px}
 .rankedStreamControlCenter .rankedControlHero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 17px;margin-bottom:12px}
@@ -11,7 +11,6 @@
 .rankedStatusChip strong{font-size:.85rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rankedStatusChip.live{border-color:#49c98c;background:rgba(73,201,140,.08)}
 
-/* Primary zone: Quick Match is the main task; Session + Rank form a clear sidebar. */
 .rankedControlGrid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr);grid-template-areas:'quick live' 'quick rank' 'perf perf';gap:10px;margin-top:0;align-items:stretch}
 .rankedControlGrid>.panel{margin:0!important;min-width:0;padding:15px 16px!important;border-radius:13px!important}
 .rankedQuickCard{grid-area:quick;border-color:#3f6f97!important;box-shadow:inset 0 0 0 1px rgba(85,183,255,.08);background:linear-gradient(180deg,#111f2d,#0d1823)!important}
@@ -27,7 +26,6 @@
 .rankedQuickCard .row:last-child{margin-top:8px!important}
 .rankedQuickCard .good,.rankedQuickCard .danger{font-weight:800}
 
-/* Rank is one compact status block, not another oversized form. */
 .rankedRankVisual{margin:7px 0 9px;padding:11px 12px;border:1px solid #2e4257;background:#0c1621;border-radius:10px}
 .rankedRankHeadline{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .rankedRankHeadline strong{font-size:1.15rem}
@@ -38,14 +36,12 @@
 .rankedRankCard input{min-height:40px!important}
 .rankedRankCard button{min-height:40px!important}
 
-/* Session performance is a slim dashboard row. */
 .rankedPerformanceCard{padding:13px 15px!important}
 .rankedPerformanceMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0 3px}
 .rankedPerformanceMetrics>div{padding:9px 10px;border:1px solid #2d4054;border-radius:9px;background:#0d1722;display:flex;flex-direction:column;gap:1px}
 .rankedPerformanceMetrics strong{font-size:1rem}
 .rankedPerformanceMetrics small{font-size:.64rem;color:var(--muted,#9eacbc)}
 
-/* Secondary zone: recent matches remains compact, OBS gets the visual emphasis. */
 .rankedSecondaryGrid{display:grid;grid-template-columns:minmax(250px,.65fr) minmax(0,1.35fr);gap:10px;margin-top:10px;align-items:start}
 .rankedSecondaryGrid>.panel{margin:0!important;min-width:0;padding:15px 16px!important;border-radius:13px!important}
 .rankedRecentCard{min-height:0!important}
@@ -53,13 +49,24 @@
 .rankedObsCard{border-color:#34506b!important;background:linear-gradient(180deg,#111d2a,#0d1721)!important}
 .rankedObsCard .between{gap:10px;align-items:flex-start}
 .rankedObsCard .between>.row{gap:7px;flex-wrap:wrap;justify-content:flex-end}
-.rankedObsPreview{margin-top:10px;padding:12px!important;border:1px solid #30465d!important;border-radius:12px;background:#08111a!important;min-height:150px;max-height:330px;overflow:auto}
-.rankedObsPreview .streamOverlay{max-width:100%;margin:0!important}
-.rankedStreamControlCenter .streamOverlay.full{display:grid;gap:8px;padding:0!important}
-.rankedStreamControlCenter .streamTop,.rankedStreamControlCenter .streamStats{gap:7px}
-.rankedStreamControlCenter .streamTop>div,.rankedStreamControlCenter .streamStats>div{padding:8px 10px;border:1px solid #24384b;border-radius:9px;background:#0d1823}
 
-/* Advanced sections stay visually out of the way until needed. */
+/* OBS preview now behaves like a broadcast canvas instead of raw stacked data. */
+.rankedObsPreview{position:relative;margin-top:12px!important;padding:34px 18px 18px!important;border:1px solid #34506b!important;border-radius:14px;background:linear-gradient(135deg,#07111b 0%,#0b1825 48%,#071019 100%)!important;min-height:270px;max-height:none!important;overflow:hidden!important;display:flex;align-items:flex-end;justify-content:flex-start;isolation:isolate}
+.rankedObsPreview::before{content:'LIVE OVERLAY PREVIEW';position:absolute;top:11px;left:14px;z-index:2;font-size:.62rem;font-weight:900;letter-spacing:.11em;color:#8bb3d4}
+.rankedObsPreview::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(91,132,166,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(91,132,166,.055) 1px,transparent 1px),radial-gradient(circle at 76% 24%,rgba(53,150,221,.12),transparent 32%);background-size:34px 34px,34px 34px,auto;pointer-events:none}
+.rankedObsPreview .streamOverlay{width:min(100%,560px)!important;max-width:560px!important;margin:0!important;padding:16px!important;border:1px solid rgba(105,185,240,.34)!important;border-radius:15px!important;background:rgba(8,17,27,.90)!important;box-shadow:0 18px 45px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.025);backdrop-filter:blur(8px);color:#f3f8fc!important}
+.rankedObsPreview .streamOverlay.full{display:grid!important;gap:10px!important}
+.rankedObsPreview .streamTop{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important}
+.rankedObsPreview .streamStats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important}
+.rankedObsPreview .streamTop>div,.rankedObsPreview .streamStats>div{min-width:0;padding:10px 11px!important;border:1px solid #284159!important;border-radius:10px!important;background:linear-gradient(180deg,#102131,#0c1925)!important;display:flex!important;flex-direction:column!important;gap:3px!important}
+.rankedObsPreview .streamTop span,.rankedObsPreview .streamStats span{display:block!important;font-size:.62rem!important;letter-spacing:.06em!important;color:#91a9bd!important;line-height:1.15!important}
+.rankedObsPreview .streamTop strong,.rankedObsPreview .streamStats strong{display:block!important;font-size:.96rem!important;color:#f7fbff!important;line-height:1.2!important;white-space:normal!important;overflow-wrap:anywhere}
+.rankedObsPreview .streamSession{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;padding:10px 11px!important;border:1px solid #284159!important;border-radius:10px!important;background:#0c1925!important}
+.rankedObsPreview .streamRecent{display:grid!important;gap:6px!important}
+.rankedObsPreview .streamRecent>div{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:8px!important;align-items:center!important;padding:7px 9px!important;border-radius:8px!important;background:rgba(17,34,50,.78)!important}
+.rankedObsPreview .streamOverlay.compact,.rankedObsPreview .streamOverlay.minimal{align-self:flex-end!important;display:flex!important;gap:10px!important;align-items:center!important;width:auto!important;max-width:100%!important}
+.rankedObsPreview .streamOverlay.minimal{flex-direction:column!important;align-items:flex-start!important;min-width:220px!important}
+
 .rankedCollapsible{margin-top:10px!important;padding:13px 15px!important;background:#101b27!important;border-radius:13px!important}
 .rankedCollapseHeader,.rankedCollapsible>.between{align-items:center;margin:0!important}
 .rankedCollapsible h2,.rankedCollapsible h3{margin:0!important;font-size:1rem!important}
@@ -70,7 +77,6 @@
 .rankedStreamControlCenter [data-streamer-section='overlay-settings'] label{min-width:0}
 .rankedStreamControlCenter [data-streamer-section='diagnostics']{opacity:.95}
 
-/* Keep every visible section aligned to the same rhythm. */
 .rankedStreamControlCenter .panel h2,.rankedStreamControlCenter .panel h3{line-height:1.15}
 .rankedStreamControlCenter .panel p.muted{line-height:1.35}
 .rankedStreamControlCenter .panel>.between{gap:10px}
@@ -78,7 +84,7 @@
 @media (max-width:1100px){
  .rankedControlGrid{grid-template-columns:1fr 1fr;grid-template-areas:'quick quick' 'live rank' 'perf perf'}
  .rankedSecondaryGrid{grid-template-columns:1fr}
- .rankedObsPreview{max-height:none}
+ .rankedObsPreview{min-height:250px}
 }
 @media (max-width:900px){
  .streamerWorkspacePage.rankedStreamControlCenter{width:calc(100% - 16px)}
@@ -99,6 +105,12 @@
  .rankedStreamControlCenter .rankedQuickCard .row>button{flex:1 1 120px}
  .rankedObsCard .between{display:block}
  .rankedObsCard .between>.row{margin-top:8px;justify-content:flex-start}
+ .rankedObsPreview{min-height:220px;padding:34px 10px 10px!important}
+ .rankedObsPreview .streamOverlay{padding:11px!important;border-radius:12px!important}
+ .rankedObsPreview .streamTop{grid-template-columns:1fr!important}
+ .rankedObsPreview .streamStats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .rankedObsPreview .streamTop>div,.rankedObsPreview .streamStats>div{padding:8px!important}
+ .rankedObsPreview .streamTop strong,.rankedObsPreview .streamStats strong{font-size:.82rem!important}
  .rankedCollapsible>.between{align-items:flex-start;gap:8px;flex-wrap:wrap}
  .rankedCollapseToggle{width:100%}
 }
