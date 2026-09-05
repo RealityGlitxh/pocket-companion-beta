@@ -7,7 +7,7 @@
 
   const profileTeamScripts=[
     'js/app/profile_teamwars.js?v=864122',
-    'js/features/teamwars-scouting-dropdown-v8.66.1.js?v=866201'
+    'js/features/teamwars-scouting-dropdown-v8.66.1.js?v=866301'
   ];
   const ROUTES={
     rank:{
@@ -74,7 +74,7 @@
       s.async=false;
       s.dataset.ppcLazy='true';
       s.onload=()=>{loadedScripts.add(src);resolve()};
-      s.onerror=()=>reject(new Error(`Could not load ${src.split('?')[0]}`));
+      s.onerror=()=>reject(new Error(`Could not load ${src.split('?')[0]`));
       document.head.appendChild(s);
     });
   }
