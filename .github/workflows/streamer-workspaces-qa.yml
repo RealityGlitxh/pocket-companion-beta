@@ -1,0 +1,58 @@
+name: PocketNexus Streamer Workspaces QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/streamer-workspaces-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  streamer-workspaces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-streamer.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Test three Streamer workspaces
+        run: |
+          cat > streamer-workspaces-qa.js <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [name,width,height] of [['desktop',1440,900],['mobile',390,844]]){
+              const ctx=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+              const page=await ctx.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(1200);
+              const guest=page.getByRole('button',{name:/continue as guest/i}); if(await guest.count())try{await guest.click();await page.waitForTimeout(400)}catch{}
+              await page.evaluate(()=>window.goPage?.('streamer')); await page.waitForTimeout(1200);
+              await page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              for(const mode of ['Ranked','Tournament','Tournament Caster']){
+                const tab=page.getByRole('tab',{name:new RegExp('^'+mode+' workspace$','i')});
+                if(!(await tab.count()))throw new Error(`Missing ${mode} workspace tab on ${name}`);
+                await tab.click(); await page.waitForTimeout(300);
+                const selected=await tab.getAttribute('aria-selected'); if(selected!=='true')throw new Error(`${mode} not selected on ${name}`);
+                const h=await page.locator('.streamerWorkspaceIntro h2').textContent(); if(!h?.toLowerCase().includes(mode.toLowerCase()))throw new Error(`Wrong intro for ${mode}: ${h}`);
+                const overflow=await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth); if(overflow>8)throw new Error(`${mode} overflow ${overflow}px on ${name}`);
+                if(await page.getByText(/This page hit an error/i).count())throw new Error(`${mode} error screen on ${name}`);
+              }
+              if(errors.length)throw new Error(`Page errors on ${name}: ${errors.join(' | ')}`);
+              await ctx.close();
+            }
+            await browser.close(); console.log('STREAMER_WORKSPACES_QA_OK');
+          })();
+          NODE
+          node streamer-workspaces-qa.js
