@@ -1,7 +1,6 @@
-/* PocketNexus V8.66.2 — Team Wars scouting archetype dropdowns.
-   UI-only enhancement: converts opponent Deck A / Deck B scouting fields into
-   archetype selects while preserving existing values and handlers. Unknown is
-   the valid default so wars can begin before the opponent lineup is known. */
+/* PocketNexus V8.66.3 — Team Wars scouting archetype dropdowns.
+   Converts opponent Deck A / Deck B scouting fields into archetype selects.
+   Unknown is always valid so Team Wars can begin before scouting is complete. */
 (function(){
   'use strict';
 
@@ -11,38 +10,55 @@
       const svc=window.ArchetypeService;
       rows=svc?.getArchetypes?.()||svc?.all?.()||svc?.getAll?.()||[];
     }catch{}
-    const names=rows.map(x=>typeof x==='string'?x:x?.name).filter(Boolean);
-    return [...new Set(names)].sort((a,b)=>String(a).localeCompare(String(b)));
+    return [...new Set(rows.map(x=>typeof x==='string'?x:x?.name).filter(Boolean))]
+      .sort((a,b)=>String(a).localeCompare(String(b)));
   }
 
   function scoutingRoot(){
     const app=document.getElementById('app');
     if(!app)return null;
-    const nodes=[...app.querySelectorAll('section,.panel,article,div')];
-    return nodes.find(el=>/opponent lineup/i.test((el.textContent||'').slice(0,900)))||null;
+    const candidates=[...app.querySelectorAll('section,.panel,article,div')]
+      .filter(el=>/opponent lineup/i.test((el.textContent||'').slice(0,1000)));
+    return candidates.sort((a,b)=>a.querySelectorAll('*').length-b.querySelectorAll('*').length)[0]||null;
   }
 
   function fieldLabel(input){
-    const explicit=input.id?document.querySelector(`label[for="${CSS.escape(input.id)}"]`):null;
-    if(explicit)return (explicit.textContent||'').trim();
+    if(input.id){
+      const explicit=document.querySelector(`label[for="${CSS.escape(input.id)}"]`);
+      if(explicit)return (explicit.textContent||'').trim();
+    }
     const wrap=input.closest('label');
     if(wrap)return (wrap.textContent||'').trim();
-    const parent=input.parentElement;
-    if(!parent)return '';
-    const firstLabel=parent.querySelector(':scope > label');
-    if(firstLabel)return (firstLabel.textContent||'').trim();
-    const prev=input.previousElementSibling;
-    if(prev&&/^(LABEL|SMALL|SPAN|STRONG)$/.test(prev.tagName))return (prev.textContent||'').trim();
-    return (parent.textContent||'').trim().slice(0,80);
+    let node=input.parentElement;
+    for(let depth=0;node&&depth<3;depth++,node=node.parentElement){
+      const labels=[...node.children].filter(x=>x.tagName==='LABEL');
+      if(labels.length===1)return (labels[0].textContent||'').trim();
+    }
+    return '';
   }
 
   function isOpponentDeckInput(input,root){
-    if(!input||input.tagName!=='INPUT'||input.dataset.ppcScoutDropdown==='1')return false;
-    if(!root.contains(input))return false;
-    const label=fieldLabel(input);
+    if(!input||input.tagName!=='INPUT'||input.dataset.ppcScoutDropdown==='1'||!root.contains(input))return false;
     const ph=(input.getAttribute('placeholder')||'').trim();
+    if(/^archetype$/i.test(ph)||/select archetype/i.test(ph))return true;
+    const label=fieldLabel(input);
+    if(/^deck\s*[ab]$/i.test(label))return true;
     const idClass=`${input.id||''} ${input.className||''}`;
-    return /deck\s*[ab]/i.test(label)||(/archetype/i.test(ph)&&/deck/i.test((input.parentElement?.textContent||'')))||/deck.*[ab]|[ab].*deck/i.test(idClass);
+    return /deck.*[ab]|[ab].*deck/i.test(idClass)&&!/player|name/i.test(idClass);
+  }
+
+  function fillOptions(select,names,current){
+    const existingCurrent=String(current??select.value??'').trim();
+    select.innerHTML='';
+    const unknown=document.createElement('option');
+    unknown.value='';unknown.textContent='Unknown';select.appendChild(unknown);
+    if(existingCurrent&&!names.includes(existingCurrent)){
+      const o=document.createElement('option');o.value=existingCurrent;o.textContent=existingCurrent;select.appendChild(o);
+    }
+    for(const name of names){
+      const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o);
+    }
+    select.value=existingCurrent;
   }
 
   function replaceInput(input,names){
@@ -53,27 +69,8 @@
     }
     select.dataset.ppcScoutDropdown='1';
     select.setAttribute('aria-label',input.getAttribute('aria-label')||`${fieldLabel(input)||'Deck'} archetype`);
-
     const current=String(input.value||'').trim();
-    const unknown=document.createElement('option');
-    unknown.value='';
-    unknown.textContent='Unknown';
-    select.appendChild(unknown);
-
-    if(current&&!names.includes(current)){
-      const o=document.createElement('option');
-      o.value=current;
-      o.textContent=current;
-      select.appendChild(o);
-    }
-    for(const name of names){
-      const o=document.createElement('option');
-      o.value=name;
-      o.textContent=name;
-      select.appendChild(o);
-    }
-    select.value=current;
-
+    fillOptions(select,names,current);
     if(typeof input.onchange==='function')select.onchange=input.onchange;
     if(typeof input.oninput==='function')select.oninput=input.oninput;
     input.replaceWith(select);
@@ -81,8 +78,16 @@
 
   function enhance(){
     const root=scoutingRoot();if(!root)return;
-    const names=archetypeNames();if(!names.length)return;
+    const names=archetypeNames();
     [...root.querySelectorAll('input')].filter(i=>isOpponentDeckInput(i,root)).forEach(i=>replaceInput(i,names));
+    // If the selects were created before archetype data became available, populate them later.
+    if(names.length){
+      root.querySelectorAll('select[data-ppc-scout-dropdown="1"]').forEach(sel=>{
+        const current=sel.value;
+        const known=[...sel.options].map(o=>o.value).filter(Boolean);
+        if(names.some(n=>!known.includes(n)))fillOptions(sel,names,current);
+      });
+    }
   }
 
   let queued=false;
@@ -91,5 +96,6 @@
   document.addEventListener('click',queue,true);
   document.addEventListener('change',queue,true);
   new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
-  window.PPCTeamWarsScoutingDropdown={version:'8.66.2',enhance:queue};
+  setInterval(()=>{try{if(state?.page==='teamwars')queue()}catch{}},1000);
+  window.PPCTeamWarsScoutingDropdown={version:'8.66.3',enhance:queue};
 })();
