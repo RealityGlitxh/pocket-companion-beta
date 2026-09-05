@@ -13,9 +13,12 @@
       scripts:['js/app/rank_tools-v8.64.1.js?v=864124']
     },
     streamer:{
-      ready:()=>typeof window.streamerPage==='function',
+      ready:()=>typeof window.streamerPage==='function'&&!!window.PPCStreamerWorkspaces,
       label:'Streamer Control Center',
-      scripts:['js/app/streamer_tools-v8.64.1.js?v=864125']
+      scripts:[
+        'js/app/streamer_tools-v8.64.1.js?v=864125',
+        'js/features/streamer-workspaces-v8.67.0.js?v=867001'
+      ]
     },
     training:{
       ready:()=>typeof window.trainingPage==='function',
@@ -100,7 +103,7 @@
     console.error('PocketNexus lazy feature load failed',page,error);
     const cfg=ROUTES[page],root=document.getElementById('app');
     if(!root)return;
-    root.innerHTML=`<div class="panel runtimeError" style="max-width:760px;margin:30px auto"><span class="badge">FEATURE LOAD</span><h1>${cfg?.label||'This feature'} could not load</h1><p class="muted">Your saved data was not changed. Check your connection and try again.</p><div class="dangerBox">${String(error?.message||error).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}</div><div class="row" style="margin-top:12px"><button onclick="render()">Retry</button><button class="secondary" onclick="state.page='dashboard';save();render()">Go Home</button></div></div>`;
+    root.innerHTML=`<div class="panel runtimeError" style="max-width:760px;margin:30px auto"><span class="badge">FEATURE LOAD</span><h1>${cfg?.label||'This feature'} could not load</h1><p class="muted">Your saved data was not changed. Check your connection and try again.</p><div class="dangerBox">${String(error?.message||error).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]))}</div><div class="row" style="margin-top:12px"><button onclick="render()">Retry</button><button class="secondary" onclick="state.page='dashboard';save();render()">Go Home</button></div></div>`;
   }
 
   function renderWithLazyRoute(){
