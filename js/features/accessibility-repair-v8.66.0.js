@@ -21,7 +21,6 @@
     label(el,p||fallback);
   }
   function repair(root=document){
-    // Known account/profile/sync fields found by the 3C audit.
     label(root.querySelector?.('#authEmail'),'Email address');
     label(root.querySelector?.('#authPassword'),'Password');
     label(root.querySelector?.('#profileSearchInput'),'Search public profiles');
@@ -30,8 +29,6 @@
     label(root.querySelector?.('#streamRankPoints'),'Rank points');
 
     root.querySelectorAll?.('input:not([type="hidden"]),textarea,select').forEach(el=>placeholderLabel(el, el.tagName==='SELECT'?'Select option':'Input field'));
-
-    // Empty icon buttons keep their behavior; only add a semantic name.
     root.querySelectorAll?.('button,[role="button"]').forEach(el=>{
       if(hasName(el)) return;
       const img=el.querySelector('img[alt]');
@@ -47,6 +44,27 @@
     requestAnimationFrame(()=>{ queued=false; repair(document); });
   }
   document.addEventListener('DOMContentLoaded',queue,{once:true});
+  document.addEventListener('click',queue,true);
+  document.addEventListener('change',queue,true);
+  window.addEventListener('hashchange',queue);
   new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
-  window.PPCAccessibilityRepair={version:'8.66.0',repair:queue};
+
+  // PocketNexus page renderers replace #app with innerHTML. A MutationObserver can be
+  // disconnected with the old subtree before its callback runs, so repair immediately
+  // after each route render too. This changes semantics only, never page behavior.
+  let attempts=0;
+  const hook=setInterval(()=>{
+    if(typeof window.render==='function' && !window.render.__ppcA11yWrapped){
+      const base=window.render;
+      const wrapped=function(){ const out=base.apply(this,arguments); queue(); return out; };
+      wrapped.__ppcA11yWrapped=true;
+      window.render=wrapped;
+      clearInterval(hook);
+    }
+    if(++attempts>120) clearInterval(hook);
+  },50);
+
+  // Final safety net for renderers that mutate properties without adding DOM nodes.
+  setInterval(()=>repair(document),500);
+  window.PPCAccessibilityRepair={version:'8.66.1',repair:queue};
 })();
