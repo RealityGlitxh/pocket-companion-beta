@@ -74,7 +74,7 @@
       s.async=false;
       s.dataset.ppcLazy='true';
       s.onload=()=>{loadedScripts.add(src);resolve()};
-      s.onerror=()=>reject(new Error(`Could not load ${src.split('?')[0]`));
+      s.onerror=()=>reject(new Error(`Could not load ${src.split('?')[0]}`));
       document.head.appendChild(s);
     });
   }
