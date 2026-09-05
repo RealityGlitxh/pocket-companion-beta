@@ -16,11 +16,12 @@
       scripts:['js/app/rank_tools-v8.64.1.js?v=864124']
     },
     streamer:{
-      ready:()=>typeof window.streamerPage==='function'&&!!window.PPCStreamerWorkspaces,
+      ready:()=>typeof window.streamerPage==='function'&&!!window.PPCStreamerWorkspaces&&!!window.PPCStreamerRankedRefine,
       label:'Streamer Control Center',
       scripts:[
         'js/app/streamer_tools-v8.64.1.js?v=864125',
-        'js/features/streamer-workspaces-v8.67.0.js?v=867001'
+        'js/features/streamer-workspaces-v8.67.0.js?v=867001',
+        'js/features/streamer-ranked-refine-v8.67.2.js?v=867201'
       ]
     },
     training:{
