@@ -1,4 +1,4 @@
-/* PocketNexus V8.67.3 — Ranked Stream Control Center
+/* PocketNexus V8.67.4 — Ranked Stream Control Center
    UI-only refinement layered on the existing Streamer renderer/workspace split.
    Existing session, match, RP, OBS, persistence and workspace handlers are reused. */
 (function(){
@@ -11,7 +11,7 @@
     if(document.querySelector('link[data-streamer-ranked-refine]'))return;
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='css/streamer-ranked-refine-v8.67.2.css?v=867303';
+    link.href='css/streamer-ranked-refine-v8.67.2.css?v=867404';
     link.dataset.streamerRankedRefine='true';
     document.head.appendChild(link);
   }
@@ -126,5 +126,5 @@
 
   ensureStyles();
   if(!install()){let tries=0;const t=setInterval(()=>{if(install()||++tries>200)clearInterval(t)},50)}
-  window.PPCStreamerRankedRefine={version:'8.67.3',apply,install};
+  window.PPCStreamerRankedRefine={version:'8.67.4',apply,install};
 })();
