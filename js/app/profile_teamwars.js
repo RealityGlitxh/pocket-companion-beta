@@ -189,7 +189,7 @@ async function teamWarsPage(force=false){
 }
 
 function standingsHtml(){return `<div class="standingsTable"><div class="standingsHead"><span>#</span><span>Team</span><span>W</span><span>L</span><span>PTS</span></div>${(teamWarsState.standings||[]).map((s,i)=>`<div><span>${i+1}</span><strong>[${esc(s.tag)}] ${esc(s.team_name)}</strong><span>${s.wins}</span><span>${s.losses}</span><b>${s.points}</b></div>`).join('')||`<p class="muted">Standings will appear after teams complete wars.</p>`}</div>`}
-window.resolveRankedDispute=resolveRankedDispute;window.profilePage=profilePage;window.profilesShowTab=profilesShowTab;window.searchPublicProfiles=searchPublicProfiles;window.openPublicProfileByPublicId=openPublicProfileByPublicId;window.teamWarsPage=teamWarsPage;window.loadProfileTeamData=loadProfileTeamData;window.openPublicProfile=openPublicProfile;window.openPublicProfileById=openPublicProfileById;window.openPublicTeam=openPublicTeam;window.closePublicIdentity=closePublicIdentity;
+window.resolveRankedDispute=resolveRankedDispute;window.profilePage=profilePage;window.profilesShowTab=profilesShowTab;window.searchPublicProfiles=searchPublicProfiles;if(typeof openPublicProfileByPublicId==='function')window.openPublicProfileByPublicId=openPublicProfileByPublicId;window.teamWarsPage=teamWarsPage;window.loadProfileTeamData=loadProfileTeamData;if(typeof openPublicProfile==='function')window.openPublicProfile=openPublicProfile;if(typeof openPublicProfileById==='function')window.openPublicProfileById=openPublicProfileById;if(typeof openPublicTeam==='function')window.openPublicTeam=openPublicTeam;if(typeof closePublicIdentity==='function')window.closePublicIdentity=closePublicIdentity;
 
 
 /* V8.54.2 — Team Management + Competitive Seasons */

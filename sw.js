@@ -1,5 +1,5 @@
 /* PocketNexus V8.64.1 — closed beta validation service worker */
-const VERSION='v8.64.2-recovery-audit-fixes';
+const VERSION='v8.64.2-profile-export-guard';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;

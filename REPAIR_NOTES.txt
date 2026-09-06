@@ -105,3 +105,10 @@ V8.64.2 CONSOLIDATED RECOVERY + AUDIT FIXES
 - Header/global search wording normalized to Search.
 - Pocket Coach quick prompts wrap instead of clipping horizontally.
 - Service-worker generation advanced and recovered overlay/workspace assets added to the app shell.
+
+V8.64.2 OBS2 QA hotfix: exported window.PPCStreamerOBS2 compatibility adapter from the recovered Streamer workspace runtime. No match/RP/session logic changed.
+
+V8.64.2 PROFILE EXPORT GUARD HOTFIX
+- Fixed startup ReferenceError from missing openPublicProfileByPublicId in the recovered baseline.
+- Optional public-profile helpers are now exported only when defined, so Profile/Team Wars recovery gaps cannot abort global app startup or Streamer QA.
+- No Streamer, RP, match, session, tournament, or cloud logic was changed.

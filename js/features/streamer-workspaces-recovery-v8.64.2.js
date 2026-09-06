@@ -42,4 +42,21 @@
   const oldUpdate=window.updateStreamerSetting;window.updateStreamerSetting=function(k,v){oldUpdate(k,v);try{publishStreamerOverlayState()}catch(e){}};
   const oldPreset=window.setStreamerPreset;window.setStreamerPreset=function(v){oldPreset(v);try{publishStreamerOverlayState()}catch(e){}};
   window.streamerPage=function(){const m=mode();if(m==='tournament')tournament();else if(m==='caster')caster();else ranked();try{renderStreamerMatchupPanel()}catch(e){}try{streamerEnsureTicker()}catch(e){}setTimeout(()=>{try{publishStreamerOverlayState()}catch(e){}},30)};
+
+  // OBS 2.0 QA/runtime compatibility surface.
+  // This adapter exposes the recovered mode-specific overlay system without
+  // duplicating or replacing the existing Streamer business logic.
+  window.PPCStreamerOBS2=Object.freeze({
+    version:'8.64.2',
+    getMode:()=>mode(),
+    setMode:(v)=>{if(!MODE_META[v])return false;window.pnSRMode(v);return true},
+    getSourceName:(v)=>sourceName(MODE_META[v]?v:mode()),
+    getSourceUrl:(v)=>sourceUrl(MODE_META[v]?v:mode()),
+    refreshPreview:()=>window.pnSRRefreshOverlay(),
+    openOverlay:()=>window.pnSROpenOverlay(),
+    copySource:()=>window.copyOverlayPath(),
+    publish:()=>{try{return publishStreamerOverlayState()}catch(e){return null}},
+    getState:()=>cfg(),
+    modes:Object.freeze(['ranked','tournament','caster'])
+  });
 })();
