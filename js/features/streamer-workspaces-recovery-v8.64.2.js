@@ -69,6 +69,15 @@
   // OBS 2.0 QA/runtime compatibility surface.
   // This adapter exposes the recovered mode-specific overlay system without
   // duplicating or replacing the existing Streamer business logic.
+  // If bootstrap rendered Streamer before this recovery override loaded,
+  // immediately rerender the active Streamer route once with the recovered renderer.
+  // This is presentation-only and does not change state, RP, match, or session logic.
+  try{
+    if(state?.page==='streamer' && document.getElementById('app')){
+      setTimeout(()=>{try{window.streamerPage()}catch(e){console.warn('Streamer recovery rerender failed',e)}},0);
+    }
+  }catch(e){}
+
   window.PPCStreamerOBS2=Object.freeze({
     version:'8.64.2-ranked-qa-compat',
     getMode:()=>mode(),
