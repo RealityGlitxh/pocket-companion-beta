@@ -38,13 +38,12 @@
   const app=document.getElementById('app');if(!app||state.page!=='streamer'||document.getElementById('v849Creator'))return;
   const panel=document.createElement('div');panel.id='v849Creator';panel.className='panel';
   const share=state.streamer?.deckShareUrl||'';
-  panel.innerHTML=`<div class="between"><div><span class="eyebrow">V8.49</span><h2>Competitive Creator Expansion</h2><p class="muted">Private deck sharing + tournament journey controls.</p></div><span class="badge">NEW</span></div>
+  panel.innerHTML=`<div class="between"><div><span class="eyebrow">CREATOR TOOLS</span><h2>Competitive Creator Expansion</h2><p class="muted">Private deck sharing + tournament journey controls.</p></div><span class="badge">NEW</span></div>
    <div class="v849Grid"><section><h3>Private Deck Share</h3><p class="muted tiny">Creates an unguessable, revocable link containing only the selected deck data.</p>${share?`<input readonly value="${esc(share)}"><div class="row"><button onclick="v849CopyShare()">Copy Link</button><button class="danger" onclick="v849RevokeDeckShare()">Revoke</button></div>`:`<button onclick="v849CreateDeckShare()">Create Share Link</button>`}</section>
    <section><h3>Tournament Journey</h3><div class="row"><button onclick="v849TournamentResult('win')">+ Win</button><button class="secondary" onclick="v849TournamentResult('loss')">+ Loss</button><button class="secondary" onclick="v849TournamentResult('tie')">+ Tie</button><button class="danger" onclick="v849ResetJourney()">Reset</button></div><div class="v849Journey">${journeyHtml()}</div></section></div>`;
   const target=[...app.querySelectorAll('.panel')].find(x=>x.textContent.includes('Scene Rotation'))||app.querySelector('.bottomnote');
   target?.parentNode?.insertBefore(panel,target);
  }
- window.PPCStreamerExpansionEnhance=injectStreamer;
  const oldStreamer=window.streamerPage;if(typeof oldStreamer==='function')window.streamerPage=function(){oldStreamer.apply(this,arguments);injectStreamer()};
  async function sharedDeckLanding(){
   const token=new URLSearchParams(location.search).get('deck');if(!token)return;

@@ -98,7 +98,7 @@ async function fetchWindow(w=activeWindow,{force=false}={}){
   const cache=readCache(w);
   if(!force&&cache&&now()-Number(cache.cachedAt||0)<FIVE_MIN){if(!payload){payload=cache.payload;source="cached";lastFetchAt=Number(cache.cachedAt||0)}return payload}
   if(inFlight&&inFlightWindow===w)return inFlight;
-  loading=true;error="";inFlightWindow=w;emit();
+  loading=true;error="";inFlightWindow=w;
   const endpoint=`${CONFIG.url}/functions/v1/meta-live?window=${encodeURIComponent(w)}`;
   inFlight=(async()=>{
     try{
@@ -113,20 +113,19 @@ async function fetchWindow(w=activeWindow,{force=false}={}){
     }catch(e){
       error=e?.message||String(e);
       if(!setFromCache(w)){payload=bundled();source="fallback"}
+      lastFetchAt=now();
       console.warn("Live Meta refresh failed; using fallback",e);
       return payload;
     }finally{loading=false;inFlight=null;inFlightWindow=null;emit()}
   })();
+  emit();
   return inFlight;
 }
 function ensure(w=activeWindow){
   setWindow(w);
   if(!payload)setFromCache(w);
   if(!payload){payload=bundled();source="fallback"}
-  // Re-entrant UI listeners can call ensure() while fetchWindow() is emitting its
-  // loading state, before inFlight has been assigned. loading is already true at
-  // that point, so use it as an additional guard to prevent recursive fetch/render loops.
-  if(!loading&&!inFlight&&(!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
+  if(!inFlight&&(!lastFetchAt||now()-lastFetchAt>=FIVE_MIN))fetchWindow(w,{force:false});
   return payload;
 }
 function refresh(){return fetchWindow(activeWindow,{force:true})}

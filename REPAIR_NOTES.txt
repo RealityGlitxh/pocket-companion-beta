@@ -1,0 +1,79 @@
+PocketNexus V8.64.1 Hotfix 10 — Repair Baseline
+
+Targeted fixes only:
+1. Service-worker cache VERSION corrected from stale Hotfix 6 identity to Hotfix 10.
+2. PWA runtime version corrected from 8.64.1-h6 to 8.64.1-h10.
+3. index.html PWA cache-buster updated so browsers request the repaired pwa.js.
+4. Service-worker APP_SHELL completed with five existing Training assets required by index.html:
+   - css/training-polish-v8.64.1.css
+   - css/training-uniform-v8.64.1.css
+   - css/training-cleanup-v8.64.1.css
+   - js/features/training-slide-hotfix-v8.64.1.js
+   - js/features/training-cleanup-hotfix-v8.64.1.js
+
+Validation passed:
+- All external JavaScript syntax checks
+- Service worker syntax check
+- No duplicate IDs in index.html
+- No missing local assets referenced by index.html
+- Inline event-handler references resolved
+- Manifest JSON parse
+- Service-worker APP_SHELL covers all local index CSS/JS assets
+- ZIP integrity
+
+Next repair — Meta refresh loop:
+5. Meta request is now marked in-flight before loading-state listeners are notified, preventing recursive duplicate fetches during render.
+6. Failed live Meta refreshes stamp the retry time so fallback renders do not immediately retry in a loop.
+7. Service-worker cache identity and meta-service cache-buster were advanced so deployed browsers adopt the repaired Meta code.
+
+Validation:
+- Simulated live Meta endpoint failure + render listener: exactly 1 fetch, fallback reached, loading cleared, no immediate retry.
+
+Next repair — Tournament source-neutrality release gate:
+- Removed the user-facing "LIVE LIMITLESS TOURNAMENTS" label.
+- Removed internal collector implementation copy from Tournament loading state.
+- Replaced both with source-neutral PocketNexus Tournament wording.
+- Bumped the Tournament script cache-buster and service-worker cache identity so browsers receive the corrected UI.
+
+Next repair — Tournament selected-event standings handoff:
+- Fixed ensureSelectedStandings() so fetched standings are written into the existing __ppcTournamentRows cache immediately.
+- Marks the selected event standings attempt timestamp after the successful handoff, preventing the page auto-loader from issuing a second redundant request.
+- Bumped the Tournament feature cache-buster and service-worker cache identity so deployed browsers receive the fix.
+
+Validation:
+- Selected-event simulation: 1 selection = 1 standings request, rows stored immediately, attempt recorded.
+- Full JavaScript syntax, service-worker syntax, manifest, duplicate-ID, local-reference, and file-preservation checks passed.
+
+Next repair — Pocket Sync release-surface branding:
+- Removed visible V8.59.x implementation/version labels from Pocket Sync release UI.
+- Replaced old Companion account/data wording with PocketNexus wording while preserving underlying compatibility keys and saved-data contracts.
+- Reworded visible sync framework/orchestrator descriptions to player-facing language without changing adapters, schedules, ingestion, conflict resolution, or cloud behavior.
+- Bumped the Pocket Sync script cache-buster and service-worker cache identity so deployed browsers adopt the UI repair.
+
+Validation:
+- Pocket Sync release-facing check: no visible V8.59 labels or old Companion account/data branding.
+- Full JavaScript and service-worker syntax checks passed.
+- Manifest parse, duplicate-ID scan, local HTML reference scan, and feature/file preservation checks passed.
+
+
+Next repair — Account & Cloud Sync Center release label:
+- Removed the visible internal "V8.48 • UNIFIED CLOUD" label from both Sync Center states.
+- Replaced it with player-facing "ACCOUNT & CLOUD" wording.
+- Left cloud RPCs, domain summaries, saved data, sync behavior, and compatibility identifiers unchanged.
+- Bumped the Streamer/Account script cache-buster and service-worker cache identity so browsers adopt the presentation repair.
+
+Repair pass — Streamer release-label cleanup
+- Removed user-visible internal build badge “V8.50 RC1” from Stream Control Center.
+- Removed user-visible “V8.51.5” implementation prefix from Rank Intelligence methodology copy.
+- No streamer controls, overlays, rank calculations, cloud sync, persistence, or diagnostics changed.
+- Bumped streamer script cache token and service-worker cache identity for update adoption.
+
+
+FULL REPAIR SWEEP
+- Completed a consolidated V8.64.1 release-gate audit instead of one-at-a-time repairs.
+- Made Meta snapshot presentation source-neutral while preserving underlying snapshot/live data.
+- Removed remaining Tournament implementation/import language from the player-facing UI.
+- Removed stale internal build/version labels from Global Search, Streamer/About diagnostics, Team Ranked QA, and Creator Tools.
+- Public grind-session posts now store rank_change as null when RP was not actually tracked, while correctly displaying an available 0 RP change.
+- Bumped all modified script cache-busters and the service-worker cache generation together.
+- No saved-data keys, Supabase RPC/table names, feature IDs, or core data flows were renamed.

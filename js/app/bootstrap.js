@@ -574,7 +574,7 @@ function sampleCardHtml(x){
 function sampleDeckHtml(a){
  const list=a.sampleDeck||[]; if(!list.length)return `<p class="muted">Sample deck unavailable.</p>`;
  const v=validateSampleDeck(a), poke=list.filter(x=>String(x.category).toLowerCase().includes("pokemon")), trainers=list.filter(x=>!String(x.category).toLowerCase().includes("pokemon"));
- return `<div class="between"><span class="${v.valid?"ok":"bad"}">${v.total} / 20 Cards ${v.valid?"✓":"— Check list"}</span><span class="badge">${a.sourceType==="limitless-tournament-snapshot"?"Verified Limitless sample":"Verified tournament sample"}</span></div>
+ return `<div class="between"><span class="${v.valid?"ok":"bad"}">${v.total} / 20 Cards ${v.valid?"✓":"— Check list"}</span><span class="badge">${"Verified tournament sample"}</span></div>
  <h3>Pokémon — ${poke.reduce((s,x)=>s+Number(x.quantity||0),0)}</h3><div class="sampleGrid">${poke.map(sampleCardHtml).join("")}</div>
  <h3>Trainers — ${trainers.reduce((s,x)=>s+Number(x.quantity||0),0)}</h3><div class="sampleGrid">${trainers.map(sampleCardHtml).join("")}</div>`;
 }
@@ -1036,7 +1036,7 @@ const GLOBAL_SEARCH_FEATURES=[
  {title:"What’s This Card?",category:"Training",description:"Daily five-guess card artwork challenge and competitive training hub.",page:"training",keywords:"whats this card daily puzzle brain teaser training artwork guess"},
  {title:"Profiles",category:"Social",description:"Public competitive profiles, achievements, stats, and deck showcases.",page:"profile",keywords:"profile public player stats achievements badges showcase username"},
  {title:"Team Wars",category:"Social",description:"Team ladder, ranked queue, rosters, public teams, seasons, and war history.",page:"teamwars",keywords:"team wars ranked queue rating rp roster public team season league"},
- {title:"Pocket Sync",category:"Utilities",description:"V8.59 source readiness for Collection, Rank, and Battle History automation.",page:"sync",keywords:"pocket sync collection automatic import rank rp battle history nintendo"},
+ {title:"Pocket Sync",category:"Utilities",description:"Sync readiness for Collection, Rank, and Battle History automation.",page:"sync",keywords:"pocket sync collection automatic import rank rp battle history nintendo"},
  {title:"Streamer Control Center",category:"Pages",description:"Control OBS overlays, stream sessions, rank, record, and matchups.",page:"streamer",keywords:"streamer obs overlay browser source twitch stream"},
  {title:"Account & Cloud Sync",category:"Settings",description:"Sign in, cloud-sync data, and manage your account.",page:"account",keywords:"account login cloud sync supabase profile"},
  {title:"Diagnostics & Backup",category:"Settings",description:"Run diagnostics, backup data, restore, and export Battle Tracker logs.",page:"more",keywords:"diagnostics backup restore export json csv settings"},
@@ -1289,7 +1289,7 @@ function render(){
    nav();
    if(!state.user&&!cloudSession?.user)return entryScreen();
    if(["decks","collection","trade"].includes(state.page)&&!cardsRequested)loadCards();
-   const pages={dashboard,decks,collection:collectionPage,optimizer:optimizerPage,matches,stats:statsPage,meta:metaPage,tournaments:window.tournamentsPage||dashboard,rank:window.rankBorderPage||dashboard,trade:tradePage,streamer:window.streamerPage||dashboard,coach:window.pocketCoachPage||dashboard,training:window.trainingPage||dashboard,profile:window.profilePage||accountPage,teamwars:window.teamWarsPage||dashboard,sync:window.pocketSyncPage||accountPage,account:accountPage,about:aboutPage,more:morePage};
+   const pages={dashboard,decks,collection:collectionPage,optimizer:optimizerPage,matches,stats:statsPage,meta:metaPage,tournaments:window.tournamentsPage||dashboard,rank:rankBorderPage,trade:tradePage,streamer:streamerPage,coach:window.pocketCoachPage||dashboard,training:window.trainingPage||dashboard,profile:window.profilePage||accountPage,teamwars:window.teamWarsPage||dashboard,sync:window.pocketSyncPage||accountPage,account:accountPage,about:aboutPage,more:morePage};
    (pages[state.page]||dashboard)();
    const pageRoot=document.getElementById('app');
    if(pageRoot){pageRoot.classList.remove('ppcPageEnter');void pageRoot.offsetWidth;pageRoot.classList.add('ppcPageEnter');}

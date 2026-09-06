@@ -1,6 +1,6 @@
 /* PocketNexus V8.64.1 — closed beta validation */
 (() => {
-  const PWA_VERSION = '8.64.1-rc1';
+  const PWA_VERSION = '8.64.1-h10';
   const VALID_DEEP_PAGES = new Set(['dashboard','matches','rank','decks','collection','meta','tournaments','teamwars','stats','optimizer','coach','training','profile','trade','streamer','sync','account','about','more']);
   let deferredInstallPrompt = null, refreshing = false, lastViewportHeight = 0;
   const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;

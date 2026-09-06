@@ -525,3 +525,15 @@ Completed Battle Tracker sessions can be deliberately published to a PocketNexus
 - Public profiles support opt-in Recent Grinds session posts with deck, duration, record, win rate, games, date, and RP change when tracked.
 - OAuth returns on beta.pocketnexus.app use the root beta URL and sensitive auth-return parameters are removed from the visible URL after session hydration.
 - What's New is presented as an onboarding-style modal; Training remains compact while preserving all scenarios.
+
+
+### V8.64.1 Hotfix 6 — Brain Teaser Slide Flow
+- Brain Teasers render one scenario at a time in a slide-style stage.
+- Wrong answers explicitly reveal the correct choice plus the explanation.
+- After feedback, the next scenario advances automatically; Previous/Next and the selector remain available.
+- All 19 curated scenarios and all 9 modes remain intact.
+
+
+## V8.64.1 Hotfix 7 — Training visual polish
+- Training content and behavior remain unchanged while the full tab receives a unified visual treatment across Daily Card, Daily Stats, Challenges, Training Profile, Achievements, Showcase, and the one-question Brain Teaser flow.
+- Added responsive glass surfaces, stronger hierarchy, gradients, improved stat/achievement cards, and more consistent spacing without removing content.
