@@ -6,7 +6,7 @@ const cors={
   'Access-Control-Allow-Methods':'POST, OPTIONS'
 };
 const json=(body:any,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
-const MODEL=Deno.env.get('OPENAI_MODEL')||'gpt-5.6-terra';
+const MODEL=Deno.env.get('OPENAI_MODEL')||'gpt-5.6-luna';
 const PROVIDER='openai';
 
 function compactDeckPayload(d:any){
