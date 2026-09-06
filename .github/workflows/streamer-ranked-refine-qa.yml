@@ -10,10 +10,14 @@ on:
       - "js/features/streamer-ranked-refine-v8.67.2.js"
       - "js/features/streamer-inline-overlay-guard-v8.67.7.js"
       - "js/features/streamer-obs-embed-style-v8.67.6.js"
+      - "js/features/streamer-obs-system-v8.68.0.js"
+      - "js/features/streamer-obs-connection-v8.68.0.js"
       - "js/features/route-feature-loader-v8.64.1.js"
       - "css/streamer-ranked-refine-v8.67.2.css"
       - "css/streamer-obs-embed-v8.67.6.css"
+      - "css/streamer-obs-system-v8.68.0.css"
       - "overlay.html"
+      - "overlay-ranked.html"
       - "index.html"
 
 permissions:
@@ -62,24 +66,29 @@ jobs:
               await page.waitForTimeout(1800);
               await dismissOverlays();
 
-              const state=await page.evaluate(()=>({
-                refined:!!window.PPCStreamerRankedRefine,
-                workspace:document.querySelector('#app')?.dataset.streamerWorkspace,
-                grid:!!document.querySelector('.rankedControlGrid'),
-                secondary:!!document.querySelector('.rankedSecondaryGrid'),
-                hero:!!document.querySelector('.rankedStatusTray'),
-                settingsVisible:!!document.querySelector('[data-streamer-section="overlay-settings"]') && !document.querySelector('[data-streamer-section="overlay-settings"]')?.hidden,
-                diagCollapsed:!!document.querySelector('[data-streamer-section="diagnostics"] .rankedCollapsibleBody[hidden]'),
-                inlinePreview:!!document.querySelector('#rankedRealObsPreview'),
-                legacyPreviewHidden:!!document.querySelector('#streamPreview')?.hidden,
-                quick:!!document.querySelector('[data-streamer-section="quick-match"]'),
-                live:!!document.querySelector('[data-streamer-section="live-session"]'),
-                rank:!!document.querySelector('[data-streamer-section="current-rank"]'),
-                perf:!!document.querySelector('[data-streamer-section="session-performance"]'),
-                overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
-                error:/This page hit an error/i.test(document.body.innerText)
-              }));
-              if(!state.refined||state.workspace!=='ranked'||!state.grid||!state.secondary||!state.hero||!state.settingsVisible||!state.diagCollapsed||!state.inlinePreview||!state.legacyPreviewHidden||!state.quick||!state.live||!state.rank||!state.perf||state.overflow>8||state.error||errors.length)failures.push({name,state,errors});
+              const state=await page.evaluate(()=>{
+                const legacySettings=document.querySelector('[data-streamer-section="overlay-settings"]');
+                const obs2Settings=document.querySelector('.pnObsStudio[data-mode="ranked"] .pnObsSettings');
+                return {
+                  refined:!!window.PPCStreamerRankedRefine,
+                  workspace:document.querySelector('#app')?.dataset.streamerWorkspace,
+                  grid:!!document.querySelector('.rankedControlGrid'),
+                  secondary:!!document.querySelector('.rankedSecondaryGrid'),
+                  hero:!!document.querySelector('.rankedStatusTray'),
+                  settingsAvailable:(!!legacySettings&&!legacySettings.hidden)||!!obs2Settings,
+                  obs2Settings:!!obs2Settings,
+                  diagCollapsed:!!document.querySelector('[data-streamer-section="diagnostics"] .rankedCollapsibleBody[hidden]'),
+                  inlinePreview:!!document.querySelector('#rankedRealObsPreview')||!!document.querySelector('.pnObsStudio[data-mode="ranked"] iframe[data-obs-mode="ranked"]'),
+                  legacyPreviewHidden:!document.querySelector('#streamPreview')||!!document.querySelector('#streamPreview')?.hidden,
+                  quick:!!document.querySelector('[data-streamer-section="quick-match"]'),
+                  live:!!document.querySelector('[data-streamer-section="live-session"]'),
+                  rank:!!document.querySelector('[data-streamer-section="current-rank"]'),
+                  perf:!!document.querySelector('[data-streamer-section="session-performance"]'),
+                  overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
+                  error:/This page hit an error/i.test(document.body.innerText)
+                };
+              });
+              if(!state.refined||state.workspace!=='ranked'||!state.grid||!state.secondary||!state.hero||!state.settingsAvailable||!state.diagCollapsed||!state.inlinePreview||!state.legacyPreviewHidden||!state.quick||!state.live||!state.rank||!state.perf||state.overflow>8||state.error||errors.length)failures.push({name,state,errors});
 
               await dismissOverlays();
               const tournament=page.getByRole('tab',{name:/tournament workspace/i});
@@ -99,7 +108,7 @@ jobs:
                   const returned=await page.evaluate(()=>({
                     mode:document.querySelector('#app')?.dataset.streamerWorkspace,
                     control:document.querySelector('#app')?.classList.contains('rankedStreamControlCenter'),
-                    preview:!!document.querySelector('#rankedRealObsPreview')
+                    preview:!!document.querySelector('#rankedRealObsPreview')||!!document.querySelector('.pnObsStudio[data-mode="ranked"] iframe[data-obs-mode="ranked"]')
                   }));
                   if(returned.mode!=='ranked'||!returned.control||!returned.preview)failures.push({name,type:'ranked-return',returned});
                 }catch(e){failures.push({name,type:'ranked-click',error:String(e.message||e)})}
