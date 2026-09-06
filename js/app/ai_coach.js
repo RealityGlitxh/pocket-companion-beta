@@ -1,5 +1,5 @@
-/* V8.52.1 — Pocket Coach real AI model connection */
-const pocketCoachState={conversationId:null,messages:[],conversations:[],loading:false,error:'',loaded:false,providerChecked:false,providerConfigured:false,provider:'openai',model:'gpt-5.6-terra'};
+/* V8.68.5 — Pocket Coach persistent history/session repair */
+const pocketCoachState={conversationId:null,messages:[],conversations:[],loading:false,error:'',loaded:false,loadedUserId:'',loadingConversations:false,providerChecked:false,providerConfigured:false,provider:'openai',model:'gpt-5.6-luna'};
 function coachClient(){return window.getPPCCloudClient?.()||null}
 function coachSession(){return window.getPPCCloudSession?.()||null}
 const COACH_PROMPTS=[
@@ -12,21 +12,34 @@ const COACH_PROMPTS=[
 ];
 async function coachCheckProvider(){
  const c=coachClient(),s=coachSession();
- if(!c||!s?.user){pocketCoachState.providerChecked=true;return}
+ if(!c||!s?.user){pocketCoachState.providerChecked=false;return}
  try{
    const {data,error}=await c.functions.invoke('pocket-coach',{body:{action:'status'}});
    if(error)throw error;
    pocketCoachState.providerConfigured=!!data?.providerConfigured;
    pocketCoachState.provider=data?.provider||'openai';
-   pocketCoachState.model=data?.model||'gpt-5.6-terra';
+   pocketCoachState.model=data?.model||'gpt-5.6-luna';
  }catch(e){pocketCoachState.providerConfigured=false}
  pocketCoachState.providerChecked=true;
  pocketCoachPage(true);
 }
-async function coachLoadConversations(){
- const c=coachClient(),s=coachSession(); if(!c||!s?.user){pocketCoachState.loaded=true;return}
- const {data}=await c.from('ai_conversations').select('id,title,updated_at').eq('user_id',s.user.id).order('updated_at',{ascending:false}).limit(20);
- pocketCoachState.conversations=data||[]; pocketCoachState.loaded=true;
+async function coachLoadConversations(force=false){
+ const c=coachClient(),s=coachSession();
+ if(!c||!s?.user){pocketCoachState.loaded=false;pocketCoachState.loadedUserId='';pocketCoachState.conversations=[];return}
+ const uid=s.user.id;
+ if(pocketCoachState.loadingConversations)return;
+ if(!force&&pocketCoachState.loaded&&pocketCoachState.loadedUserId===uid)return;
+ pocketCoachState.loadingConversations=true;
+ try{
+   const {data,error}=await c.from('ai_conversations').select('id,title,updated_at').eq('user_id',uid).order('updated_at',{ascending:false}).limit(20);
+   if(error)throw error;
+   pocketCoachState.conversations=data||[];
+   pocketCoachState.loaded=true;
+   pocketCoachState.loadedUserId=uid;
+ }catch(e){
+   pocketCoachState.loaded=false;
+   pocketCoachState.error=e?.message||String(e);
+ }finally{pocketCoachState.loadingConversations=false}
 }
 async function coachOpenConversation(id){
  const c=coachClient(),s=coachSession(); if(!c||!s?.user)return;
@@ -53,14 +66,15 @@ async function coachSend(messageOverride=''){
    pocketCoachState.model=data.model||pocketCoachState.model;
    pocketCoachState.providerChecked=true;
    pocketCoachState.messages.push({role:'assistant',content:data.answer,source_labels:data.sources||[],model_provider:data.provider,model_name:data.model});
-   await coachLoadConversations();
- }catch(e){pocketCoachState.error=e?.message||String(e)}
+   await coachLoadConversations(true);
+ }catch(e){pocketCoachState.error=e?.message||String(e);await coachLoadConversations(true)}
  pocketCoachState.loading=false;pocketCoachPage(true);
 }
 function coachComposerKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend()}}
 function pocketCoachPage(skipLoad=false){
- const root=document.getElementById('app');if(!root)return;const signed=!!coachSession()?.user;
- if(!skipLoad&&!pocketCoachState.loaded){coachLoadConversations().then(()=>pocketCoachPage(true))}
+ const root=document.getElementById('app');if(!root)return;const session=coachSession(),uid=session?.user?.id||'',signed=!!uid;
+ if(!signed){pocketCoachState.loaded=false;pocketCoachState.loadedUserId='';pocketCoachState.conversations=[];pocketCoachState.providerChecked=false}
+ if(signed&&(!pocketCoachState.loaded||pocketCoachState.loadedUserId!==uid)&&!pocketCoachState.loadingConversations){coachLoadConversations().then(()=>pocketCoachPage(true))}
  if(signed&&!pocketCoachState.providerChecked)coachCheckProvider();
  const history=pocketCoachState.conversations;
  const providerLabel=!signed?'Sign in required':!pocketCoachState.providerChecked?'Checking AI…':pocketCoachState.providerConfigured?`${pocketCoachState.model} connected`:'Secure AI key needed';
@@ -68,7 +82,7 @@ function pocketCoachPage(skipLoad=false){
  root.innerHTML=`<div class="coachPage">
   <div class="between coachHero"><div><span class="eyebrow">POCKET COACH • REAL AI CONNECTION</span><h1>Your competitive assistant</h1><p class="muted">Ask about your decks, matches, Meta, rank, collection, simulations, and tournament prep. Personalized answers are grounded in data PocketNexus actually has.</p></div><div class="coachStatus"><span class="badge"><span class="statusdot ${signed?'good':'bad'}"></span>${signed?'Cloud context connected':'Sign in required'}</span><span class="badge"><span class="statusdot ${providerGood?'good':signed?'warn':'bad'}"></span>${esc(providerLabel)}</span></div></div>
   <div class="coachLayout">
-   <aside class="panel coachSidebar"><div class="between"><div><span class="eyebrow">CHATS</span><h2>History</h2></div><button class="secondary" onclick="coachNewChat()">+ New</button></div>${history.length?`<div class="coachHistoryList">${history.map(x=>`<button class="coachHistoryItem ${x.id===pocketCoachState.conversationId?'active':''}" onclick="coachOpenConversation('${x.id}')"><strong>${esc(x.title||'Coaching chat')}</strong><small>${new Date(x.updated_at).toLocaleString()}</small></button>`).join('')}</div>`:`<div class="coachEmptySide">Your signed-in coaching chats will appear here.</div>`}</aside>
+   <aside class="panel coachSidebar"><div class="between"><div><span class="eyebrow">CHATS</span><h2>History</h2></div><button class="secondary" onclick="coachNewChat()">+ New</button></div>${pocketCoachState.loadingConversations&&!history.length?`<div class="coachEmptySide">Loading chat history…</div>`:history.length?`<div class="coachHistoryList">${history.map(x=>`<button class="coachHistoryItem ${x.id===pocketCoachState.conversationId?'active':''}" onclick="coachOpenConversation('${x.id}')"><strong>${esc(x.title||'Coaching chat')}</strong><small>${new Date(x.updated_at).toLocaleString()}</small></button>`).join('')}</div>`:`<div class="coachEmptySide">${signed?'No saved coaching chats yet.':'Sign in to sync coaching history.'}</div>`}</aside>
    <section class="panel coachMain"><div class="coachTopBar"><div><span class="eyebrow">GROUNDED AI COACHING</span><h2>${pocketCoachState.conversationId?'Conversation':'Start a new conversation'}</h2></div><span class="pill">No invented game data</span></div>
     <div class="coachQuickPrompts">${COACH_PROMPTS.map(p=>`<button onclick='coachUsePrompt(${JSON.stringify(p)})'>${esc(p)}</button>`).join('')}</div>
     <div class="coachThread" id="coachThread">${pocketCoachState.messages.length?pocketCoachState.messages.map(coachMessageHtml).join(''):`<div class="coachWelcome"><div class="coachOrb">✦</div><h2>What do you want to improve?</h2><p>${providerGood?`Pocket Coach is connected to ${esc(pocketCoachState.model)} through the secure Supabase backend. Ask a competitive question and I’ll combine the model with your synced PocketNexus context.`:`The real AI backend is installed and ready. Until the server-side OpenAI key is added, Pocket Coach automatically falls back to grounded rule-based answers instead of exposing a key in the browser.`}</p></div>`}${pocketCoachState.loading?`<article class="coachMessage assistant"><div class="coachAvatar">✦</div><div class="coachBubble coachThinking"><strong>${providerGood?'Thinking with your PocketNexus context…':'Reading your PocketNexus data…'}</strong><span></span><span></span><span></span></div></article>`:''}</div>
