@@ -1,0 +1,5 @@
+-- Applied to production as migration: v8614_training_profiles_cloud_stats_achievements
+-- Tables: training_daily_card_results, training_brain_results, training_achievements
+-- RLS: authenticated owner-only read/write as appropriate.
+-- RPCs: get_my_training_profile(), sync_my_training_achievements().
+-- See V8.61.4_TRAINING_PROFILES_CLOUD_ACHIEVEMENTS.md for behavior.

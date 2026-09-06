@@ -1,0 +1,61 @@
+@media(max-width:1120px){.headerNav{display:none}.globalSearchButtonText,.globalSearchButton kbd{display:none}.mobileBottomNav{display:flex;position:fixed;z-index:45;left:12px;right:12px;bottom:12px;padding:6px;background:rgba(10,16,24,.95);border:1px solid #2b3d52;border-radius:17px;backdrop-filter:blur(14px)}.mobileBottomNav button{flex:1;background:transparent;color:#91a2b6;box-shadow:none;font-size:.7rem;padding:7px 3px}.mobileBottomNav button.active{background:#172435;color:white}.pocketHubGrid,.foundationIntelGrid,.deckManagerGrid,.metaIntelGrid{grid-template-columns:repeat(2,1fr)}.collectionBrowserGrid{grid-template-columns:repeat(4,1fr)}.toolLaunchGrid{grid-template-columns:repeat(3,1fr)}.filtergrid{grid-template-columns:repeat(3,1fr)}.filtergrid input{grid-column:span 2}}
+@media(max-width:800px){#app{width:calc(100% - 22px);padding-top:18px}.foundationEntryShell,.pocketCommandHero,.battleRecordGrid,.rankHeroCard,.metaHero,.deckWorkspace,.deckBuilderLayout,.builderGrid{grid-template-columns:1fr}.foundationEntryStory{min-height:auto;padding:26px}.foundationEntryStory h1{font-size:3rem}.pocketHubGrid,.foundationIntelGrid,.deckManagerGrid,.ppcMetaSummaryGrid,.ppcMetaSupportGrid{grid-template-columns:repeat(2,1fr)}.collectionBrowserGrid{grid-template-columns:repeat(3,1fr)}.gymRosterGrid{grid-template-columns:1fr}.ppcRankForecastGrid{grid-template-columns:repeat(2,1fr)}.toolLaunchGrid{grid-template-columns:repeat(2,1fr)}.streamToggles{grid-template-columns:repeat(2,1fr)}.grid,.form2,.form3{grid-template-columns:1fr}.filtergrid{grid-template-columns:repeat(2,1fr)}.filtergrid input{grid-column:1/-1}.modalgrid{grid-template-columns:1fr}}
+@media(max-width:520px){h1{font-size:2.25rem}.entryFeatureGrid,.pocketHubGrid,.foundationIntelGrid,.deckManagerGrid,.ppcMetaSummaryGrid,.ppcMetaSupportGrid,.metaIntelGrid,.ppcRankForecastGrid,.toolLaunchGrid{grid-template-columns:1fr}.collectionBrowserGrid{grid-template-columns:repeat(2,1fr);gap:7px}.pocketCommandCopy{min-height:240px;padding:23px}.pocketCommandToday>div>strong{font-size:3rem}.todayStats{grid-template-columns:1fr}.gymDeckPickRow,.gymNames{grid-template-columns:1fr}.gymRules{grid-template-columns:repeat(2,1fr)}.gymCurrentMatch,.gymScoreboard{grid-template-columns:1fr;text-align:center}.headerTools #user,.themeControl{display:none}.appHeaderBar{width:calc(100% - 20px)}.globalSearchButton{margin-left:auto}}
+@media(prefers-reduced-motion:reduce){*{animation:none;transition:none;scroll-behavior:auto}}
+
+/* V8.36.1: never allow desktop navigation to collapse into vertical text */
+@media(max-width:1120px){
+  .appHeaderBar{height:62px;min-height:62px;flex-wrap:nowrap}
+  .headerNav{display:none}
+  .headerTools{margin-left:auto}
+  .appBrand{flex:0 0 auto}
+}
+@media(max-width:520px){
+  .appBrand strong{font-size:.88rem}
+  .appBrand:before{width:27px;height:37px}
+}
+/* The sign-in screen never needs the full desktop application menu. */
+body:has(#staticEntry) .headerNav{display:none}
+body:has(#staticEntry) .headerTools{margin-left:auto}
+body:has(#staticEntry) .mobileBottomNav{display:none}
+@media(max-width:1120px){.builderSplit{grid-template-columns:1fr}.builderDeckPane{position:static}.builderCatalog.cards{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}.tournamentHero{grid-template-columns:1fr}.tournamentHeroCards{grid-template-columns:repeat(3,1fr)}.tournamentKpis{grid-template-columns:repeat(2,1fr)}.metaPrepList{grid-template-columns:repeat(3,1fr)}.rankFlowMetrics,.rankQuickGrid,.statsHeroGrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:800px){.builderFilterRow{grid-template-columns:repeat(2,1fr)}.tournamentEventHeader{grid-template-columns:1fr}.tournamentPodium,.tournamentEventGrid{grid-template-columns:1fr}.tournamentColumnLabels{display:none}.tournamentRow{grid-template-columns:58px 1fr;align-items:start;border:1px solid var(--line);border-radius:12px;margin-bottom:7px}.tournamentDeck,.tournamentRecord,.tournamentDeckAction{grid-column:2}.metaPrepList{grid-template-columns:1fr 1fr}.authGrid,.statsChartGrid,.uxOverviewGrid{grid-template-columns:1fr}.onboardingChoices,.onboardingTour{grid-template-columns:1fr}}
+@media(max-width:520px){.builderCatalog.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.builderFilterRow{grid-template-columns:1fr}.deckcards.builderDeckCards{grid-template-columns:repeat(3,minmax(0,1fr))}.rankFlowMetrics,.rankQuickGrid,.statsHeroGrid,.rankFlowTarget,.tournamentKpis,.metaPrepList{grid-template-columns:1fr}.tournamentHeroCards{grid-template-columns:repeat(3,minmax(0,1fr))}.onboardingCard{padding:17px}.onboardingActions{align-items:stretch;flex-direction:column}.onboardingActions .right{display:grid;grid-template-columns:1fr 1fr;width:100%}.onboardingActions>button{width:100%}}
+
+/* V8.39 phone/tablet finish */
+@media(max-width:1120px){body{padding-bottom:88px}.mobileBottomNav{bottom:max(10px,env(safe-area-inset-bottom));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right))}.mobileBottomNav button{min-width:0;min-height:48px}.mobileBottomNav small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.appHeaderBar{width:calc(100% - 20px)}}
+@media(max-width:700px){.between>h1,.between>div{min-width:0}.panel{padding:15px;border-radius:15px}.row>button{max-width:100%}.mobileMoreSheet{max-height:86vh;overflow:auto;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.globalSearchOverlay{padding-bottom:calc(10px + env(safe-area-inset-bottom))}}
+@media(max-width:430px){#app{width:calc(100% - 16px)}.appHeaderBar{width:calc(100% - 16px);gap:8px}.appBrand strong{font-size:.82rem}.globalSearchButton{padding:7px 10px}.pocketCommandCopy{padding:20px;min-height:220px}.collectionBrowserGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.streamToggles{grid-template-columns:1fr 1fr}.mobileBottomNav{padding:5px}.mobileBottomNav button{font-size:.64rem;padding:5px 2px}}
+@media(max-width:350px){.appBrand strong{display:none}.mobileBottomNav small{font-size:.61rem}.streamToggles{grid-template-columns:1fr}.collectionBrowserGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V8.62.3 mobile app readiness */
+:root{--ppc-visual-height:100dvh}
+@media(max-width:760px){
+ html,body{min-height:100%;overscroll-behavior-y:none}
+ body{min-height:var(--ppc-visual-height,100dvh)}
+ input,select,textarea{font-size:16px!important}
+ input,textarea{scroll-margin-bottom:180px}
+ .mobileKeyboardOpen #mobileNav{transform:translateY(110%);pointer-events:none}
+ .mobileKeyboardOpen .pwaNotice{bottom:12px}
+ .pwaStandalone body{padding-top:env(safe-area-inset-top)}
+ .pwaStandalone .mobileMoreSheet,.pwaStandalone .modal{padding-bottom:max(18px,env(safe-area-inset-bottom))}
+}
+
+
+/* V8.62.4 mobile QA + release-candidate hardening */
+@media(max-width:760px){
+  html,body{max-width:100%;overflow-x:hidden}
+  img,svg,video,canvas{max-width:100%}
+  button,[role="button"],a.btn,.btn{min-height:44px}
+  .modal,.mobileMoreSheet,.globalSearchOverlay{max-width:100vw}
+  .panel,.card,.modalCard,.builderDeckPane,.builderCatalog{min-width:0}
+  table{max-width:100%}
+  .tableWrap,.tableScroll,.scrollX{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  textarea{min-height:96px}
+  :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+}
+@media(max-width:430px){
+  .row,.between{min-width:0}
+  .row>*,.between>*{min-width:0}
+  .pwaNotice{left:8px;right:8px;max-width:none}
+}

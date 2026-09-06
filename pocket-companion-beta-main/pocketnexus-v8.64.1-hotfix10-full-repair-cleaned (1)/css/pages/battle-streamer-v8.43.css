@@ -1,0 +1,90 @@
+/* V8.43 Battle + Streamer UX cleanup */
+.battleRankOverview{padding:12px 14px!important}.battleRankOverview .rankFlowMetrics{gap:8px!important}.battleRankOverview .metric{padding:9px 11px!important}.battleRankOverview .metric .n{font-size:1.2rem!important}.battleRecordGrid{grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);align-items:start}.battleRecordGrid aside .panel{padding:15px}.battleRecordGrid aside .metricgrid{grid-template-columns:repeat(3,1fr);gap:7px}.battleRecordGrid aside .metric{padding:10px}.battleRecordGrid aside .metric .n{font-size:1.35rem}.recentBattleList{display:grid;gap:8px}.recentBattleRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:#0c151f}.recentBattleRow strong,.recentBattleRow small{display:block}.recentBattleRow small{color:var(--muted);margin-top:2px}.recentBattleDate{color:var(--muted);font-size:.72rem;white-space:nowrap}
+.sessionCard{padding:14px!important;border:1px solid var(--line);border-radius:14px;background:#0d1621;margin:9px 0}.sessionCardHead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}.sessionCardTitle strong{display:block;font-size:1rem}.sessionCardTitle small{display:block;color:var(--muted);margin-top:3px}.sessionMetricGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:11px}.sessionMetricGrid>div{padding:9px 10px;background:#09121b;border:1px solid rgba(255,255,255,.06);border-radius:10px}.sessionMetricGrid small{display:block;color:var(--muted);font-size:.64rem;text-transform:uppercase;letter-spacing:.06em}.sessionMetricGrid strong{display:block;margin-top:3px;font-size:.9rem}.sessionMatchups{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}.sessionMatchups>div{padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.025)}.sessionMatchups small{display:block;color:var(--muted);font-size:.64rem}.sessionMatchups span{display:block;margin-top:2px;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pastSessions>summary{padding:12px 2px;cursor:pointer}.pastSessionsList{display:grid;gap:8px}
+.historyFilters{margin:12px 0}.historyFilters>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:#0d1621}.historyToolbar{display:grid!important;grid-template-columns:2fr repeat(3,minmax(130px,1fr))!important;gap:8px!important;margin-top:9px}.historyToolbar input,.historyToolbar select{min-width:0}.battleHistoryList{display:grid;gap:8px;margin-top:10px}.matchCard{padding:0!important;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#0d1621}.matchCardRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 13px}.matchCardMain{min-width:0}.matchCardMain strong{display:block;font-size:.92rem}.matchCardMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}.matchCardMeta span{font-size:.68rem;color:#a9b8c8;background:#09121b;padding:3px 6px;border-radius:6px}.matchCardSide{text-align:right;min-width:110px}.matchCardSide strong{display:block}.matchCardSide small{display:block;color:var(--muted);margin-top:3px;font-size:.67rem}
+.streamCockpit{grid-template-columns:minmax(0,1.45fr) minmax(330px,.55fr)}.streamStatGrid article{min-height:82px;align-content:center}.streamStatGrid span{display:block}.streamStatGrid strong{display:block;line-height:1.1}.streamRecentControl{display:grid;gap:7px;margin-top:10px}.streamRecentControl>div{display:grid!important;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#09121b}.streamRecentControl strong,.streamRecentControl small{display:block}.streamRecentControl small{color:var(--muted);margin-top:2px}.streamToolDrawer:not([open]){padding-bottom:12px}.streamToolDrawer>summary{padding:2px 0}.streamObsGrid{align-items:start}.obsStatus{margin-top:6px}.streamToggles{grid-template-columns:repeat(3,minmax(0,1fr))}.streamToggles label{font-size:.76rem}
+@media(max-width:900px){.historyToolbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}.historyToolbar input:first-child{grid-column:1/-1}.sessionMetricGrid{grid-template-columns:repeat(3,1fr)}.streamCockpit{grid-template-columns:1fr}.streamObsGrid{grid-template-columns:1fr}}
+@media(max-width:600px){.battleRecordGrid{grid-template-columns:1fr}.sessionMetricGrid,.sessionMatchups{grid-template-columns:1fr 1fr}.historyToolbar{grid-template-columns:1fr!important}.historyToolbar input:first-child{grid-column:auto}.matchCardRow{grid-template-columns:auto minmax(0,1fr)}.matchCardSide{grid-column:2;text-align:left;min-width:0}.streamToggles{grid-template-columns:1fr 1fr}.recentBattleDate{display:none}}
+
+
+/* V8.51.3 — Battle Tracker visual polish */
+.battleRankOverview{
+  position:relative;
+  overflow:hidden;
+  padding:20px!important;
+  margin-bottom:14px;
+  border-color:#2c465f!important;
+  background:
+    radial-gradient(circle at 88% -15%,rgba(80,166,235,.16),transparent 34%),
+    radial-gradient(circle at 4% 115%,rgba(243,199,93,.055),transparent 28%),
+    linear-gradient(145deg,#152332 0%,#0d1722 72%)!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.2);
+}
+.battleRankOverview:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#62c5ff,#3f89d6 56%,#e1bd55)}
+.battleRankOverview>.between{position:relative;z-index:1;align-items:center}
+.battleRankOverview>.between h2{font-size:1.65rem;letter-spacing:-.035em;margin:4px 0 5px}
+.battleRankOverview>.between p{margin:0;max-width:660px;font-size:.9rem}
+.battleRankOverview>.between .pill{border-color:rgba(93,183,255,.38);background:rgba(76,161,225,.09);color:#bfe4ff}
+.battleRankOverview>.between button.secondary{background:rgba(9,19,29,.7);border-color:#314b65}
+.battleRankOverview .rankFlowMetrics{gap:10px!important;margin:16px 0 10px}
+.battleRankOverview .rankFlowMetrics>div{
+  position:relative;overflow:hidden;min-height:92px;padding:13px 14px!important;
+  border:1px solid #294159;border-radius:14px;background:linear-gradient(155deg,rgba(17,32,47,.96),rgba(8,18,28,.96));
+  box-shadow:inset 0 1px rgba(255,255,255,.025);
+}
+.battleRankOverview .rankFlowMetrics>div:after{content:"";position:absolute;inset:auto 12px 0;height:2px;border-radius:9px;background:#438fca;opacity:.7}
+.battleRankOverview .rankFlowMetrics>div:nth-child(2):after{background:#50c98a}.battleRankOverview .rankFlowMetrics>div:nth-child(3):after{background:#7db7e4}.battleRankOverview .rankFlowMetrics>div:nth-child(4):after{background:#d7b64f}
+.battleRankOverview .rankFlowMetrics span{font-size:.66rem;letter-spacing:.1em;font-weight:800}
+.battleRankOverview .rankFlowMetrics strong{font-size:1.45rem;letter-spacing:-.025em;margin-top:1px}
+.battleRankOverview .rankFlowMetrics small{font-size:.69rem;line-height:1.35}
+.battleRankOverview .rankFlowTarget{gap:10px;margin:10px 0}
+.battleRankOverview .rankFlowTarget>div{padding:11px 13px;border-color:#294159;background:rgba(7,17,27,.7)}
+.battleRankOverview .rankFlowTarget span{font-size:.78rem;color:#a6b8c9}.battleRankOverview .rankFlowTarget strong{font-size:1rem;margin-top:2px}
+.battleRankOverview>.notice{margin:10px 0 0;border-color:#294159;background:rgba(8,18,28,.58);color:#b4c2d1;font-size:.78rem;padding:10px 12px}
+.battleRankOverview>.notice strong{color:#e0e9f2}
+
+.battleRecordGrid{gap:14px;grid-template-columns:minmax(0,1.34fr) minmax(330px,.66fr)}
+.battleRecordCard{
+  position:relative;overflow:hidden;padding:22px;border-radius:22px;
+  background:radial-gradient(circle at 4% 0%,rgba(66,159,222,.09),transparent 28%),linear-gradient(145deg,#152330,#0c151f 68%);
+  border-color:#2d4963;box-shadow:0 18px 42px rgba(0,0,0,.18)
+}
+.battleRecordCard:before{content:"";position:absolute;left:22px;right:22px;top:0;height:2px;background:linear-gradient(90deg,transparent,#4da9e5,transparent);opacity:.7}
+.quickRecordPanel>.between{align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(113,153,191,.14)}
+.quickRecordPanel>.between h2{font-size:1.3rem;letter-spacing:-.025em;margin-bottom:5px}.quickRecordPanel>.between p{font-size:.82rem;margin:0}
+.quickRecordPanel>.between .segmented{min-width:185px}
+.quickRecordPanel>label{margin-top:12px!important;margin-bottom:2px;color:#c8d5e3;font-size:.76rem;letter-spacing:.015em}
+.quickRecordPanel select,.quickRecordPanel input,.quickRecordPanel textarea{background:#09131e;border-color:#2a435a;box-shadow:inset 0 1px rgba(255,255,255,.02)}
+.quickRecordPanel select:hover,.quickRecordPanel input:hover{border-color:#3a5d7b}
+.quickRecordPanel select:focus,.quickRecordPanel input:focus,.quickRecordPanel textarea:focus{border-color:#4ca4df;box-shadow:0 0 0 3px rgba(76,164,223,.1)}
+.quickRecordPanel .segmented{border-color:#294159;background:#08121c;padding:4px}
+.quickRecordPanel .segmented button{border-radius:9px;color:#91a4b8;box-shadow:none}
+.quickRecordPanel .segmented button.active{background:linear-gradient(180deg,rgba(67,155,216,.24),rgba(37,104,151,.18));border-color:#4ca4df;color:#eef8ff;box-shadow:inset 0 0 18px rgba(76,164,223,.055)}
+.recentOpponentBlock{margin-top:10px;padding:10px 0 2px}.recentOpponentBlock>span{display:block;margin-bottom:7px;letter-spacing:.08em}
+.recentOpponentChips{display:flex;flex-wrap:wrap;gap:7px}
+.recentOpponentChip{min-height:32px;padding:6px 10px;border-radius:999px;background:#102132;color:#b9d8ed;border:1px solid #2b526e;box-shadow:none;font-size:.73rem;font-weight:800}
+.recentOpponentChip:hover{background:#15304a;border-color:#4c91bf;color:#edf8ff;transform:translateY(-1px)}
+.quickResultActions{grid-template-columns:1fr .78fr 1fr!important;gap:9px;margin-top:16px;padding-top:15px;border-top:1px solid rgba(113,153,191,.14)}
+.quickResultActions button{min-height:46px;border-radius:12px;letter-spacing:.025em}
+.quickResultActions .secondary{background:#101b28;border-color:#2a435a;color:#b9c8d7}
+.quickWin{background:linear-gradient(180deg,#55d28d,#35b873)!important;box-shadow:0 8px 20px rgba(53,184,115,.14)}
+.quickLoss{background:linear-gradient(180deg,#f76a78,#df4f61)!important;box-shadow:0 8px 20px rgba(223,79,97,.12)}
+
+.battleRecordGrid aside{gap:14px}
+.battleRecordGrid aside>.panel{padding:17px!important;border-color:#294159;background:linear-gradient(155deg,#121f2c,#0d1621);box-shadow:0 14px 34px rgba(0,0,0,.15)}
+.battlePulseCard{position:relative;overflow:hidden}.battlePulseCard:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#4da9e5,#55cb94,#d4b65b)}
+.battlePulseCard h2,.battleRecentCard h2{font-size:1.15rem;letter-spacing:-.02em;margin:4px 0 11px}
+.battlePulseCard .metricgrid{gap:8px!important}
+.battlePulseCard .metric{min-height:76px;padding:11px!important;border-color:#294159;background:#09141f;border-radius:13px}
+.battlePulseCard .metric .l{font-size:.62rem;letter-spacing:.09em}.battlePulseCard .metric .n{font-size:1.5rem!important;line-height:1.1;margin-top:7px}
+.battlePulseCard .metric:nth-child(1){border-top-color:#4da9e5}.battlePulseCard .metric:nth-child(2){border-top-color:#50c98a}.battlePulseCard .metric:nth-child(3){border-top-color:#d4b65b}
+.battleRecentCard>.between{align-items:center;margin-bottom:3px}.battleRecentCard>.between button{min-height:34px;padding:6px 11px;border-radius:10px;font-size:.76rem}
+.battleRecentCard .deckrow{position:relative;align-items:center!important;flex-wrap:nowrap!important;gap:9px;padding:10px 3px;border-bottom:1px solid rgba(114,150,184,.16)}
+.battleRecentCard .deckrow:last-child{border-bottom:0;padding-bottom:2px}
+.battleRecentCard .deckrow>div{min-width:0}.battleRecentCard .deckrow>div>span{font-size:.78rem;color:#d7e2ec}.battleRecentCard .deckrow strong{display:inline-flex;align-items:center;font-size:.72rem;letter-spacing:.05em;margin-right:3px}
+.battleRecentCard .deckrow strong.good{color:#58db99}.battleRecentCard .deckrow strong.bad{color:#ff7784}
+.battleRecentCard .deckrow .tiny{font-size:.66rem;line-height:1.35;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.battleRecentCard .deckrow>span.tiny{font-size:.63rem;flex:0 0 auto}
+
+@media(max-width:1120px){.battleRecordGrid{grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr)}.battleRankOverview .rankFlowMetrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:760px){.battleRecordGrid{grid-template-columns:1fr}.battleRecordGrid aside{grid-template-columns:1fr}.quickResultActions{grid-template-columns:1fr 1fr!important}.quickResultActions .quickLoss{grid-column:1/-1}.battleRankOverview{padding:16px!important}.battleRankOverview .rankFlowMetrics{grid-template-columns:1fr 1fr!important}.battleRankOverview .rankFlowTarget{grid-template-columns:1fr}.battleRecentCard .deckrow>span.tiny{display:none}}
+@media(max-width:500px){.battleRankOverview .rankFlowMetrics{grid-template-columns:1fr!important}.quickRecordPanel>.between .segmented{width:100%}.quickResultActions{grid-template-columns:1fr!important}.quickResultActions .quickLoss{grid-column:auto}.battleRecordCard{padding:17px}.battleRecordGrid aside>.panel{padding:14px!important}}
