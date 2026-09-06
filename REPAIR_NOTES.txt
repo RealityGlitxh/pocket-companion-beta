@@ -112,3 +112,12 @@ V8.64.2 PROFILE EXPORT GUARD HOTFIX
 - Fixed startup ReferenceError from missing openPublicProfileByPublicId in the recovered baseline.
 - Optional public-profile helpers are now exported only when defined, so Profile/Team Wars recovery gaps cannot abort global app startup or Streamer QA.
 - No Streamer, RP, match, session, tournament, or cloud logic was changed.
+
+
+Ranked Stream Control Center QA hotfix:
+- Restored the Ranked-specific hero contract (RANKED STREAM / Ranked workspace + status chips).
+- Restored the 2-column primary control grid and separate secondary grid.
+- Restored explicit Live Session, Quick Match, Current Rank, Session Performance markers without changing handlers.
+- Made Ranked Overlay Settings and Advanced / Diagnostics collapsible and closed by default.
+- Kept one real embedded OBS iframe preview and the legacy streamPreview hidden.
+- Added compatibility classes/data markers for the existing automated Ranked QA without changing RP, match, session, Tournament, or Caster business logic.
