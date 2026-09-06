@@ -121,3 +121,10 @@ Ranked Stream Control Center QA hotfix:
 - Made Ranked Overlay Settings and Advanced / Diagnostics collapsible and closed by default.
 - Kept one real embedded OBS iframe preview and the legacy streamPreview hidden.
 - Added compatibility classes/data markers for the existing automated Ranked QA without changing RP, match, session, Tournament, or Caster business logic.
+
+
+RANKED STREAMER QA — ROUTER BINDING HOTFIX
+- Actual failure: bootstrap render routing referenced the original lexical streamerPage binding.
+- Recovery replaces window.streamerPage after bootstrap, so normal route renders could still call the old Streamer renderer.
+- Fix: Streamer route now resolves window.streamerPage first, falling back to the legacy renderer only if needed.
+- No RP, match, session, Tournament, Caster, storage, or overlay business logic changed.
