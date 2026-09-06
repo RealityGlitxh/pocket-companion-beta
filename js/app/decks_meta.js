@@ -676,6 +676,25 @@ async function loadCompetitiveMeta847(force=false){
   if(mx.error)throw mx.error;
   CompetitiveMeta847.meta=Array.isArray(mt.data)?mt.data:[];
   CompetitiveMeta847.matrix=Array.isArray(mx.data)?mx.data:[];
+  // Recovery fallback: if the aggregate RPC has no rows but Tournament Intelligence does,
+  // aggregate a bounded set of real recent standings instead of rendering a misleading 0-record field.
+  if(!CompetitiveMeta847.meta.length&&window.PPCTournamentService){
+   const svc=window.PPCTournamentService,cutoff=Date.now()-CompetitiveMeta847.days*86400000;
+   let catalog=svc.getCatalog?.()||[];
+   if(!catalog.length)catalog=await svc.loadCatalog({limit:50},{force:false});
+   const recent=(catalog||[]).filter(t=>{const d=new Date(t.start_date||t.date||0).getTime();return Number.isFinite(d)&&d>=cutoff}).slice(0,12);
+   const agg=new Map();let sampleGames=0;
+   for(const t of recent){
+    const rows=await svc.loadStandings(String(t.id));
+    for(const r of (rows||[])){
+     const name=String(r.archetype_name||'').trim();if(!name||name==='Unknown')continue;
+     const key=name.toLowerCase(),x=agg.get(key)||{archetype:name,appearances:0,wins:0,losses:0,ties:0,games:0,tournaments:new Set()};
+     x.appearances++;x.wins+=Number(r.wins||0);x.losses+=Number(r.losses||0);x.ties+=Number(r.ties||0);x.games+=Number(r.wins||0)+Number(r.losses||0)+Number(r.ties||0);x.tournaments.add(String(t.id));agg.set(key,x);
+    }
+   }
+   const total=[...agg.values()].reduce((n,x)=>n+x.appearances,0);sampleGames=[...agg.values()].reduce((n,x)=>n+x.games,0);
+   CompetitiveMeta847.meta=[...agg.values()].sort((a,b)=>b.appearances-a.appearances).map(x=>({archetype:x.archetype,appearances:x.appearances,wins:x.wins,losses:x.losses,ties:x.ties,games:x.games,win_rate:(x.wins+x.losses)?100*x.wins/(x.wins+x.losses):null,meta_share:total?100*x.appearances/total:0,confidence_label:x.games>=100?'VERY HIGH':x.games>=40?'HIGH':x.games>=15?'MEDIUM':'LOW',tournament_count:x.tournaments.size,sample_games:sampleGames,_recovery:true}));
+  }
   CompetitiveMeta847.loaded=true;
  }catch(e){CompetitiveMeta847.error=e?.message||String(e)}finally{CompetitiveMeta847.loading=false;if(state.page==='meta')render()}
 }

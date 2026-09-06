@@ -11,7 +11,7 @@
   }
   function buildControl(){
     const host=document.getElementById("themeControl");
-    if(host){host.innerHTML='<span class="darkModeBadge" title="Dark mode is used across the app">Dark</span>';host.dataset.ready="1";}
+    if(host){host.innerHTML='';host.dataset.ready="1";}
     applyDark();
   }
   window.ThemeService={themes:[DARK],getTheme:()=>DARK,setTheme:()=>applyDark()};

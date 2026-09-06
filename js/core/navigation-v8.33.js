@@ -31,7 +31,7 @@ function mobileMoreSheetHtml(){
   ['COMPETE',[{page:'tournaments',icon:'♜',title:'Tournaments'},{action:'pairing',icon:'⇆',title:'Pairing Lab'},{page:'teamwars',icon:'⚔',title:'Team Wars'}]],
   ['IMPROVE',[{page:'stats',icon:'⌁',title:'Performance'},{page:'stats',action:'coaching',icon:'✦',title:'Coaching'},{page:'optimizer',icon:'◎',title:'Simulation Lab'},{page:'coach',icon:'✦',title:'Pocket Coach'},{page:'training',icon:'?',title:'Brain Teasers'}]],
   ['SOCIAL',[{page:'profile',icon:'◉',title:'Profiles'}]],
-  ['UTILITIES',[{page:'trade',icon:'⇄',title:'Trade'},{page:'streamer',icon:'▤',title:'Streamer'},{search:true,icon:'⌕',title:'Search Everything'},{page:'sync',icon:'↻',title:'Pocket Sync'},{page:'account',icon:'◉',title:'Account & Cloud'},{page:'about',icon:'ⓘ',title:'About & Privacy'},{page:'more',icon:'⚙',title:'Settings'}]]
+  ['UTILITIES',[{page:'trade',icon:'⇄',title:'Trade'},{page:'streamer',icon:'▤',title:'Streamer'},{search:true,icon:'⌕',title:'Search'},{page:'sync',icon:'↻',title:'Pocket Sync'},{page:'account',icon:'◉',title:'Account & Cloud'},{page:'about',icon:'ⓘ',title:'About & Privacy'},{page:'more',icon:'⚙',title:'Settings'}]]
  ];
  return `<div class="mobileMoreBackdrop" id="mobileMoreBackdrop"><section class="mobileMoreSheet" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle"><div class="mobileMoreHandle" aria-hidden="true"></div><div class="between"><div><span class="eyebrow">POCKETNEXUS</span><h2 id="mobileMoreTitle">More</h2></div><button class="secondary" type="button" onclick="closeMobileMoreSheet()">Close</button></div>${groups.map(([label,items])=>`<div class="mobileMoreGroup"><h3>${label}</h3><div class="mobileMoreGrid">${items.map(x=>`<button type="button" class="mobileMoreItem ${navItemActive(x)?'active':''}" onclick="mobileMoreNavigate(${JSON.stringify(x).replace(/\"/g,'&quot;')})"><span>${x.icon}</span><strong>${esc(x.title)}</strong></button>`).join('')}</div></div>`).join('')}</section></div>`;
 }
@@ -80,7 +80,7 @@ function nav(){
   {page:"profile",icon:"◉",title:"Profiles",description:"Public player stats, achievements, teams, and competitive identity."},
   {page:"trade",icon:"⇄",title:"Trade",description:"Trading tools and trade planning."},
   {page:"streamer",icon:"▤",title:"Streamer",description:"OBS overlays and stream controls."},
-  {search:true,icon:"⌕",title:"Search Everything",description:"Jump to any page, deck, card, or tool."},
+  {search:true,icon:"⌕",title:"Search",description:"Jump to any page, deck, card, or tool."},
   {page:"sync",icon:"↻",title:"Pocket Sync",description:"Prepare automatic Collection, Rank, and Battle History imports."},
   {page:"account",icon:"◉",title:"Account & Cloud",description:"Cloud sync, backups, profile, and security."},
   {page:"about",icon:"ⓘ",title:"About & Privacy",description:"Independent-project positioning and data policy."},
@@ -88,7 +88,7 @@ function nav(){
  ];
  n.innerHTML=`<div class="categorizedNav foundationNav"><button class="navHome navPrimaryBtn ${state.page==='dashboard'?'active':''}" onclick="headerNavigate('dashboard')" aria-current="${state.page==='dashboard'?'page':'false'}">Home</button>${navCategoryHtml('Play',play)}${navCategoryHtml('Build',build)}${navCategoryHtml('Compete',compete)}${navCategoryHtml('Improve',improve)}${navCategoryHtml('More',more)}</div>`;
  n.querySelectorAll('.navCategory').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)closeHeaderMenus(d);const sm=d.querySelector(':scope>summary');if(sm)sm.setAttribute('aria-expanded',d.open?'true':'false')}));
- document.getElementById("user").innerHTML=`<button class="userChip" onclick="headerNavigate('account')" title="Open Account & Cloud"><span class="userChipAvatar">${esc(String(identity).trim().charAt(0).toUpperCase()||"P")}</span><span class="userChipText">${esc(identity)}</span></button>`;
+ document.getElementById("user").innerHTML=`<button class="userChip" onclick="headerNavigate('profile')" title="Open Profiles"><span class="userChipAvatar">${esc(String(identity).trim().charAt(0).toUpperCase()||"P")}</span><span class="userChipText">Profiles</span></button>`;
  const mobile=document.getElementById("mobileNav");
  if(mobile){
   const mobileItems=[

@@ -77,3 +77,31 @@ FULL REPAIR SWEEP
 - Public grind-session posts now store rank_change as null when RP was not actually tracked, while correctly displaying an available 0 RP change.
 - Bumped all modified script cache-busters and the service-worker cache generation together.
 - No saved-data keys, Supabase RPC/table names, feature IDs, or core data flows were renamed.
+
+V8.64.2 Streamer Workspace Recovery
+- Restored separate Ranked, Tournament Player, and Tournament Caster workspace presentations.
+- Ranked restored to compact Stream Control Center layout using existing session/match/RP handlers.
+- Tournament no longer exposes Ranked-only match/RP workflow; uses Tournament Journey controls and separate deck-pair UI.
+- Caster no longer exposes Ranked Quick Match controls; restored broadcast score and scene controls.
+- Added mode-specific OBS source URLs: overlay-ranked.html, overlay-tournament.html, overlay-caster.html.
+- Added real embedded browser-source preview per workspace.
+- Existing match recording, RP calculations, sessions, localStorage/cloud state, BroadcastChannel, and legacy overlay runtime preserved.
+
+
+V8.64.2 Recovery UI cleanup:
+- Preserved Streamer workspace recovery and separate Ranked/Tournament/Caster overlay system.
+- Header search label shortened to Search.
+- Removed visible Dark badge from header; dark theme behavior preserved.
+- More > Theme copy updated to match fixed dark interface.
+- Header identity button now opens Profiles and displays Profiles instead of the account identity.
+
+
+V8.64.2 CONSOLIDATED RECOVERY + AUDIT FIXES
+- Preserved recovered Ranked / Tournament / Caster Streamer workspaces and dedicated OBS pages.
+- Tournament Event Browser selection now exits All Events and opens the selected event standings.
+- Ended/offseason Rank targets are historical only; active RP-to-go messaging is suppressed until a live season.
+- Battle rank summary follows the same ended-season semantics.
+- Combined Competitive Meta falls back to bounded real recent tournament standings when aggregate RPC returns no rows; no synthetic percentages are invented.
+- Header/global search wording normalized to Search.
+- Pocket Coach quick prompts wrap instead of clipping horizontally.
+- Service-worker generation advanced and recovered overlay/workspace assets added to the app shell.
