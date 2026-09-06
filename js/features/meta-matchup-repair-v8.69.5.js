@@ -66,4 +66,14 @@ style.textContent=`
 @media(max-width:760px){.metaMatchupEmptyActions{align-items:stretch;display:grid}.metaMatchupEmptyActions button{width:100%}}
 `;
 document.head.appendChild(style);
+
+// V8.69.6 profile visual refinement. Loaded here because this small feature file
+// is already part of the global shell, avoiding another blocking stylesheet in index.html.
+if(!document.getElementById('profile-refine-v8696')){
+  const profileCss=document.createElement('link');
+  profileCss.id='profile-refine-v8696';
+  profileCss.rel='stylesheet';
+  profileCss.href='css/profile-refine-v8.69.6.css?v=869600';
+  document.head.appendChild(profileCss);
+}
 })();
