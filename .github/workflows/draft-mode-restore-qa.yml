@@ -1,0 +1,145 @@
+name: PocketNexus Draft Mode Restore QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/draft-mode-restore-qa.yml"
+      - "index.html"
+      - "js/features/draft-mode-restore-v8.65.0.js"
+
+permissions:
+  contents: read
+
+jobs:
+  draft-mode-restore-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-draft-qa.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Run Draft Mode restore QA
+        run: |
+          cat > draft-mode-restore-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:900}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e.message||e)));
+            await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>typeof window.goPage==='function',{timeout:20000});
+            const guest=page.getByRole('button',{name:/continue as guest/i});
+            if(await guest.count())await guest.click({timeout:3000}).catch(()=>{});
+            await page.evaluate(()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              if(typeof save==='function')save();
+              window.PPCWhatsNew?.close?.(true);
+              document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
+            });
+
+            await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
+            const init=await page.evaluate(()=>({
+              ready:window.__ppcDraftRestoreReady===true,
+              error:window.__ppcDraftRestoreError||'',
+              draft:window.PPCDraftMode?.version||'',
+              online:window.PPCDraftOnline?.version||''
+            }));
+            assert(init.ready&&!init.error,`restore initialization failed: ${JSON.stringify(init)}`);
+            assert(init.draft==='8.69.3',`unexpected Draft Mode version ${init.draft}`);
+            assert(init.online==='8.69.4',`unexpected online Draft version ${init.online}`);
+
+            await page.evaluate(()=>window.nav?.());
+            await page.waitForTimeout(150);
+            const launcher=await page.locator('[data-draft-nav]').count();
+            assert(launcher>0,'desktop Draft Mode launcher missing from Play navigation');
+
+            await page.evaluate(async()=>{if(typeof loadCards==='function')await loadCards()});
+            await page.waitForFunction(()=>{try{return Array.isArray(CARDS)&&CARDS.length>50}catch{return false}},{timeout:20000});
+
+            await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
+            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000});
+            let lobby=await page.evaluate(()=>({
+              text:document.querySelector('#ppcDraftRoot')?.innerText||'',
+              overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth
+            }));
+            assert(/Rival Draft/i.test(lobby.text),'Draft lobby did not render');
+            assert(/Draft vs CPU/i.test(lobby.text),'CPU Draft action missing');
+            assert(/Local 2 Player/i.test(lobby.text),'local 2-player action missing');
+            assert(/ONLINE DRAFT ROOM/i.test(lobby.text),'online Draft Room panel missing');
+            assert(lobby.overflow<=12,`desktop Draft lobby overflow ${lobby.overflow}px`);
+
+            await page.getByRole('button',{name:'Draft vs CPU',exact:true}).click();
+            await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')?.status==='draft'}catch{return false}},{timeout:5000});
+
+            for(let i=0;i<40;i++){
+              const s=await page.evaluate(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')}catch{return null}});
+              assert(s,'Draft session disappeared');
+              if(s.status==='complete')break;
+              assert((s.playerA?.cards||[]).reduce((n,c)=>n+Number(c.quantity||0),0)<=20,'Player A exceeded 20 cards');
+              assert((s.playerB?.cards||[]).reduce((n,c)=>n+Number(c.quantity||0),0)<=20,'Player B exceeded 20 cards');
+              if(s.current?.picker==='A'){
+                const pick=page.locator('#ppcDraftRoot .draftPkg:not([disabled])').first();
+                assert(await pick.count(),'no legal player Draft package available');
+                await pick.click();
+                await page.waitForTimeout(120);
+              }else{
+                await page.waitForTimeout(650);
+              }
+            }
+
+            await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')?.status==='complete'}catch{return false}},{timeout:5000});
+            const complete=await page.evaluate(()=>{
+              const s=PPCDraftMode.read();
+              return {a:PPCDraftMode.count(s.playerA),b:PPCDraftMode.count(s.playerB),auditA:PPCDraftMode.auditPlayer(s.playerA),auditB:PPCDraftMode.auditPlayer(s.playerB)};
+            });
+            assert(complete.a===20&&complete.b===20,`Draft did not finish 20/20: ${JSON.stringify(complete)}`);
+            assert(complete.auditA.valid&&complete.auditB.valid,`Draft audit failed: ${JSON.stringify(complete)}`);
+
+            const beforeDecks=await page.evaluate(()=>state.decks?.length||0);
+            await page.evaluate(()=>PPCDraftMode.saveDraftDecks());
+            const saved=await page.evaluate(()=>({
+              count:state.decks?.length||0,
+              draftDecks:(state.decks||[]).filter(d=>d.source==='draft').slice(-2).map(d=>({id:d.id,name:d.name,cards:Object.values(d.cards||{}).reduce((n,q)=>n+Number(q||0),0)})),
+              ids:PPCDraftMode.read()?.savedDeckIds||{}
+            }));
+            assert(saved.count>=beforeDecks+2,`Draft decks were not saved: ${JSON.stringify(saved)}`);
+            assert(saved.draftDecks.length===2&&saved.draftDecks.every(d=>d.cards===20),`saved Draft decks are not 20 cards: ${JSON.stringify(saved)}`);
+            assert(saved.ids.A&&saved.ids.B,'saved Draft deck IDs missing');
+
+            await page.evaluate(()=>PPCDraftMode.battleHandoff());
+            await page.waitForTimeout(250);
+            const handoff=await page.evaluate(()=>({page:state.page,root:!!document.getElementById('ppcDraftRoot'),ctx:state.battlePrefs?.draftContext||null}));
+            assert(handoff.page==='matches'&&!handoff.root&&handoff.ctx?.draftId,`Battle Tracker handoff failed: ${JSON.stringify(handoff)}`);
+
+            await page.setViewportSize({width:390,height:844});
+            await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
+            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000});
+            await page.waitForTimeout(150);
+            const mobile=await page.evaluate(()=>({
+              overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
+              rootOverflow:(()=>{const r=document.getElementById('ppcDraftRoot');return r?Math.max(0,r.scrollWidth-r.clientWidth):999})()
+            }));
+            assert(mobile.overflow<=12&&mobile.rootOverflow<=12,`mobile Draft overflow: ${JSON.stringify(mobile)}`);
+            await page.evaluate(()=>PPCDraftMode.close());
+
+            assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
+            console.log('DRAFT_MODE_RESTORE_QA_RESULT',JSON.stringify({init,complete,saved,handoff,mobile},null,2));
+            console.log('DRAFT_MODE_RESTORE_QA_OK');
+            await browser.close();
+          })().catch(async e=>{console.error('DRAFT_MODE_RESTORE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node draft-mode-restore-qa.cjs
