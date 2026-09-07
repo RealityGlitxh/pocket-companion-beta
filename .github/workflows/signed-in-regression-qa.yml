@@ -42,7 +42,7 @@ jobs:
           echo $! > /tmp/pocketnexus-http.pid
       - name: Run authenticated route regression
         run: |
-          cat > /tmp/signed-in-regression.js <<'NODE'
+          cat > signed-in-regression.cjs <<'NODE'
           const { chromium } = require('playwright');
           const email=process.env.POCKETNEXUS_QA_EMAIL,password=process.env.POCKETNEXUS_QA_PASSWORD;
           const fatal=[];
@@ -75,4 +75,4 @@ jobs:
             await browser.close();console.log('SIGNED_IN_REGRESSION_QA_OK');
           })().catch(async e=>{console.error('SIGNED_IN_REGRESSION_QA_FAILURE',e);process.exit(1)});
           NODE
-          node /tmp/signed-in-regression.js
+          node signed-in-regression.cjs
