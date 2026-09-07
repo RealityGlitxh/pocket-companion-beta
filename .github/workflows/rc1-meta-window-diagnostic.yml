@@ -39,42 +39,37 @@ jobs:
             const browser=await chromium.launch({headless:true});
             for(const [label,width,height] of sizes){
               const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
-              const page=await context.newPage();
-              const fatal=[];
+              const page=await context.newPage();const fatal=[];
               page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
               page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
               await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForFunction(()=>typeof window.goPage==='function'&&typeof window.setMetaWindow==='function',{timeout:20000});
               const guest=page.getByRole('button',{name:/continue as guest/i});if(await guest.count())await guest.click({timeout:3000}).catch(()=>{});
-              await page.evaluate(()=>{document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());goPage('meta')});
-              await page.waitForTimeout(1000);
+              await page.evaluate(()=>{
+                state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};if(typeof save==='function')save();
+                document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
+                window.__metaMutationCount=0;const app=document.getElementById('app');window.__metaObserver?.disconnect?.();window.__metaObserver=new MutationObserver(ms=>window.__metaMutationCount+=ms.length);window.__metaObserver.observe(app,{subtree:true,childList:true,attributes:true});
+                goPage('meta');
+              });
+              await page.waitForTimeout(900);
               for(const [name,hours] of wanted){
-                const before=await page.evaluate((name)=>{
-                  const buttons=[...document.querySelectorAll('.metaWindowTabs button')];
-                  const b=buttons.find(x=>x.textContent.trim()===name);
-                  if(!b)return {exists:false,all:buttons.map(x=>x.textContent.trim())};
-                  const r=b.getBoundingClientRect(),c=getComputedStyle(b),cx=Math.min(innerWidth-1,Math.max(0,r.left+r.width/2)),cy=Math.min(innerHeight-1,Math.max(0,r.top+r.height/2));
-                  return {exists:true,connected:b.isConnected,disabled:b.disabled,display:c.display,visibility:c.visibility,opacity:c.opacity,pointerEvents:c.pointerEvents,rect:{x:r.x,y:r.y,w:r.width,h:r.height},center:[cx,cy],top:document.elementsFromPoint(cx,cy).slice(0,5).map(x=>({tag:x.tagName,cls:String(x.className||''),text:(x.textContent||'').trim().slice(0,40)})),windowHours:Number(state?.metaIntel?.windowHours||0),html:b.outerHTML};
+                await page.evaluate(()=>window.__metaMutationCount=0);
+                const before=await page.evaluate(name=>{
+                  const b=[...document.querySelectorAll('.metaWindowTabs button')].find(x=>x.textContent.trim()===name);if(!b)return {exists:false};
+                  const r=b.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+                  return {exists:true,connected:b.isConnected,windowHours:Number(state.metaIntel?.windowHours||0),rect:{x:r.x,y:r.y,w:r.width,h:r.height},top:document.elementsFromPoint(Math.max(0,Math.min(innerWidth-1,cx)),Math.max(0,Math.min(innerHeight-1,cy))).slice(0,4).map(x=>({tag:x.tagName,cls:String(x.className||''),text:(x.textContent||'').trim().slice(0,30)}))};
                 },name);
-                console.log('META_WINDOW_BEFORE',label,name,JSON.stringify(before));
-                assert(before.exists,`${label}/${name}: button missing`);
-                let clickError='';
-                try{await page.getByRole('button',{name,exact:true}).click({timeout:3000})}catch(e){clickError=String(e.message||e).slice(0,900)}
-                const afterClick=await page.evaluate(()=>({windowHours:Number(state?.metaIntel?.windowHours||0),page:state?.page||'',buttons:[...document.querySelectorAll('.metaWindowTabs button')].map(x=>({text:x.textContent.trim(),active:x.classList.contains('active')}))}));
-                console.log('META_WINDOW_AFTER_CLICK',label,name,JSON.stringify({clickError,afterClick}));
-                if(afterClick.windowHours!==hours){
-                  const js=await page.evaluate(({name,hours})=>{
-                    const b=[...document.querySelectorAll('.metaWindowTabs button')].find(x=>x.textContent.trim()===name);if(!b)return {clicked:false,reason:'missing'};b.click();return {clicked:true,connected:b.isConnected,windowHours:Number(state?.metaIntel?.windowHours||0),expected:hours};
-                  },{name,hours});
-                  await page.waitForTimeout(250);
-                  const afterJs=await page.evaluate(()=>({windowHours:Number(state?.metaIntel?.windowHours||0),page:state?.page||''}));
-                  console.log('META_WINDOW_AFTER_JS_CLICK',label,name,JSON.stringify({js,afterJs}));
-                  assert(afterJs.windowHours===hours,`${label}/${name}: handler failed; Playwright=${clickError}; JS=${JSON.stringify(js)}`);
-                }
+                console.log('META_BEFORE',label,name,JSON.stringify(before));assert(before.exists,`${label}/${name}: missing`);
+                let err='';try{await page.getByRole('button',{name,exact:true}).click({timeout:3000})}catch(e){err=String(e.message||e).slice(0,1500)}
                 await page.waitForTimeout(250);
+                const after=await page.evaluate(()=>({windowHours:Number(state.metaIntel?.windowHours||0),mutations:Number(window.__metaMutationCount||0),overlays:[...document.querySelectorAll('.onboardingBackdrop,.ppcUpdateBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop')].map(x=>x.className||x.id),buttons:[...document.querySelectorAll('.metaWindowTabs button')].map(x=>({text:x.textContent.trim(),active:x.classList.contains('active')}))}));
+                console.log('META_AFTER',label,name,JSON.stringify({err,after}));
+                if(after.windowHours!==hours){
+                  const direct=await page.evaluate(({name,hours})=>{const b=[...document.querySelectorAll('.metaWindowTabs button')].find(x=>x.textContent.trim()===name);if(!b)return {ok:false};b.click();return {ok:true,connected:b.isConnected,hours:Number(state.metaIntel?.windowHours||0),expected:hours}}, {name,hours});
+                  await page.waitForTimeout(200);const post=await page.evaluate(()=>Number(state.metaIntel?.windowHours||0));console.log('META_DIRECT',label,name,JSON.stringify({direct,post}));assert(post===hours,`${label}/${name}: actual handler failed`);
+                }
               }
-              assert(fatal.length===0,`${label}: runtime errors ${fatal.join(' | ')}`);
-              await context.close();
+              assert(fatal.length===0,`${label}: runtime errors ${fatal.join(' | ')}`);await context.close();
             }
             await browser.close();console.log('RC1_META_WINDOW_DIAGNOSTIC_OK');
           })().catch(e=>{console.error('RC1_META_WINDOW_DIAGNOSTIC_FAILURE',e);process.exit(1)});
