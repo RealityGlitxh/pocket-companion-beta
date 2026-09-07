@@ -34,8 +34,11 @@ jobs:
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:900}});
+            const context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
+            const page=await context.newPage();
             await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
+            await page.waitForTimeout(2200);
             await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
             const result=await page.evaluate(async()=>{
               state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
@@ -59,7 +62,7 @@ jobs:
               };
             });
             console.log('DRAFT_NAV_DIAGNOSTIC_RESULT',JSON.stringify(result,null,2));
-            await browser.close();
+            await context.close(); await browser.close();
             if(!result.restoreReady||result.restoreError||!result.playExists||result.launcherCount<1)process.exit(1);
             console.log('DRAFT_NAV_DIAGNOSTIC_OK');
           })();
