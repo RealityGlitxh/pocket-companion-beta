@@ -1,0 +1,48 @@
+name: Pocket Coach Verified Card Grounding QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/pocket-coach/index.ts"
+      - ".github/workflows/pocket-coach-card-grounding-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pocket-coach-card-grounding-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify Coach grounding contract and live rich source
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('supabase/functions/pocket-coach/index.ts','utf8');
+          const assert=(x,m)=>{if(!x)throw new Error(m)};
+          assert(src.includes('verifiedCardGameplay'),'Coach context is missing verifiedCardGameplay');
+          assert(src.includes("sources.push('Verified Card Gameplay')"),'Coach source label is missing');
+          assert(src.includes('set + card number + normalized card name'),'Prompt does not state verification contract');
+          assert(src.includes('Card gameplay claims may only come from verifiedCardGameplay'),'Prompt does not prohibit unverified card claims');
+          assert(src.includes('explicitly say PocketNexus does not have a verified fact'),'Missing-data guardrail is absent');
+          assert(src.includes("verification:'set+number+normalized-name'"),'Runtime verification marker is absent');
+          assert(src.includes('normName(base.name)!==rich.normalizedName'),'Name mismatch rejection is absent');
+          assert(src.includes('verifiedCardGameplayCount'),'Grounding count is not observable');
+          (async()=>{
+            const url='https://raw.githubusercontent.com/R4PH1/PTCGP-Data/main/data/Pokemon.json';
+            const r=await fetch(url);assert(r.ok,`rich source HTTP ${r.status}`);const cards=await r.json();assert(Array.isArray(cards)&&cards.length>500,`rich source too small: ${cards?.length}`);
+            const sample=cards.find(c=>Array.isArray(c.attacks)&&c.attacks.some(a=>a.effect))||cards.find(c=>Array.isArray(c.attacks)&&c.attacks.length);
+            assert(sample?.id&&sample?.name,'No gameplay sample found');
+            const m=String(sample.id).match(/^(.+)-(\d+)$/);assert(m,'Sample id cannot verify set+number');
+            const normalized=String(sample.name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’‘]/g,"'").replace(/\s+/g,' ').toLowerCase();
+            assert(normalized.length>0,'Normalized name empty');
+            const attack=sample.attacks[0];assert(attack?.name,'Verified attack name absent');
+            console.log('POCKET_COACH_CARD_GROUNDING_QA_OK',JSON.stringify({sample:sample.id,name:sample.name,attack:attack.name,hasEffect:!!attack.effect,sourceCards:cards.length}));
+          })().catch(e=>{console.error('POCKET_COACH_CARD_GROUNDING_QA_FAILURE',e);process.exit(1)});
+          NODE
