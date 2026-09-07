@@ -58,9 +58,9 @@ jobs:
             await page.waitForSelector('#authEmail',{state:'visible',timeout:15000});
             await page.fill('#authEmail',email);await page.fill('#authPassword',password);
             await page.evaluate(()=>emailSignIn());
-            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
-            const auth=await page.evaluate(()=>({uid:cloudSession.user.id,email:cloudSession.user.email,mode:state.sessionMode}));
-            if(!auth.uid||auth.mode!=='cloud')throw new Error('authenticated cloud session was not established');
+            await page.waitForFunction(()=>window.cloudSession?.user?.id||document.getElementById('authMessage')?.textContent?.trim(),{timeout:30000});
+            const login=await page.evaluate(()=>({uid:cloudSession?.user?.id||'',mode:state?.sessionMode||'',message:document.getElementById('authMessage')?.textContent?.trim()||''}));
+            if(!login.uid||login.mode!=='cloud')throw new Error(`authentication failed: ${login.message||'no session established'}`);
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
               const before=fatal.length;
