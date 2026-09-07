@@ -1,6 +1,7 @@
 /* PocketNexus V8.65 RC1 — route-scoped app class cleanup.
    Fixes proven cross-route layout leakage without changing individual page renderers.
-   QA trigger only: rerun RC1 baseline after Draft Mode restore validation. */
+   QA trigger only: rerun RC1 baseline after Draft Mode restore validation.
+   QA trigger only: run fixed cross-browser proxy after local WebKit Meta fallback filtering. */
 (function(){
   if(window.PPCRouteClassCleanup)return;
   const routeClasses=['competitiveMetaPage','streamerWorkspacePage','rankedStreamControlCenter'];
