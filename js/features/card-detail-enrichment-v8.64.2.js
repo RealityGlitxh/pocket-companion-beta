@@ -18,7 +18,7 @@
   function identityLabel(c){return [c?.setCode,c?.number?`#${c.number}`:''].filter(Boolean).join(' ')}
 
   async function loadRich(force=false){
-    if(!window.PtcgpDataCardSource||!window.CardEnrichmentService)throw new Error('Card gameplay enrichment services unavailable');
+    if(typeof PtcgpDataCardSource==='undefined'||typeof CardEnrichmentService==='undefined')throw new Error('Card gameplay enrichment services unavailable');
     if(!force&&runtime.index&&Date.now()-runtime.loadedAt<CACHE_MS)return runtime.index;
     if(runtime.promise&&!force)return runtime.promise;
     runtime.promise=(async()=>{
