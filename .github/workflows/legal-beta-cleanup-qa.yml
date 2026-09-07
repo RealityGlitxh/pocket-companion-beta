@@ -10,6 +10,7 @@ on:
       - "support.html"
       - "index.html"
       - "js/app/utility_pages-v8.64.1.js"
+      - "js/features/experience-v8.36.js"
       - "js/core/navigation-v8.33.js"
       - "css/app.css"
       - ".github/workflows/legal-beta-cleanup-qa.yml"
@@ -92,7 +93,7 @@ jobs:
             await page.waitForFunction(()=>state?.page==='about',{timeout:15000});
             await page.waitForTimeout(300);
             state=await checkLayout(page,`About ${viewport.width}px`);
-            assert(state.text.includes('About, Privacy & Beta Status'),`About ${viewport.width}px: About surface missing`);
+            assert(state.text.includes('PocketNexus')&&state.text.includes('INDEPENDENT & UNOFFICIAL'),`About ${viewport.width}px: active About surface missing`);
             assert(state.text.includes('Closed beta status'),`About ${viewport.width}px: Closed beta status missing`);
             assert(!forbidden.test(state.text),`About ${viewport.width}px: stale public-launch wording remains`);
             for(const name of ['Privacy','Terms','Support'])assert(state.text.includes(name),`About ${viewport.width}px: ${name} link missing`);
