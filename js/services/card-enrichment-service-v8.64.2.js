@@ -29,3 +29,5 @@ const CardEnrichmentService=(()=>{
   function coverage(baseCards,richCards){const idx=richCards instanceof Map?richCards:buildIndex(richCards);let matched=0,nameMismatch=0,withGameplay=0;for(const b of baseCards||[]){const r=idx.get(key(b));if(!r)continue;if(normName(b.name)!==normName(r.name)){nameMismatch++;continue}matched++;const f=richFacts(r);if(f.effect||f.abilities.length||f.attacks.length)withGameplay++}return {base:(baseCards||[]).length,rich:idx.size,matched,nameMismatch,withGameplay,green:matched>0&&nameMismatch===0}}
   return {SOURCE,normName,key,richFacts,buildIndex,enrichCard,enrichCards,factsForCard,coachFacts,coverage};
 })();
+
+// QA trigger only: Gate #4 current-main signed-in regression verification (2026-09-07).
