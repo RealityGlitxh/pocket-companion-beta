@@ -62,10 +62,10 @@ jobs:
             assert(init.draft==='8.69.3',`unexpected Draft Mode version ${init.draft}`);
             assert(init.online==='8.69.4',`unexpected online Draft version ${init.online}`);
 
-            await page.evaluate(()=>window.nav?.());
+            await page.evaluate(()=>{state.user=state.user||'Draft QA';window.nav?.()});
             await page.waitForTimeout(150);
             const launcher=await page.locator('[data-draft-nav]').count();
-            assert(launcher>0,'desktop Draft Mode launcher missing from Play navigation');
+            assert(launcher>0,'desktop Draft Mode launcher missing from authenticated Play navigation');
 
             await page.evaluate(async()=>{if(typeof loadCards==='function')await loadCards()});
             await page.waitForFunction(()=>{try{return Array.isArray(CARDS)&&CARDS.length>50}catch{return false}},{timeout:20000});
