@@ -1,0 +1,110 @@
+name: PocketNexus Card Detail Enrichment QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "sw.js"
+      - "js/services/ptcgp-data-card-source-v8.64.2.js"
+      - "js/services/card-enrichment-service-v8.64.2.js"
+      - "js/features/card-detail-enrichment-v8.64.2.js"
+      - ".github/workflows/card-detail-enrichment-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  card-detail-enrichment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify live source and Card Detail runtime
+        run: |
+          cat > /tmp/card-detail-runtime.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const ROOT='https://raw.githubusercontent.com/R4PH1/PTCGP-Data/main/data/';
+          const files=['Pokemon.json','Items.json','Supporters.json','Tools.json','Stadiums.json','Fossils.json'];
+          const payloads=new Map();
+          const fatal=[];
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          async function preload(){
+            for(const f of files){const r=await fetch(ROOT+f);assert(r.ok,`live rich source ${f} HTTP ${r.status}`);const t=await r.text();const j=JSON.parse(t);assert(Array.isArray(j),`${f} is not an array`);payloads.set(f,t)}
+          }
+          async function routeRich(page,fail=false){
+            await page.route('https://raw.githubusercontent.com/R4PH1/PTCGP-Data/main/data/**',async route=>{
+              if(fail)return route.abort('failed');
+              const f=route.request().url().split('/').pop();const body=payloads.get(f);if(!body)return route.abort('failed');
+              await route.fulfill({status:200,contentType:'application/json',body});
+            });
+          }
+          async function enter(page){
+            await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>window.PPCVerifiedCardDetail&&typeof window.openCardModal==='function'&&typeof window.openCollectionCard==='function',{timeout:90000});
+            const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click();
+            await page.waitForFunction(()=>typeof loadCards==='function',{timeout:30000});
+            const loaded=await page.evaluate(()=>loadCards(true));assert(loaded,'stable card database did not load');
+            await page.waitForFunction(()=>Array.isArray(CARDS)&&CARDS.length>500,{timeout:30000});
+          }
+          function watch(page){page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)})}
+          (async()=>{
+            await preload();
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});watch(page);await routeRich(page,false);await enter(page);
+            const samples=await page.evaluate(async()=>{
+              await PPCVerifiedCardDetail.load(true);
+              const kinds={pokemon:await PtcgpDataCardSource.loadKind('pokemon'),item:await PtcgpDataCardSource.loadKind('item'),supporter:await PtcgpDataCardSource.loadKind('supporter'),tool:await PtcgpDataCardSource.loadKind('tool'),stadium:await PtcgpDataCardSource.loadKind('stadium')};
+              const all=[...kinds.pokemon,...kinds.item,...kinds.supporter,...kinds.tool,...kinds.stadium];
+              const idx=CardEnrichmentService.buildIndex(all);
+              const match=r=>CARDS.find(b=>CardEnrichmentService.key(b)===CardEnrichmentService.key(r)&&CardEnrichmentService.normName(b.name)===CardEnrichmentService.normName(r.name));
+              const pick=(rows,pred)=>{const r=rows.find(x=>pred(x)&&match(x));const b=r&&match(r);return b?{id:b.id,name:b.name,setCode:b.setCode,number:b.number,expected:r}:null};
+              const out={
+                one:pick(kinds.pokemon,x=>x.attacks?.length===1),
+                multi:pick(kinds.pokemon,x=>x.attacks?.length>1),
+                ability:pick(kinds.pokemon,x=>x.abilities?.length>0),
+                attackEffect:pick(kinds.pokemon,x=>x.attacks?.some(a=>a.effect)),
+                weaknessRetreat:pick(kinds.pokemon,x=>x.weakness&&Number.isFinite(Number(x.retreat))),
+                evolution:pick(kinds.pokemon,x=>x.evolvesFrom),
+                supporter:pick(kinds.supporter,x=>x.effect),item:pick(kinds.item,x=>x.effect),tool:pick(kinds.tool,x=>x.effect),stadium:pick(kinds.stadium,x=>x.effect)
+              };
+              const matchedKeys=new Set(all.filter(r=>match(r)).map(r=>CardEnrichmentService.key(r)));
+              out.missing=CARDS.find(b=>!matchedKeys.has(CardEnrichmentService.key(b)))?.id||'';
+              const base=out.one&&CARDS.find(c=>c.id===out.one.id),rich=out.one?.expected;
+              out.mismatchRejected=!!(base&&rich&&!CardEnrichmentService.enrichCards([base],[{...rich,name:'Wrong Card Name'}])[0].gameplay);
+              out.count=CARDS.length;return out;
+            });
+            for(const k of ['one','multi','ability','attackEffect','weaknessRetreat','evolution','supporter','item','tool','stadium'])assert(samples[k],`no verified runtime sample for ${k}`);
+            assert(samples.mismatchRejected,'set/number match with wrong normalized name was not rejected');assert(samples.count>500,'stable catalog unexpectedly small');
+            for(const [kind,s] of Object.entries(samples)){
+              if(!s||typeof s!=='object'||!s.id)continue;
+              await page.evaluate(id=>openCardModal(id),s.id);
+              await page.waitForFunction(id=>document.querySelector(`.verifiedCardGameplay[data-verified-card="${CSS.escape(id)}"]`),s.id,{timeout:15000});
+              const detail=await page.evaluate(()=>({text:document.getElementById('cardModalBody')?.innerText||'',html:document.getElementById('cardModalBody')?.innerHTML||'',recovery:document.body.innerText.includes('Runtime Recovery')}));
+              assert(detail.text.includes(s.name),`${kind}: stable card name missing`);assert(detail.text.includes('VERIFIED GAMEPLAY'),`${kind}: verified gameplay section missing`);assert(!/\bundefined\b|\bnull\b/i.test(detail.text),`${kind}: undefined/null leaked into detail`);assert(!detail.recovery,`${kind}: runtime recovery appeared`);
+            }
+            await page.evaluate(id=>openCollectionCard(id),samples.ability.id);
+            await page.waitForFunction(id=>document.querySelector(`.verifiedCardGameplay[data-verified-card="${CSS.escape(id)}"]`),samples.ability.id,{timeout:15000});
+            const collectionText=await page.locator('#cardModalBody').innerText();assert(collectionText.includes('VERIFIED GAMEPLAY'),'Collection card detail was not enriched');
+            await page.evaluate(()=>{headerNavigate('collection')});await page.waitForFunction(()=>document.getElementById('collectionGrid'));const pager=await page.locator('#collectionGrid .pager').count();assert(pager>0,'Collection Card DB pagination missing');
+            await page.locator('#cq').fill(samples.one.name);await page.evaluate(()=>renderCollectionGrid());const searchText=await page.locator('#collectionGrid').innerText();assert(searchText.toLowerCase().includes(samples.one.name.toLowerCase()),'Card DB search did not return verified sample');
+            if(samples.missing){await page.evaluate(id=>openCardModal(id),samples.missing);await page.waitForTimeout(750);const stable=await page.locator('#cardModalBody').innerText();assert(stable.length>0,'card without enrichment lost stable detail');}
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+
+            const fallback=await browser.newPage({viewport:{width:1280,height:900}});const fallbackFatal=[];fallback.on('pageerror',e=>fallbackFatal.push(e.message));await routeRich(fallback,true);await enter(fallback);
+            await fallback.evaluate(id=>openCardModal(id),samples.one.id);await fallback.waitForTimeout(1800);
+            const fallbackState=await fallback.evaluate(()=>({text:document.getElementById('cardModalBody')?.innerText||'',verified:!!document.querySelector('.verifiedCardGameplay'),recovery:document.body.innerText.includes('Runtime Recovery')}));
+            assert(fallbackState.text.includes(samples.one.name),'stable Card Detail failed when enrichment source was unavailable');assert(!fallbackState.verified,'unverified gameplay rendered while rich source unavailable');assert(!fallbackState.recovery,'runtime recovery appeared during enrichment-source failure');assert(fallbackFatal.length===0,`fallback page errors: ${fallbackFatal.join(' | ')}`);
+            await browser.close();console.log('CARD_DETAIL_ENRICHMENT_RUNTIME_QA_OK',JSON.stringify({catalog:samples.count,cases:10,mismatchRejected:true,fallback:true}));
+          })().catch(e=>{console.error('CARD_DETAIL_ENRICHMENT_RUNTIME_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node /tmp/card-detail-runtime.cjs
