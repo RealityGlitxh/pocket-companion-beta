@@ -1,4 +1,5 @@
 name: PocketNexus Draft Nav Diagnostic
+# RC1 Draft nav diagnostic trigger
 on:
   push:
     branches: [main]
