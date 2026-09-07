@@ -78,8 +78,8 @@ jobs:
               if(!/Execution context was destroyed|navigation/i.test(String(e?.message||e))) throw e;
             }
             await page.waitForLoadState('domcontentloaded',{timeout:15000}).catch(()=>{});
-            await page.waitForFunction(()=>window.cloudSession?.user?.id&&window.state?.sessionMode==='cloud',{timeout:30000});
-            const seeded=await page.evaluate(()=>({uid:window.cloudSession?.user?.id||'',mode:window.state?.sessionMode||''}));
+            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+            const seeded=await page.evaluate(()=>({uid:window.cloudSession?.user?.id||'',mode:state?.sessionMode||''}));
             if(!seeded.uid||seeded.mode!=='cloud')throw new Error('verified Supabase session was not hydrated by PocketNexus');
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
