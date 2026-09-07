@@ -17,9 +17,27 @@ async function profileSnapshot(){return page.evaluate(()=>({
   teamError:typeof teamWarsState!=='undefined'?teamWarsState?.error||'':null,
   appText:(document.getElementById('app')?.innerText||'').slice(0,1200)
 }))}
+async function proxyStorage(route){
+  const req=route.request();
+  const headers={...(await req.allHeaders())};
+  for(const k of ['host','content-length','connection','accept-encoding'])delete headers[k];
+  const method=req.method();
+  const body=['GET','HEAD'].includes(method)?undefined:req.postDataBuffer()||undefined;
+  try{
+    const res=await fetch(req.url(),{method,headers,body,redirect:'manual'});
+    const outHeaders=Object.fromEntries(res.headers.entries());
+    for(const k of ['content-encoding','content-length','transfer-encoding'])delete outHeaders[k];
+    const out=Buffer.from(await res.arrayBuffer());
+    await route.fulfill({status:res.status,headers:outHeaders,body:out});
+  }catch(e){
+    console.error('PROFILE_MEDIA_STORAGE_PROXY_FAILURE',e?.message||String(e));
+    await route.abort('failed');
+  }
+}
 (async()=>{
   browser=await chromium.launch({headless:true});
   page=await browser.newPage({viewport:{width:1440,height:1000}});
+  await page.route('https://cdmzrsvwztndqfwzsumo.supabase.co/storage/v1/**',proxyStorage);
   page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
   page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
   await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
@@ -65,7 +83,7 @@ async function profileSnapshot(){return page.evaluate(()=>({
   if(!reroute)fail('profile media did not render after navigating away and back');
   if(!stored.public_profile_id)fail('QA profile has no public_profile_id for public-profile verification');
   await page.evaluate(id=>openPublicProfileByPublicId(id),stored.public_profile_id);await page.waitForTimeout(1500);
-  const publicState=await page.evaluate(()=>({avatar:teamWarsState?.publicProfile?.avatar_url||'',banner:teamWarsState?.publicProfile?.banner_url||''}));
+  const publicState=await page.evaluate(()=>({avatar:teamWarsState?.publicProfile?.profile?.avatar_url||'',banner:teamWarsState?.publicProfile?.profile?.banner_url||''}));
   if(publicState.avatar!==stored.avatar_url||publicState.banner!==stored.banner_url)fail('public profile did not expose the saved avatar and banner');
   console.log('PROFILE_MEDIA_PERSISTENCE_QA_OK');
 })().catch(e=>{console.error('PROFILE_MEDIA_PERSISTENCE_QA_FAILURE',e);process.exitCode=1}).finally(async()=>{
