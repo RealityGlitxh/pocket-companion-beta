@@ -1,4 +1,4 @@
-/* PocketNexus V8.64.2 — desktop utility cog */
+/* PocketNexus V8.64.2 — desktop utility cog + centered search */
 .headerUserActions{display:flex;align-items:center;gap:8px}
 .headerUtilityMenu{position:relative;flex:0 0 auto}
 .headerUtilityButton{list-style:none;display:grid!important;place-items:center;width:38px;height:38px;min-height:38px!important;padding:0!important;border:1px solid #2b3d50;border-radius:11px;background:#0d1620!important;color:#aebfd0!important;cursor:pointer;box-shadow:none!important;font-size:1rem!important;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}
@@ -18,5 +18,14 @@
 .headerUtilityDropdown .navCategoryItem:hover small{color:#9eb1c3!important}
 .headerUtilityDropdown .navCategoryItem:nth-of-type(4){margin-top:5px}
 .headerUtilityDropdown .navCategoryItem:nth-of-type(4)::before{content:"";position:absolute;left:8px;right:8px;top:-5px;height:1px;background:#223547}
-.globalSearchButton{display:none!important}
+
+/* Centered desktop search bar. Reuses the existing global search dialog + Ctrl K shortcut. */
+.appHeaderBar{position:relative}
+.globalSearchButton{display:flex!important;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);align-items:center;gap:8px;width:clamp(220px,16vw,280px);height:38px;min-height:38px!important;padding:0 10px!important;border:1px solid #2a3d50!important;border-radius:11px!important;background:#0c151f!important;color:#aebdcb!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;z-index:2;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease!important}
+.globalSearchButton:hover{transform:translate(-50%,-50%)!important;background:#111d29!important;border-color:#3b6283!important;box-shadow:0 0 0 3px rgba(74,169,235,.08)!important;filter:none!important}
+.globalSearchButton>span:first-child{display:grid;place-items:center;width:22px;height:22px;color:#66c4ff;font-size:.9rem}
+.globalSearchButtonText{flex:1;text-align:left;color:#94a8ba;font-size:.76rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.globalSearchButton kbd{margin-left:auto;padding:3px 6px;border:1px solid #2d4155;border-radius:6px;background:#101a25;color:#70869a;font-size:.62rem;font-weight:800;white-space:nowrap}
+
+@media(max-width:1199px){.globalSearchButton{display:none!important}}
 @media(max-width:760px){.headerUtilityMenu{display:none}.globalSearchButton{display:none!important}}
