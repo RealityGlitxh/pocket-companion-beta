@@ -74,15 +74,15 @@ jobs:
             },qaSession);
             await page.reload({waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForFunction(()=>typeof window.accountPage==='function'&&window.PPCAccountCloudCore?.hydrate,{timeout:30000});
-            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
-            const seeded=await page.evaluate(()=>({uid:window.cloudSession?.user?.id||'',mode:state?.sessionMode||''}));
+            await page.waitForFunction(()=>window.getPPCCloudSession?.()?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+            const seeded=await page.evaluate(()=>({uid:window.getPPCCloudSession?.()?.user?.id||'',mode:state?.sessionMode||''}));
             if(!seeded.uid||seeded.mode!=='cloud')throw new Error('verified Supabase session was not hydrated by PocketNexus');
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
               const before=fatal.length;
               await page.evaluate(r=>headerNavigate(r),route);
               await page.waitForTimeout(1200);
-              const stateNow=await page.evaluate(()=>({page:state.page,uid:cloudSession?.user?.id||'',recovery:document.body.innerText.includes('Runtime recovery')}));
+              const stateNow=await page.evaluate(()=>({page:state.page,uid:window.getPPCCloudSession?.()?.user?.id||'',recovery:document.body.innerText.includes('Runtime recovery')}));
               if(!stateNow.uid)throw new Error(`cloud session disappeared on ${route}`);
               if(stateNow.recovery)throw new Error(`runtime recovery appeared on ${route}`);
               if(fatal.length>before)throw new Error(`${route} emitted runtime errors: ${fatal.slice(before).join(' | ')}`);
