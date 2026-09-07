@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/beta-functional-qa.yml"
+      - "index.html"
+      - "js/features/rc1-route-class-cleanup-v8.65.0.js"
 
 permissions:
   contents: read
@@ -46,7 +48,14 @@ jobs:
               await page.waitForTimeout(1400);
               const guest=page.getByRole('button',{name:/continue as guest/i});
               if(await guest.count()) try{await guest.click({timeout:2500});await page.waitForTimeout(500)}catch{}
-              const clear=()=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              // This suite tests route controls, not first-time onboarding itself. Mark the isolated
+              // QA profile as onboarded so the modal cannot correctly intercept underlying controls.
+              await page.evaluate(()=>{
+                state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+                if(typeof save==='function')save();
+                document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
+              });
+              const clear=()=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
               await clear();
               for(const route of routes){
                 await page.evaluate(r=>window.goPage?.(r),route); await page.waitForTimeout(550); await clear();
@@ -61,19 +70,19 @@ jobs:
               // Exercise known Battle tabs without mutating real/cloud data.
               await page.evaluate(()=>window.goPage?.('matches')); await page.waitForTimeout(450); await clear();
               for(const name of [/sessions/i,/history/i,/record/i]){
-                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click();await page.waitForTimeout(250)}catch(e){failures.push({severity:'P2',vp,route:'matches',type:'tab-click',detail:String(e.message).slice(0,160)})}
+                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click({timeout:3000});await page.waitForTimeout(250)}catch(e){failures.push({severity:'P2',vp,route:'matches',type:'tab-click',detail:String(e.message).slice(0,240)})}
               }
 
               // Exercise Meta cached window controls and verify they don't explode navigation.
               await page.evaluate(()=>window.goPage?.('meta')); await page.waitForTimeout(500); await clear();
               for(const label of ['24H','7D','14D','30D']){
-                const b=page.getByRole('button',{name:label,exact:true}); if(await b.count()) try{await b.click();await page.waitForTimeout(150)}catch(e){failures.push({severity:'P1',vp,route:'meta',type:'window-click',label,detail:String(e.message).slice(0,160)})}
+                const b=page.getByRole('button',{name:label,exact:true}); if(await b.count()) try{await b.click({timeout:3000});await page.waitForTimeout(150)}catch(e){failures.push({severity:'P1',vp,route:'meta',type:'window-click',label,detail:String(e.message).slice(0,240)})}
               }
 
               // Exercise Collection modes and quick-edit toggle; isolated browser only.
               await page.evaluate(()=>window.goPage?.('collection')); await page.waitForTimeout(500); await clear();
               for(const name of [/all cards/i,/owned/i,/missing/i,/wishlist/i,/trade binder/i]){
-                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click();await page.waitForTimeout(130)}catch(e){failures.push({severity:'P2',vp,route:'collection',type:'mode-click',detail:String(e.message).slice(0,160)})}
+                const b=page.getByRole('button',{name}); if(await b.count()) try{await b.first().click({timeout:3000});await page.waitForTimeout(130)}catch(e){failures.push({severity:'P2',vp,route:'collection',type:'mode-click',detail:String(e.message).slice(0,240)})}
               }
 
               // Browser navigation and rapid route switching for global renderer collisions.
