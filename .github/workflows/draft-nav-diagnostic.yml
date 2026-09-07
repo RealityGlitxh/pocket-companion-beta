@@ -1,0 +1,66 @@
+name: PocketNexus Draft Nav Diagnostic
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/draft-nav-diagnostic.yml"
+      - "js/features/draft-mode-restore-v8.65.0.js"
+      - "index.html"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  draft-nav-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install browser
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-draft-nav.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Diagnose Draft nav hook
+        run: |
+          cat > draft-nav-diagnostic.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:900}});
+            await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
+            const result=await page.evaluate(async()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              state.user='Draft QA';
+              const source=String(window.nav||'');
+              window.nav?.();
+              await new Promise(r=>setTimeout(r,250));
+              const play=[...document.querySelectorAll('.navCategory')].find(x=>/Play/i.test(x.dataset.category||''));
+              return {
+                restoreReady:window.__ppcDraftRestoreReady===true,
+                restoreError:window.__ppcDraftRestoreError||'',
+                draftVersion:window.PPCDraftMode?.version||'',
+                onlineVersion:window.PPCDraftOnline?.version||'',
+                navInstalled:!!window.__ppcDraftNavInstalled,
+                sourceHasDraft:/data-draft-nav|PPCDraftMode|ppcDraft/i.test(source),
+                sourceHead:source.slice(0,900),
+                categories:[...document.querySelectorAll('.navCategory')].map(x=>x.dataset.category||''),
+                playExists:!!play,
+                playHtml:play?.querySelector('.navCategoryMenu')?.innerHTML||'',
+                launcherCount:document.querySelectorAll('[data-draft-nav]').length
+              };
+            });
+            console.log('DRAFT_NAV_DIAGNOSTIC_RESULT',JSON.stringify(result,null,2));
+            await browser.close();
+            if(!result.restoreReady||result.restoreError||!result.playExists||result.launcherCount<1)process.exit(1);
+            console.log('DRAFT_NAV_DIAGNOSTIC_OK');
+          })();
+          NODE
+          node draft-nav-diagnostic.cjs
