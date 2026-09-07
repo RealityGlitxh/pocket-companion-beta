@@ -77,3 +77,5 @@ jobs:
           })();
           NODE
           node combined-meta-qa.js
+
+# Gate #5 current-head baseline trigger
