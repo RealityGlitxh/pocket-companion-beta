@@ -67,14 +67,13 @@ jobs:
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
-            await page.addInitScript(({session})=>{
-              localStorage.setItem('sb-cdmzrsvwztndqfwzsumo-auth-token',JSON.stringify(session));
-            },{session:qaSession});
             await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>typeof window.accountPage==='function'&&typeof window.cloudConfigured==='function'&&window.cloudConfigured(),{timeout:30000});
-            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
-            const seeded=await page.evaluate(()=>({uid:cloudSession?.user?.id||'',mode:state?.sessionMode||''}));
-            if(!seeded.uid||seeded.mode!=='cloud')throw new Error('seeded Supabase session was not hydrated by PocketNexus');
+            await page.waitForFunction(()=>typeof window.accountPage==='function'&&window.PPCAccountCloudCore?.hydrate,{timeout:30000});
+            const seeded=await page.evaluate(async session=>{
+              await window.PPCAccountCloudCore.hydrate(session,'SIGNED_IN_QA');
+              return {uid:window.cloudSession?.user?.id||'',mode:window.state?.sessionMode||''};
+            },qaSession);
+            if(!seeded.uid||seeded.mode!=='cloud')throw new Error('verified Supabase session was not hydrated by PocketNexus');
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
               const before=fatal.length;
@@ -87,6 +86,6 @@ jobs:
               console.log('SIGNED_IN_ROUTE_OK',route,stateNow.page);
             }
             await browser.close();console.log('SIGNED_IN_REGRESSION_QA_OK');
-          })().catch(async e=>{console.error('SIGNED_IN_REGRESSION_QA_FAILURE',e);process.exit(1)});
+          })().catch(e=>{console.error('SIGNED_IN_REGRESSION_QA_FAILURE',e);process.exit(1)});
           NODE
           node signed-in-regression.cjs
