@@ -8,6 +8,8 @@ on:
       - "js/core/account-cloud-core-v8.64.1.js"
       - "js/core/account-cloud-runtime-v8.64.1.js"
       - "js/app/account_startup.js"
+      - "js/features/profile-media-upload-v8.64.2.js"
+      - "js/features/global-player-search-v8.64.2.js"
       - ".github/workflows/signed-in-regression-qa.yml"
 
 permissions:
