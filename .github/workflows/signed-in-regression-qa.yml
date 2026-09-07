@@ -10,6 +10,9 @@ on:
       - "js/app/account_startup.js"
       - "js/features/profile-media-upload-v8.64.2.js"
       - "js/features/global-player-search-v8.64.2.js"
+      - "js/services/ptcgp-data-card-source-v8.64.2.js"
+      - "js/services/card-enrichment-service-v8.64.2.js"
+      - "js/features/card-detail-enrichment-v8.64.2.js"
       - ".github/workflows/signed-in-regression-qa.yml"
 
 permissions:
