@@ -54,7 +54,12 @@ jobs:
             await page.waitForTimeout(1200);
             const guest=page.getByRole('button',{name:/continue as guest/i});
             if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(400)}catch{}
-            await page.evaluate(()=>{document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove());window.PPCMetaService?.clearCache?.();window.goPage?.('meta')});
+            await page.evaluate(async()=>{
+              document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove());
+              window.PPCMetaService?.clearCache?.();
+              await window.PPCMetaService?.fetchWindow?.(168,{force:true});
+              window.goPage?.('meta');
+            });
             await page.waitForTimeout(4500);
             const result=await page.evaluate(()=>({
               source:window.PPCMetaService?.getStatus?.().source||'',
