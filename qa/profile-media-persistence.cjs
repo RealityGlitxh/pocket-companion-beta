@@ -27,7 +27,9 @@ async function profileSnapshot(){return page.evaluate(()=>({
   await page.evaluate(session=>localStorage.setItem('sb-cdmzrsvwztndqfwzsumo-auth-token',JSON.stringify(session)),qaSession);
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForFunction(()=>window.getPPCCloudSession?.()?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+  await page.waitForTimeout(3000);
   await page.evaluate(()=>headerNavigate('profile'));
+  await page.waitForFunction(()=>state?.page==='profile',{timeout:5000});
   try{await page.waitForFunction(()=>document.getElementById('profileEditPanel')&&typeof window.PPCProfileMedia?.save==='function',{timeout:30000})}
   catch(e){console.error('PROFILE_ROUTE_DIAGNOSTIC',JSON.stringify(await profileSnapshot()));console.error('PROFILE_ROUTE_FATAL',fatal.join(' | '));throw e}
   await page.evaluate(()=>document.getElementById('profileEditPanel').showModal());
@@ -50,7 +52,9 @@ async function profileSnapshot(){return page.evaluate(()=>({
   uploaded.push(stored.avatar_url,stored.banner_url);
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForFunction(()=>window.getPPCCloudSession?.()?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+  await page.waitForTimeout(3000);
   await page.evaluate(()=>headerNavigate('profile'));
+  await page.waitForFunction(()=>state?.page==='profile',{timeout:5000});
   await page.waitForFunction(()=>document.getElementById('profileEditPanel'),{timeout:30000});
   await page.evaluate(()=>document.getElementById('profileEditPanel').showModal());
   const persisted=await page.evaluate(()=>({avatar:document.getElementById('pfAvatar')?.value||'',banner:document.getElementById('pfBanner')?.value||''}));
