@@ -1,0 +1,114 @@
+name: PocketNexus Gate 6 Legal + Beta Cleanup QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "privacy.html"
+      - "terms.html"
+      - "support.html"
+      - "index.html"
+      - "js/app/utility_pages-v8.64.1.js"
+      - "js/core/navigation-v8.33.js"
+      - "css/app.css"
+      - ".github/workflows/legal-beta-cleanup-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  legal-beta-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify Gate 6 hosted runtime
+        run: |
+          cat > gate6-runtime.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const ROOT='https://beta.pocketnexus.app/';
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const forbidden=/\bPUBLIC LAUNCH\b|launch-candidate|before (?:a |broad )?public launch|public-launch approval|final production agreement/i;
+          const placeholders=/example@example\.com|your@email\.com|\bTODO\b|\bTBD\b|Lorem ipsum|Company Name|Insert address|javascript:void\(0\)/i;
+          function watch(page,bucket){
+            page.on('pageerror',e=>bucket.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))bucket.push(`console: ${m.text()}`)});
+          }
+          async function checkLayout(page,label){
+            const state=await page.evaluate(()=>({
+              width:document.documentElement.scrollWidth,
+              viewport:window.innerWidth,
+              text:document.body.innerText||'',
+              bodyBg:getComputedStyle(document.body).backgroundColor,
+              recovery:(document.body.innerText||'').toLowerCase().includes('runtime recovery')
+            }));
+            assert(state.width<=state.viewport+2,`${label}: horizontal overflow ${state.width}>${state.viewport}`);
+            assert(!state.recovery,`${label}: Runtime Recovery appeared`);
+            assert(!/\bundefined\b|\bnull\b/i.test(state.text),`${label}: undefined/null leaked to UI`);
+            assert(!/^rgb\(255, 255, 255\)$/.test(state.bodyBg),`${label}: white body background in dark presentation`);
+            return state;
+          }
+          async function checkLegal(browser,path,heading,viewport){
+            const context=await browser.newContext({serviceWorkers:'block',viewport});
+            const page=await context.newPage();const fatal=[];watch(page,fatal);
+            const res=await page.goto(ROOT+path,{waitUntil:'domcontentloaded',timeout:60000});
+            assert(res&&res.ok(),`${path}: HTTP ${res?.status()}`);
+            await page.waitForSelector('h1',{timeout:15000});
+            const state=await checkLayout(page,`${path} ${viewport.width}px`);
+            assert(state.text.includes(heading),`${path}: heading ${heading} missing`);
+            assert(!forbidden.test(state.text),`${path}: stale public-launch wording remains`);
+            assert(!placeholders.test(state.text),`${path}: placeholder/fabricated-contact marker present`);
+            assert(state.text.includes('PocketNexus'),`${path}: PocketNexus identity missing`);
+            const links=await page.locator('a[href]').evaluateAll(xs=>xs.map(x=>x.getAttribute('href')));
+            assert(links.some(x=>x==='./'||x==='/'),`${path}: Return to PocketNexus link missing`);
+            assert(fatal.length===0,`${path}: runtime errors: ${fatal.join(' | ')}`);
+            await context.close();
+          }
+          async function seedLocalUser(page){
+            await page.goto(ROOT,{waitUntil:'domcontentloaded',timeout:60000});
+            await page.evaluate(()=>localStorage.setItem('ppc_browser_v2',JSON.stringify({user:'Gate 6 QA',decks:[],matches:[],page:'dashboard',selected:null})));
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>typeof window.headerNavigate==='function'&&typeof window.render==='function',{timeout:30000});
+          }
+          async function checkAppSurface(browser,viewport){
+            const context=await browser.newContext({serviceWorkers:'block',viewport});
+            const page=await context.newPage();const fatal=[];watch(page,fatal);await seedLocalUser(page);
+            const entry=await page.locator('body').innerText();
+            assert(entry.includes('Independent third-party companion')||entry.includes('YOUR COMPETITIVE POCKET'),`app ${viewport.width}px: independent/product shell missing`);
+            await page.evaluate(()=>headerNavigate('more'));
+            await page.waitForFunction(()=>state?.page==='more',{timeout:15000});
+            let state=await checkLayout(page,`Settings ${viewport.width}px`);
+            assert(state.text.includes('About & Privacy'),`Settings ${viewport.width}px: About & Privacy entry missing`);
+            await page.evaluate(()=>headerNavigate('about'));
+            await page.waitForFunction(()=>state?.page==='about',{timeout:15000});
+            await page.waitForTimeout(300);
+            state=await checkLayout(page,`About ${viewport.width}px`);
+            assert(state.text.includes('About, Privacy & Beta Status'),`About ${viewport.width}px: About surface missing`);
+            assert(state.text.includes('Closed beta status'),`About ${viewport.width}px: Closed beta status missing`);
+            assert(!forbidden.test(state.text),`About ${viewport.width}px: stale public-launch wording remains`);
+            for(const name of ['Privacy','Terms','Support'])assert(state.text.includes(name),`About ${viewport.width}px: ${name} link missing`);
+            assert(fatal.length===0,`app ${viewport.width}px runtime errors: ${fatal.join(' | ')}`);
+            await context.close();
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+              await checkLegal(browser,'privacy.html','Privacy',viewport);
+              await checkLegal(browser,'terms.html','Terms of Use',viewport);
+              await checkLegal(browser,'support.html','Help & Support',viewport);
+              await checkAppSurface(browser,viewport);
+            }
+            await browser.close();
+            console.log('GATE6_LEGAL_BETA_RUNTIME_QA_OK');
+          })().catch(e=>{console.error('GATE6_LEGAL_BETA_RUNTIME_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node gate6-runtime.cjs
