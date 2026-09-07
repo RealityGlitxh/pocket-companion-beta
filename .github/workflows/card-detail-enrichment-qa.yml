@@ -95,7 +95,9 @@ jobs:
             await page.evaluate(id=>openCollectionCard(id),samples.ability.id);
             await page.waitForFunction(id=>document.querySelector(`.verifiedCardGameplay[data-verified-card="${CSS.escape(id)}"]`),samples.ability.id,{timeout:15000});
             const collectionText=await page.locator('#cardModalBody').innerText();assert(collectionText.includes('VERIFIED GAMEPLAY'),'Collection card detail was not enriched');
-            await page.evaluate(()=>{headerNavigate('collection')});await page.waitForFunction(()=>document.getElementById('collectionGrid'));const pager=await page.locator('#collectionGrid .pager').count();assert(pager>0,'Collection Card DB pagination missing');
+            try{await page.evaluate(()=>headerNavigate('collection'))}catch(e){if(!/Execution context was destroyed|navigation/i.test(String(e)))throw e}
+            await page.waitForLoadState('domcontentloaded').catch(()=>{});
+            await page.waitForFunction(()=>document.getElementById('collectionGrid'),{timeout:30000});const pager=await page.locator('#collectionGrid .pager').count();assert(pager>0,'Collection Card DB pagination missing');
             await page.locator('#cq').fill(samples.one.name);await page.evaluate(()=>renderCollectionGrid());const searchText=await page.locator('#collectionGrid').innerText();assert(searchText.toLowerCase().includes(samples.one.name.toLowerCase()),'Card DB search did not return verified sample');
             if(samples.missing){await page.evaluate(id=>openCardModal(id),samples.missing);await page.waitForTimeout(750);const stable=await page.locator('#cardModalBody').innerText();assert(stable.length>0,'card without enrichment lost stable detail');}
             assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
