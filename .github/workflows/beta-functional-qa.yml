@@ -1,6 +1,7 @@
 name: PocketNexus Beta Functional QA
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
