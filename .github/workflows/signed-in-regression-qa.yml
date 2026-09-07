@@ -52,15 +52,22 @@ jobs:
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
             await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
-            await page.waitForFunction(()=>typeof window.emailSignIn==='function'&&typeof window.accountPage==='function',{timeout:30000});
-            await page.waitForFunction(()=>typeof window.cloudConfigured==='function'&&window.cloudConfigured(),{timeout:30000});
+            await page.waitForFunction(()=>typeof window.accountPage==='function'&&typeof window.cloudConfigured==='function'&&window.cloudConfigured(),{timeout:30000});
             await page.evaluate(()=>{try{state.onboarding={...(state.onboarding||{}),completed:true};save?.()}catch{};state.page='account';accountPage();});
             await page.waitForSelector('#authEmail',{state:'visible',timeout:15000});
-            await page.fill('#authEmail',email);await page.fill('#authPassword',password);
-            await page.evaluate(()=>emailSignIn());
-            await page.waitForFunction(()=>window.cloudSession?.user?.id||document.getElementById('authMessage')?.textContent?.trim(),{timeout:30000});
-            const login=await page.evaluate(()=>({uid:cloudSession?.user?.id||'',mode:state?.sessionMode||'',message:document.getElementById('authMessage')?.textContent?.trim()||''}));
-            if(!login.uid||login.mode!=='cloud')throw new Error(`authentication failed: ${login.message||'no session established'}`);
+            const login=await page.evaluate(async ({email,password})=>{
+              const client=window.getPPCCloudClient?.()||window.PPCAccountCloudCore?.client?.()||window.cloudClient||null;
+              if(!client) return {ok:false,message:'cloud client unavailable'};
+              const {data,error}=await client.auth.signInWithPassword({email,password});
+              if(error) return {ok:false,message:error.message||'sign-in failed'};
+              if(!data?.session?.user?.id) return {ok:false,message:'no session returned'};
+              window.cloudSession=data.session;
+              state.user=data.session.user.email||'Account';
+              state.sessionMode='cloud';
+              try{safeStorageSet(STORE,JSON.stringify(state))}catch{}
+              return {ok:true,uid:data.session.user.id};
+            },{email,password});
+            if(!login.ok||!login.uid)throw new Error(`authentication failed: ${login.message||'no session established'}`);
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
               const before=fatal.length;
