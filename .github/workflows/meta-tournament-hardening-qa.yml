@@ -1,0 +1,157 @@
+name: PocketNexus Meta Tournament Hardening QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "js/services/meta-service.js"
+      - "js/services/meta-tournament-fallback-v8.64.2.js"
+      - "js/services/tournament-service.js"
+      - "js/app/decks_meta.js"
+      - "js/features/tournament-leaderboards-v8.31.js"
+      - "index.html"
+      - ".github/workflows/meta-tournament-hardening-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  meta-tournament-hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Run Meta and Tournament failure-path QA
+        run: |
+          cat > meta-tournament-hardening.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const now=new Date().toISOString();
+
+          async function boot(browser,routes){
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:950}});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))errors.push(`console: ${m.text()}`)});
+            for(const r of routes)await page.route(r.pattern,r.handler);
+            await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForTimeout(900);
+            const guest=page.getByRole('button',{name:/continue as guest/i});
+            if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(350)}catch{}
+            await page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+            await page.waitForFunction(()=>window.PPCMetaService&&window.PPCTournamentService,{timeout:20000});
+            return {context,page,errors};
+          }
+
+          const json=(body,status=200)=>async route=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+          const fail=(status=503,body={error:'QA unavailable'})=>json(body,status);
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+
+            // 1. Populated live meta must stay live and must not be replaced by tournament fallback.
+            {
+              const live={ok:true,status:'live',windowHours:168,snapshot:{generatedAt:now,tournaments:4,decklists:20,matches:40},overview:{},archetypes:[{id:'qa-live',name:'QA Live Archetype',deckCount:10,usage:50,wins:12,losses:8,matches:20,winRate:60}],matchups:[]};
+              const {context,page,errors}=await boot(browser,[
+                {pattern:'**/functions/v1/meta-live?window=*',handler:json(live)},
+                {pattern:'**/rest/v1/rpc/get_tournament_catalog',handler:json([{id:'should-not-replace',name:'Tournament Only',start_date:now,player_count:8}])},
+                {pattern:'**/rest/v1/rpc/get_tournament_filter_options',handler:json([])},
+                {pattern:'**/rest/v1/rpc/get_tournament_sync_status',handler:json([])},
+                {pattern:'**/rest/v1/rpc/get_tournament_standings',handler:json([{placement:1,display_name:'A',wins:5,losses:0,archetype_name:'Tournament Replacement'}])}
+              ]);
+              const r=await page.evaluate(async()=>{PPCMetaService.clearCache();await PPCMetaService.fetchWindow(168,{force:true});return {source:PPCMetaService.getStatus().source,names:PPCMetaService.getArchetypes().map(x=>x.name)}});
+              assert(r.source==='live',`populated live meta changed source to ${r.source}`);
+              assert(r.names.includes('QA Live Archetype'),'populated live archetype missing');
+              assert(!r.names.includes('Tournament Replacement'),'tournament fallback replaced non-empty live meta');
+              assert(errors.length===0,`live meta runtime errors: ${errors.join(' | ')}`);
+              await context.close();
+            }
+
+            // 2. Failed live meta must preserve a usable fallback and render without fatal recovery.
+            {
+              const {context,page,errors}=await boot(browser,[
+                {pattern:'**/functions/v1/meta-live?window=*',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_catalog',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_filter_options',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_sync_status',handler:fail(503)}
+              ]);
+              const r=await page.evaluate(async()=>{PPCMetaService.clearCache();await PPCMetaService.fetchWindow(168,{force:true});goPage('meta');await new Promise(r=>setTimeout(r,700));return {source:PPCMetaService.getStatus().source,count:PPCMetaService.getArchetypes().length,recovery:document.body.innerText.includes('Runtime recovery'),display:/We hit a display error/i.test(document.body.innerText),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth)}});
+              assert(['fallback','cached','stale'].includes(r.source),`failed live meta produced unsafe source ${r.source}`);
+              assert(r.count>0,'failed live meta left no usable bundled/cached archetypes');
+              assert(!r.recovery&&!r.display,'Meta page entered runtime/display recovery on live failure');
+              assert(r.overflow<=2,`Meta fallback overflow ${r.overflow}px`);
+              assert(errors.length===0,`meta fallback fatal errors: ${errors.join(' | ')}`);
+              await context.close();
+            }
+
+            // 3. Tournament catalog stays usable when ancillary filter/sync metadata fails.
+            {
+              const catalog=[{id:'qa-t1',name:'QA Tournament',start_date:now,player_count:32,tracked_players:28,format:'Pocket'}];
+              const {context,page,errors}=await boot(browser,[
+                {pattern:'**/rest/v1/rpc/get_tournament_catalog',handler:json(catalog)},
+                {pattern:'**/rest/v1/rpc/get_tournament_filter_options',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_sync_status',handler:fail(503)},
+                {pattern:'**/functions/v1/meta-live?window=*',handler:fail(503)}
+              ]);
+              const r=await page.evaluate(async()=>{PPCTournamentService.clear();const rows=await PPCTournamentService.loadCatalog({minPlayers:0,format:'',search:'',limit:150,offset:0},{force:true});const s=PPCTournamentService.status();return {rows:rows.length,source:s.source,warning:s.warning,error:s.error}});
+              assert(r.rows===1,'ancillary failure discarded live tournament catalog');
+              assert(r.source==='live',`catalog source was ${r.source}, expected live`);
+              assert(/some sync metadata/i.test(r.warning),'ancillary failure warning was not exposed');
+              assert(!r.error,'ancillary failure incorrectly became catalog error');
+              assert(errors.length===0,`ancillary failure runtime errors: ${errors.join(' | ')}`);
+              await context.close();
+            }
+
+            // 4. Tournament catalog failure without cache returns a safe empty/error state and page remains usable.
+            {
+              const {context,page,errors}=await boot(browser,[
+                {pattern:'**/rest/v1/rpc/get_tournament_catalog',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_filter_options',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_sync_status',handler:fail(503)},
+                {pattern:'**/functions/v1/meta-live?window=*',handler:fail(503)}
+              ]);
+              const r=await page.evaluate(async()=>{PPCTournamentService.clear();const rows=await PPCTournamentService.loadCatalog({minPlayers:0,format:'',search:'',limit:150,offset:0},{force:true});goPage('tournaments');await new Promise(r=>setTimeout(r,700));const s=PPCTournamentService.status();return {rows:rows.length,source:s.source,error:s.error,recovery:document.body.innerText.includes('Runtime recovery'),display:/We hit a display error/i.test(document.body.innerText),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth)}});
+              assert(r.rows===0,'failed uncached catalog returned unexpected rows');
+              assert(r.source==='error',`failed uncached catalog source was ${r.source}`);
+              assert(!!r.error,'failed uncached catalog did not retain an error state');
+              assert(!r.recovery&&!r.display,'Tournament page entered runtime/display recovery on catalog failure');
+              assert(r.overflow<=2,`Tournament failure state overflow ${r.overflow}px`);
+              assert(errors.length===0,`catalog failure fatal errors: ${errors.join(' | ')}`);
+              await context.close();
+            }
+
+            // 5. Standings failure is non-fatal and returns safe empty rows when no cache exists.
+            {
+              const {context,page,errors}=await boot(browser,[
+                {pattern:'**/rest/v1/rpc/get_tournament_standings',handler:fail(503)},
+                {pattern:'**/rest/v1/rpc/get_tournament_catalog',handler:json([])},
+                {pattern:'**/rest/v1/rpc/get_tournament_filter_options',handler:json([])},
+                {pattern:'**/rest/v1/rpc/get_tournament_sync_status',handler:json([])},
+                {pattern:'**/functions/v1/meta-live?window=*',handler:fail(503)}
+              ]);
+              const r=await page.evaluate(async()=>{PPCTournamentService.clear();const rows=await PPCTournamentService.loadStandings('qa-missing',{force:true});return {rows:rows.length,recovery:document.body.innerText.includes('Runtime recovery')}});
+              assert(r.rows===0,'failed standings request did not return safe empty rows');
+              assert(!r.recovery,'standings failure triggered runtime recovery');
+              assert(errors.length===0,`standings failure fatal errors: ${errors.join(' | ')}`);
+              await context.close();
+            }
+
+            await browser.close();
+            console.log('META_TOURNAMENT_HARDENING_QA_OK');
+          })().catch(e=>{console.error('META_TOURNAMENT_HARDENING_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node meta-tournament-hardening.cjs
