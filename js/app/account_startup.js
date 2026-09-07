@@ -1,3 +1,4 @@
+// Gate #6 QA trigger only — no runtime behavior change.
 function accountPage(){
  setTimeout(addOnboardingAccountPanel,0);
  const app=document.getElementById("app");
