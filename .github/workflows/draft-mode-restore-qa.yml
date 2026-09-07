@@ -62,20 +62,32 @@ jobs:
             assert(init.draft==='8.69.3',`unexpected Draft Mode version ${init.draft}`);
             assert(init.online==='8.69.4',`unexpected online Draft version ${init.online}`);
 
-            await page.evaluate(()=>{state.user=state.user||'Draft QA';window.nav?.()});
-            await page.waitForTimeout(150);
-            const launcher=await page.locator('[data-draft-nav]').count();
-            assert(launcher>0,'desktop Draft Mode launcher missing from authenticated Play navigation');
+            const navDiag=await page.evaluate(async()=>{
+              state.user=state.user||'Draft QA';
+              const before=String(window.nav||'');
+              window.nav?.();
+              await new Promise(r=>setTimeout(r,180));
+              const cats=[...document.querySelectorAll('.navCategory')].map(x=>({category:x.dataset.category||'',html:x.innerHTML.slice(0,700)}));
+              const play=[...document.querySelectorAll('.navCategory')].find(x=>/Play/i.test(x.dataset.category||''));
+              return {
+                draftNavInstalled:!!window.__ppcDraftNavInstalled,
+                navContainsDraftHook:/data-draft-nav|ppcDraft/i.test(before),
+                navSource:before.slice(0,1200),
+                stateUser:String(state.user||''),
+                categories:cats.map(x=>x.category),
+                playHtml:play?.querySelector('.navCategoryMenu')?.innerHTML||'',
+                launcher:document.querySelectorAll('[data-draft-nav]').length
+              };
+            });
+            console.log('DRAFT_NAV_DIAGNOSTIC',JSON.stringify(navDiag,null,2));
+            assert(navDiag.launcher>0,`desktop Draft Mode launcher missing from authenticated Play navigation: ${JSON.stringify(navDiag)}`);
 
             await page.evaluate(async()=>{if(typeof loadCards==='function')await loadCards()});
             await page.waitForFunction(()=>{try{return Array.isArray(CARDS)&&CARDS.length>50}catch{return false}},{timeout:20000});
 
             await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
             await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000});
-            let lobby=await page.evaluate(()=>({
-              text:document.querySelector('#ppcDraftRoot')?.innerText||'',
-              overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth
-            }));
+            let lobby=await page.evaluate(()=>({text:document.querySelector('#ppcDraftRoot')?.innerText||'',overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));
             assert(/Rival Draft/i.test(lobby.text),'Draft lobby did not render');
             assert(/Draft vs CPU/i.test(lobby.text),'CPU Draft action missing');
             assert(/Local 2 Player/i.test(lobby.text),'local 2-player action missing');
@@ -84,60 +96,37 @@ jobs:
 
             await page.getByRole('button',{name:'Draft vs CPU',exact:true}).click();
             await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')?.status==='draft'}catch{return false}},{timeout:5000});
-
             for(let i=0;i<40;i++){
               const s=await page.evaluate(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')}catch{return null}});
-              assert(s,'Draft session disappeared');
-              if(s.status==='complete')break;
+              assert(s,'Draft session disappeared'); if(s.status==='complete')break;
               assert((s.playerA?.cards||[]).reduce((n,c)=>n+Number(c.quantity||0),0)<=20,'Player A exceeded 20 cards');
               assert((s.playerB?.cards||[]).reduce((n,c)=>n+Number(c.quantity||0),0)<=20,'Player B exceeded 20 cards');
-              if(s.current?.picker==='A'){
-                const pick=page.locator('#ppcDraftRoot .draftPkg:not([disabled])').first();
-                assert(await pick.count(),'no legal player Draft package available');
-                await pick.click();
-                await page.waitForTimeout(120);
-              }else{
-                await page.waitForTimeout(650);
-              }
+              if(s.current?.picker==='A'){const pick=page.locator('#ppcDraftRoot .draftPkg:not([disabled])').first();assert(await pick.count(),'no legal player Draft package available');await pick.click();await page.waitForTimeout(120)}else await page.waitForTimeout(650);
             }
-
             await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('ppc_draft_v8690')||'null')?.status==='complete'}catch{return false}},{timeout:5000});
-            const complete=await page.evaluate(()=>{
-              const s=PPCDraftMode.read();
-              return {a:PPCDraftMode.count(s.playerA),b:PPCDraftMode.count(s.playerB),auditA:PPCDraftMode.auditPlayer(s.playerA),auditB:PPCDraftMode.auditPlayer(s.playerB)};
-            });
+            const complete=await page.evaluate(()=>{const s=PPCDraftMode.read();return {a:PPCDraftMode.count(s.playerA),b:PPCDraftMode.count(s.playerB),auditA:PPCDraftMode.auditPlayer(s.playerA),auditB:PPCDraftMode.auditPlayer(s.playerB)}});
             assert(complete.a===20&&complete.b===20,`Draft did not finish 20/20: ${JSON.stringify(complete)}`);
             assert(complete.auditA.valid&&complete.auditB.valid,`Draft audit failed: ${JSON.stringify(complete)}`);
 
             const beforeDecks=await page.evaluate(()=>state.decks?.length||0);
             await page.evaluate(()=>PPCDraftMode.saveDraftDecks());
-            const saved=await page.evaluate(()=>({
-              count:state.decks?.length||0,
-              draftDecks:(state.decks||[]).filter(d=>d.source==='draft').slice(-2).map(d=>({id:d.id,name:d.name,cards:Object.values(d.cards||{}).reduce((n,q)=>n+Number(q||0),0)})),
-              ids:PPCDraftMode.read()?.savedDeckIds||{}
-            }));
+            const saved=await page.evaluate(()=>({count:state.decks?.length||0,draftDecks:(state.decks||[]).filter(d=>d.source==='draft').slice(-2).map(d=>({id:d.id,name:d.name,cards:Object.values(d.cards||{}).reduce((n,q)=>n+Number(q||0),0)})),ids:PPCDraftMode.read()?.savedDeckIds||{}}));
             assert(saved.count>=beforeDecks+2,`Draft decks were not saved: ${JSON.stringify(saved)}`);
             assert(saved.draftDecks.length===2&&saved.draftDecks.every(d=>d.cards===20),`saved Draft decks are not 20 cards: ${JSON.stringify(saved)}`);
             assert(saved.ids.A&&saved.ids.B,'saved Draft deck IDs missing');
 
-            await page.evaluate(()=>PPCDraftMode.battleHandoff());
-            await page.waitForTimeout(250);
+            await page.evaluate(()=>PPCDraftMode.battleHandoff()); await page.waitForTimeout(250);
             const handoff=await page.evaluate(()=>({page:state.page,root:!!document.getElementById('ppcDraftRoot'),ctx:state.battlePrefs?.draftContext||null}));
             assert(handoff.page==='matches'&&!handoff.root&&handoff.ctx?.draftId,`Battle Tracker handoff failed: ${JSON.stringify(handoff)}`);
 
             await page.setViewportSize({width:390,height:844});
             await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
-            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000});
-            await page.waitForTimeout(150);
-            const mobile=await page.evaluate(()=>({
-              overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
-              rootOverflow:(()=>{const r=document.getElementById('ppcDraftRoot');return r?Math.max(0,r.scrollWidth-r.clientWidth):999})()
-            }));
+            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000}); await page.waitForTimeout(150);
+            const mobile=await page.evaluate(()=>({overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,rootOverflow:(()=>{const r=document.getElementById('ppcDraftRoot');return r?Math.max(0,r.scrollWidth-r.clientWidth):999})()}));
             assert(mobile.overflow<=12&&mobile.rootOverflow<=12,`mobile Draft overflow: ${JSON.stringify(mobile)}`);
             await page.evaluate(()=>PPCDraftMode.close());
-
             assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
-            console.log('DRAFT_MODE_RESTORE_QA_RESULT',JSON.stringify({init,complete,saved,handoff,mobile},null,2));
+            console.log('DRAFT_MODE_RESTORE_QA_RESULT',JSON.stringify({init,navDiag,complete,saved,handoff,mobile},null,2));
             console.log('DRAFT_MODE_RESTORE_QA_OK');
             await browser.close();
           })().catch(async e=>{console.error('DRAFT_MODE_RESTORE_QA_FAILURE',e);process.exit(1)});
