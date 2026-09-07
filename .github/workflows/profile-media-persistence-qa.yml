@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "js/features/profile-media-upload-v8.64.2.js"
+      - "js/features/global-player-search-v8.64.2.js"
       - "js/app/profile_teamwars.js"
       - "qa/profile-media-persistence.cjs"
       - ".github/workflows/profile-media-persistence-qa.yml"
