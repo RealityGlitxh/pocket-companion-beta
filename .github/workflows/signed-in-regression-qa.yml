@@ -52,10 +52,10 @@ jobs:
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
             await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
-            await page.waitForFunction(()=>typeof window.emailSignIn==='function'&&typeof window.headerNavigate==='function',{timeout:30000});
-            await page.evaluate(()=>{try{state.onboarding={...(state.onboarding||{}),completed:true};save?.()}catch{}});
-            await page.evaluate(()=>headerNavigate('account'));
-            await page.waitForSelector('#authEmail',{timeout:15000});
+            await page.waitForFunction(()=>typeof window.emailSignIn==='function'&&typeof window.accountPage==='function',{timeout:30000});
+            await page.waitForFunction(()=>typeof window.cloudConfigured==='function'&&window.cloudConfigured(),{timeout:30000});
+            await page.evaluate(()=>{try{state.onboarding={...(state.onboarding||{}),completed:true};save?.()}catch{};state.page='account';accountPage();});
+            await page.waitForSelector('#authEmail',{state:'visible',timeout:15000});
             await page.fill('#authEmail',email);await page.fill('#authPassword',password);
             await page.evaluate(()=>emailSignIn());
             await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
