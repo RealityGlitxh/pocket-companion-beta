@@ -57,19 +57,35 @@ jobs:
                 await clear(page);
                 const state=await page.evaluate(()=>{
                   const viewport=innerWidth;
-                  const offenders=[...document.querySelectorAll('#app *')].map(el=>{const r=el.getBoundingClientRect();return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,140),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:el.scrollWidth||0}}).filter(x=>x.right>viewport+12||x.left<-12||x.scrollWidth>viewport+12).sort((a,b)=>Math.max(b.right-viewport,b.scrollWidth-viewport)-Math.max(a.right-viewport,a.scrollWidth-viewport)).slice(0,8);
+                  const describe=el=>{if(!el)return null;const r=el.getBoundingClientRect(),c=getComputedStyle(el);return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,140),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),clientWidth:el.clientWidth,scrollWidth:el.scrollWidth,cssWidth:c.width,minWidth:c.minWidth,maxWidth:c.maxWidth,display:c.display,gridTemplateColumns:c.gridTemplateColumns,overflowX:c.overflowX,boxSizing:c.boxSizing}};
+                  const offenders=[...document.querySelectorAll('#app *')].map(describe).filter(x=>x&&(x.right>viewport+12||x.left<-12||x.scrollWidth>viewport+12)).sort((a,b)=>Math.max(b.right-viewport,b.scrollWidth-viewport)-Math.max(a.right-viewport,a.scrollWidth-viewport)).slice(0,8);
+                  const trace={
+                    innerWidth,
+                    clientWidth:document.documentElement.clientWidth,
+                    media900:matchMedia('(max-width:900px)').matches,
+                    media800:matchMedia('(max-width:800px)').matches,
+                    body:describe(document.body),
+                    main:describe(document.querySelector('main')),
+                    app:describe(document.querySelector('#app')),
+                    hero:describe(document.querySelector('.trainingHeroV864')),
+                    layout:describe(document.querySelector('.wtcLayout')),
+                    game:describe(document.querySelector('.wtcGame')),
+                    aside:describe(document.querySelector('.wtcLayout>aside')),
+                    frame:describe(document.querySelector('.wtcArtFrame')),
+                    image:describe(document.querySelector('.wtcArtFrame img'))
+                  };
                   return {
                     route:state?.page||'',
                     text:(document.querySelector('#app')?.innerText||'').trim(),
                     overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-viewport,
                     recovery:/This page hit an error|Runtime Recovery|Startup Recovery/i.test(document.body.innerText||''),
-                    offenders
+                    offenders,trace
                   };
                 });
                 assert(state.route===route,`${label}/${route}: state routed to ${state.route}`);
                 assert(state.text.length>=20,`${label}/${route}: app surface is blank/near-empty`);
                 assert(!state.recovery,`${label}/${route}: recovery screen appeared`);
-                assert(state.overflow<=12,`${label}/${route}: horizontal overflow ${state.overflow}px; offenders=${JSON.stringify(state.offenders)}`);
+                assert(state.overflow<=12,`${label}/${route}: horizontal overflow ${state.overflow}px; trace=${JSON.stringify(state.trace)}; offenders=${JSON.stringify(state.offenders)}`);
                 assert(fatal.length===before,`${label}/${route}: runtime errors: ${fatal.slice(before).join(' | ')}`);
                 console.log('RC1_ROUTE_OK',label,route);
               }
