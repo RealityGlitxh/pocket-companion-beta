@@ -18,6 +18,8 @@ on:
       - "css/streamer-obs-system-v8.68.0.css"
       - "overlay.html"
       - "overlay-ranked.html"
+      - "overlay-tournament.html"
+      - "overlay-caster.html"
       - "index.html"
 
 permissions:
@@ -56,6 +58,14 @@ jobs:
                 document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove());
                 document.querySelectorAll('[role="dialog"],.modalBackdrop,.modal-backdrop').forEach(x=>{if(/welcome\s*,?\s*guest/i.test(x.textContent||''))x.remove()});
               });
+              const workspaceState=async(mode)=>page.evaluate((mode)=>({
+                mode:document.querySelector('#app')?.dataset.streamerWorkspace,
+                studio:!!document.querySelector(`.pnObsStudio[data-mode="${mode}"]`),
+                preview:!!document.querySelector(`.pnObsStudio[data-mode="${mode}"] iframe[data-obs-mode="${mode}"]`),
+                error:/This page hit an error/i.test(document.body.innerText),
+                runtimeMessage:document.querySelector('.runtimeError .dangerBox')?.innerText||'',
+                overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth
+              }),mode);
 
               await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForTimeout(1400);
@@ -93,27 +103,36 @@ jobs:
 
               await dismissOverlays();
               const tournament=page.getByRole('tab',{name:/tournament workspace/i});
-              if(await tournament.count()){
-                try{
-                  await tournament.click({timeout:5000});await page.waitForTimeout(700);await dismissOverlays();
-                  const mode=await page.evaluate(()=>document.querySelector('#app')?.dataset.streamerWorkspace);
-                  if(mode!=='tournament')failures.push({name,type:'tournament-switch',mode});
-                }catch(e){failures.push({name,type:'tournament-click',error:String(e.message||e)})}
-              }
+              try{
+                if(!(await tournament.count()))throw new Error('Tournament workspace tab missing');
+                await tournament.click({timeout:5000});await page.waitForTimeout(900);await dismissOverlays();
+                const t=await workspaceState('tournament');
+                if(t.mode!=='tournament'||!t.studio||!t.preview||t.error||t.overflow>8)failures.push({name,type:'tournament-workspace',state:t});
+              }catch(e){failures.push({name,type:'tournament-click',error:String(e.message||e)})}
+
+              await dismissOverlays();
+              const caster=page.getByRole('tab',{name:/tournament caster workspace/i});
+              try{
+                if(!(await caster.count()))throw new Error('Caster workspace tab missing');
+                await caster.click({timeout:5000});await page.waitForTimeout(900);await dismissOverlays();
+                const c=await workspaceState('caster');
+                if(c.mode!=='caster'||!c.studio||!c.preview||c.error||c.overflow>8)failures.push({name,type:'caster-workspace',state:c});
+              }catch(e){failures.push({name,type:'caster-click',error:String(e.message||e)})}
 
               await dismissOverlays();
               const ranked=page.getByRole('tab',{name:/ranked workspace/i});
-              if(await ranked.count()){
-                try{
-                  await ranked.click({timeout:5000});await page.waitForTimeout(900);await dismissOverlays();
-                  const returned=await page.evaluate(()=>({
-                    mode:document.querySelector('#app')?.dataset.streamerWorkspace,
-                    control:document.querySelector('#app')?.classList.contains('rankedStreamControlCenter'),
-                    preview:!!document.querySelector('#rankedRealObsPreview')||!!document.querySelector('.pnObsStudio[data-mode="ranked"] iframe[data-obs-mode="ranked"]')
-                  }));
-                  if(returned.mode!=='ranked'||!returned.control||!returned.preview)failures.push({name,type:'ranked-return',returned});
-                }catch(e){failures.push({name,type:'ranked-click',error:String(e.message||e)})}
-              }
+              try{
+                if(!(await ranked.count()))throw new Error('Ranked workspace tab missing');
+                await ranked.click({timeout:5000});await page.waitForTimeout(900);await dismissOverlays();
+                const returned=await page.evaluate(()=>({
+                  mode:document.querySelector('#app')?.dataset.streamerWorkspace,
+                  control:document.querySelector('#app')?.classList.contains('rankedStreamControlCenter'),
+                  preview:!!document.querySelector('#rankedRealObsPreview')||!!document.querySelector('.pnObsStudio[data-mode="ranked"] iframe[data-obs-mode="ranked"]'),
+                  error:/This page hit an error/i.test(document.body.innerText),
+                  runtimeMessage:document.querySelector('.runtimeError .dangerBox')?.innerText||''
+                }));
+                if(returned.mode!=='ranked'||!returned.control||!returned.preview||returned.error)failures.push({name,type:'ranked-return',returned});
+              }catch(e){failures.push({name,type:'ranked-click',error:String(e.message||e)})}
               await ctx.close();
             }
             await browser.close();
