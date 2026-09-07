@@ -31,6 +31,26 @@ jobs:
             echo "::error::Signed-in QA requires repository secrets POCKETNEXUS_QA_EMAIL and POCKETNEXUS_QA_PASSWORD."
             exit 1
           fi
+      - name: Create QA Supabase session
+        run: |
+          payload=$(jq -nc --arg email "$POCKETNEXUS_QA_EMAIL" --arg password "$POCKETNEXUS_QA_PASSWORD" '{email:$email,password:$password}')
+          http_code=$(curl -sS -o /tmp/qa-auth.json -w "%{http_code}" \
+            -X POST "https://cdmzrsvwztndqfwzsumo.supabase.co/auth/v1/token?grant_type=password" \
+            -H "apikey: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl" \
+            -H "Content-Type: application/json" \
+            --data "$payload")
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            msg=$(jq -r '.msg // .error_description // .error // "Supabase authentication failed"' /tmp/qa-auth.json 2>/dev/null || echo "Supabase authentication failed")
+            echo "::error::QA account authentication failed ($http_code): $msg"
+            exit 1
+          fi
+          if ! jq -e '.access_token and .refresh_token and .user.id' /tmp/qa-auth.json >/dev/null; then
+            echo "::error::Supabase did not return a complete QA session."
+            exit 1
+          fi
+          session_b64=$(base64 -w0 /tmp/qa-auth.json)
+          echo "::add-mask::$session_b64"
+          echo "POCKETNEXUS_QA_SESSION_B64=$session_b64" >> "$GITHUB_ENV"
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -40,30 +60,21 @@ jobs:
         run: |
           cat > signed-in-regression.cjs <<'NODE'
           const { chromium } = require('playwright');
-          const email=process.env.POCKETNEXUS_QA_EMAIL,password=process.env.POCKETNEXUS_QA_PASSWORD;
+          const qaSession=JSON.parse(Buffer.from(process.env.POCKETNEXUS_QA_SESSION_B64,'base64').toString('utf8'));
           const fatal=[];
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.addInitScript(({session})=>{
+              localStorage.setItem('sb-cdmzrsvwztndqfwzsumo-auth-token',JSON.stringify(session));
+            },{session:qaSession});
             await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForFunction(()=>typeof window.accountPage==='function'&&typeof window.cloudConfigured==='function'&&window.cloudConfigured(),{timeout:30000});
-            await page.evaluate(()=>{try{state.onboarding={...(state.onboarding||{}),completed:true};save?.()}catch{};state.page='account';accountPage();});
-            await page.waitForSelector('#authEmail',{state:'visible',timeout:15000});
-            const login=await page.evaluate(async ({email,password})=>{
-              const client=window.getPPCCloudClient?.()||window.PPCAccountCloudCore?.client?.()||window.cloudClient||null;
-              if(!client) return {ok:false,message:'cloud client unavailable'};
-              const {data,error}=await client.auth.signInWithPassword({email,password});
-              if(error) return {ok:false,message:error.message||'sign-in failed'};
-              if(!data?.session?.user?.id) return {ok:false,message:'no session returned'};
-              window.cloudSession=data.session;
-              state.user=data.session.user.email||'Account';
-              state.sessionMode='cloud';
-              try{safeStorageSet(STORE,JSON.stringify(state))}catch{}
-              return {ok:true,uid:data.session.user.id};
-            },{email,password});
-            if(!login.ok||!login.uid)throw new Error(`authentication failed: ${login.message||'no session established'}`);
+            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+            const seeded=await page.evaluate(()=>({uid:cloudSession?.user?.id||'',mode:state?.sessionMode||''}));
+            if(!seeded.uid||seeded.mode!=='cloud')throw new Error('seeded Supabase session was not hydrated by PocketNexus');
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
               const before=fatal.length;
