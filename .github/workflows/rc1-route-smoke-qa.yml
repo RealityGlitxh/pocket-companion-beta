@@ -1,0 +1,76 @@
+name: PocketNexus V8.65 RC1 Route Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/rc1-route-smoke-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  rc1-route-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated RC1 site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-rc1-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Run RC1 route smoke
+        run: |
+          cat > rc1-route-smoke.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const viewports=[['desktop',1440,900],['tablet',820,1180],['mobile',390,844]];
+          const routes=['dashboard','decks','matches','meta','collection','stats','rank','streamer','profile','teamwars','training','sync','more','account','about'];
+          const clear=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [label,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'});
+              const page=await context.newPage();
+              const fatal=[];
+              page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+              page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>typeof window.goPage==='function'&&typeof window.render==='function',{timeout:20000});
+              const guest=page.getByRole('button',{name:/continue as guest/i});
+              if(await guest.count())await guest.click({timeout:3000}).catch(()=>{});
+              await clear(page);
+              for(const route of routes){
+                const before=fatal.length;
+                await page.evaluate(r=>window.goPage(r),route);
+                await page.waitForTimeout(650);
+                await clear(page);
+                const state=await page.evaluate(()=>({
+                  route:state?.page||'',
+                  text:(document.querySelector('#app')?.innerText||'').trim(),
+                  overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
+                  recovery:/This page hit an error|Runtime Recovery|Startup Recovery/i.test(document.body.innerText||'')
+                }));
+                assert(state.route===route,`${label}/${route}: state routed to ${state.route}`);
+                assert(state.text.length>=20,`${label}/${route}: app surface is blank/near-empty`);
+                assert(!state.recovery,`${label}/${route}: recovery screen appeared`);
+                assert(state.overflow<=12,`${label}/${route}: horizontal overflow ${state.overflow}px`);
+                assert(fatal.length===before,`${label}/${route}: runtime errors: ${fatal.slice(before).join(' | ')}`);
+                console.log('RC1_ROUTE_OK',label,route);
+              }
+              await context.close();
+            }
+            await browser.close();
+            console.log('RC1_ROUTE_SMOKE_OK');
+          })().catch(e=>{console.error('RC1_ROUTE_SMOKE_FAILURE',e);process.exit(1)});
+          NODE
+          node rc1-route-smoke.cjs
