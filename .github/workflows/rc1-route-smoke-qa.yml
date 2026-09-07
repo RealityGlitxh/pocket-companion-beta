@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/rc1-route-smoke-qa.yml"
+      - "index.html"
+      - "js/features/rc1-route-class-cleanup-v8.65.0.js"
       - "css/training-uniform-v8.64.1.css"
 
 permissions:
