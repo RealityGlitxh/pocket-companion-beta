@@ -1,0 +1,52 @@
+name: PocketNexus Card Enrichment QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/services/card-enrichment-service-v8.64.2.js"
+      - "js/services/ptcgp-data-card-source-v8.64.2.js"
+      - ".github/workflows/card-enrichment-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  card-enrichment-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run enrichment matching QA
+        run: |
+          cat > card-enrichment-qa.js <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const sandbox={console,fetch};vm.createContext(sandbox);
+          vm.runInContext(fs.readFileSync('js/services/ptcgp-data-card-source-v8.64.2.js','utf8')+'\n;globalThis.S=PtcgpDataCardSource;',sandbox);
+          vm.runInContext(fs.readFileSync('js/services/card-enrichment-service-v8.64.2.js','utf8')+'\n;globalThis.E=CardEnrichmentService;',sandbox);
+          const {S,E}=sandbox, assert=(x,m)=>{if(!x)throw new Error(m)};
+          const base={id:'base-bulba',setCode:'A1',number:'001',name:'Bulbasaur',image:'keep-me.webp',rarity:'diamond'};
+          const rich=S.normalizeCard({id:'A1-001',name:'Bulbasaur',type:'Grass',hp:70,stage:'Basic',attacks:[{cost:['Grass','Colorless'],name:'Vine Whip',damage:'40',effect:''}],weakness:'Fire',retreat:1},'pokemon');
+          const enriched=E.enrichCards([base],[rich])[0];
+          assert(enriched.image==='keep-me.webp'&&enriched.rarity==='diamond','base card fields were overwritten');
+          assert(enriched.gameplay?.hp===70&&enriched.gameplay?.attacks?.[0]?.name==='Vine Whip','rich gameplay facts missing');
+          const wrong={...rich,name:'Definitely Not Bulbasaur'};
+          assert(!E.enrichCards([base],[wrong])[0].gameplay,'name mismatch must not enrich');
+          assert(E.coachFacts([enriched])[0].gameplay.attacks[0].damage==='40','coach fact projection failed');
+          (async()=>{
+            const [pokemon,items,supporters]=await Promise.all(['pokemon','item','supporter'].map(k=>S.loadKind(k)));
+            const syntheticBase=[...pokemon,...items,...supporters].map(c=>({id:`base-${c.id}`,setCode:c.setCode,number:c.number,name:c.name,image:'existing-source.webp'}));
+            const report=E.coverage(syntheticBase,[...pokemon,...items,...supporters]);
+            assert(report.green,`coverage contract failed ${JSON.stringify(report)}`);
+            assert(report.matched>500,`matched coverage too low: ${report.matched}`);
+            assert(report.withGameplay>400,`gameplay coverage too low: ${report.withGameplay}`);
+            const sample=E.enrichCards(syntheticBase.slice(0,100),[...pokemon,...items,...supporters]);
+            assert(sample.every(c=>c.image==='existing-source.webp'),'stable base source field changed');
+            console.log('CARD_ENRICHMENT_QA_OK',JSON.stringify(report));
+          })().catch(e=>{console.error('CARD_ENRICHMENT_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node card-enrichment-qa.js
