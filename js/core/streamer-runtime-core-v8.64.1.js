@@ -43,6 +43,29 @@ function streamerDeckCards(deck){
  if(raw&&typeof raw==="object")return Object.entries(raw).map(([id,qty])=>decorate({id,name:id,qty:Number(qty||1)})).slice(0,20);
  return [];
 }
+
+// Shared rank-tier helpers used by the lazy Streamer route. These lived in the
+// legacy combined bundle before the runtime split and must remain eager.
+const PPC_RANK_THRESHOLDS=[
+ {min:0,tier:"Beginner 1"},{min:20,tier:"Beginner 2"},{min:50,tier:"Beginner 3"},{min:80,tier:"Beginner 4"},
+ {min:110,tier:"Poké Ball 1"},{min:140,tier:"Poké Ball 2"},{min:170,tier:"Poké Ball 3"},{min:210,tier:"Poké Ball 4"},
+ {min:250,tier:"Great Ball 1"},{min:290,tier:"Great Ball 2"},{min:330,tier:"Great Ball 3"},{min:380,tier:"Great Ball 4"},
+ {min:440,tier:"Ultra Ball 1"},{min:510,tier:"Ultra Ball 2"},{min:590,tier:"Ultra Ball 3"},{min:690,tier:"Ultra Ball 4"},
+ {min:810,tier:"Master Ball"}
+];
+function rankTierFromPoints(points){
+ const rp=Math.max(0,Math.floor(Number(points)||0));
+ let rank=PPC_RANK_THRESHOLDS[0];
+ for(const row of PPC_RANK_THRESHOLDS){if(rp>=row.min)rank=row;else break}
+ return rank.tier;
+}
+function rankProgressFromPoints(points){
+ const rp=Math.max(0,Math.floor(Number(points)||0));
+ let index=0;for(let i=0;i<PPC_RANK_THRESHOLDS.length;i++){if(rp>=PPC_RANK_THRESHOLDS[i].min)index=i;else break}
+ const current=PPC_RANK_THRESHOLDS[index],next=PPC_RANK_THRESHOLDS[index+1]||null;
+ return {tier:current.tier,nextTier:next?.tier||null,nextMin:next?.min??null,toNext:next?Math.max(0,next.min-rp):0};
+}
+
 function streamerRPJourney(){
  const active=activeStreamerSession(),rows=(state.rankHistory||[]).filter(x=>!active||Number(x.timestamp||x.at||0)>=Number(active.start||0)).sort((a,b)=>Number(a.timestamp||a.at||0)-Number(b.timestamp||b.at||0));
  const pts=rows.map(x=>Number(x.points??x.rankAfter?.points??x.rp??NaN)).filter(Number.isFinite);
