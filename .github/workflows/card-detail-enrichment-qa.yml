@@ -60,7 +60,8 @@ jobs:
           (async()=>{
             await preload();
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});watch(page);await routeRich(page,false);await enter(page);
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000}});
+            const page=await context.newPage();watch(page);await routeRich(page,false);await enter(page);
             const samples=await page.evaluate(async()=>{
               await PPCVerifiedCardDetail.load(true);
               const kinds={pokemon:await PtcgpDataCardSource.loadKind('pokemon'),item:await PtcgpDataCardSource.loadKind('item'),supporter:await PtcgpDataCardSource.loadKind('supporter'),tool:await PtcgpDataCardSource.loadKind('tool'),stadium:await PtcgpDataCardSource.loadKind('stadium')};
@@ -102,7 +103,8 @@ jobs:
             if(samples.missing){await page.evaluate(id=>openCardModal(id),samples.missing);await page.waitForTimeout(750);const stable=await page.locator('#cardModalBody').innerText();assert(stable.length>0,'card without enrichment lost stable detail');}
             assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
 
-            const fallback=await browser.newPage({viewport:{width:1280,height:900}});const fallbackFatal=[];fallback.on('pageerror',e=>fallbackFatal.push(e.message));await routeRich(fallback,true);await enter(fallback);
+            const fallbackContext=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:900}});
+            const fallback=await fallbackContext.newPage();const fallbackFatal=[];fallback.on('pageerror',e=>fallbackFatal.push(e.message));await routeRich(fallback,true);await enter(fallback);
             await fallback.evaluate(id=>openCardModal(id),samples.one.id);await fallback.waitForTimeout(1800);
             const fallbackState=await fallback.evaluate(()=>({text:document.getElementById('cardModalBody')?.innerText||'',verified:!!document.querySelector('.verifiedCardGameplay'),recovery:document.body.innerText.includes('Runtime Recovery')}));
             assert(fallbackState.text.includes(samples.one.name),'stable Card Detail failed when enrichment source was unavailable');assert(!fallbackState.verified,'unverified gameplay rendered while rich source unavailable');assert(!fallbackState.recovery,'runtime recovery appeared during enrichment-source failure');assert(fallbackFatal.length===0,`fallback page errors: ${fallbackFatal.join(' | ')}`);
