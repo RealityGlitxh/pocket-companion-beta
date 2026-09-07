@@ -43,7 +43,7 @@ async function profileSnapshot(){return page.evaluate(()=>({
   await page.waitForFunction(()=>!document.getElementById('profileEditPanel')?.open,{timeout:30000});
   await page.waitForTimeout(1500);
   if(fatal.length>before)fail(`save emitted runtime errors: ${fatal.slice(before).join(' | ')}`);
-  let stored=await page.evaluate(async()=>{const c=window.getPPCCloudClient(),uid=window.getPPCCloudSession().user.id;const {data,error}=await c.from('profiles').select('avatar_url,banner_url,display_name,username,bio,favorite_deck_name,privacy,public_id').eq('id',uid).single();if(error)throw error;return data});
+  let stored=await page.evaluate(async()=>{const c=window.getPPCCloudClient(),uid=window.getPPCCloudSession().user.id;const {data,error}=await c.from('profiles').select('avatar_url,banner_url,display_name,username,bio,favorite_deck_name,privacy,public_profile_id').eq('id',uid).single();if(error)throw new Error(error.message||String(error));return data});
   if(!stored.avatar_url||!stored.banner_url)fail('profile row did not persist both media URLs');
   if(!stored.avatar_url.includes(`/storage/v1/object/public/profile-media/${backup.uid}/avatar-`))fail('avatar URL is not a public profile-media object owned by the QA user');
   if(!stored.banner_url.includes(`/storage/v1/object/public/profile-media/${backup.uid}/banner-`))fail('banner URL is not a public profile-media object owned by the QA user');
@@ -59,8 +59,8 @@ async function profileSnapshot(){return page.evaluate(()=>({
   await page.evaluate(()=>headerNavigate('dashboard'));await page.waitForTimeout(500);await page.evaluate(()=>headerNavigate('profile'));await page.waitForTimeout(1200);
   const reroute=await page.evaluate(({a,b})=>document.body.innerHTML.includes(a)&&document.body.innerHTML.includes(b),{a:stored.avatar_url,b:stored.banner_url});
   if(!reroute)fail('profile media did not render after navigating away and back');
-  if(!stored.public_id)fail('QA profile has no public_id for public-profile verification');
-  await page.evaluate(id=>openPublicProfileByPublicId(id),stored.public_id);await page.waitForTimeout(1500);
+  if(!stored.public_profile_id)fail('QA profile has no public_profile_id for public-profile verification');
+  await page.evaluate(id=>openPublicProfileByPublicId(id),stored.public_profile_id);await page.waitForTimeout(1500);
   const publicState=await page.evaluate(()=>({avatar:teamWarsState?.publicProfile?.avatar_url||'',banner:teamWarsState?.publicProfile?.banner_url||''}));
   if(publicState.avatar!==stored.avatar_url||publicState.banner!==stored.banner_url)fail('public profile did not expose the saved avatar and banner');
   console.log('PROFILE_MEDIA_PERSISTENCE_QA_OK');
