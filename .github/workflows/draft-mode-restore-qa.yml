@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/draft-mode-restore-qa.yml"
+      - "qa/draft-mode-restore-qa.cjs"
       - "index.html"
       - "js/features/draft-mode-restore-v8.65.0.js"
 
@@ -31,69 +32,4 @@ jobs:
           python3 -m http.server 8123 >/tmp/pn-draft-qa.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
       - name: Run Draft Mode restore QA
-        run: |
-          cat > draft-mode-restore-qa.cjs <<'NODE'
-          const {chromium}=require('playwright');
-          const assert=(v,m)=>{if(!v)throw new Error(m)};
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
-            const page=await context.newPage(); const errors=[];
-            page.on('pageerror',e=>errors.push(String(e.message||e)));
-            await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded',timeout:30000});
-            await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
-            await page.waitForTimeout(2200);
-            await page.waitForFunction(()=>window.__ppcDraftRestoreReady===true||!!window.__ppcDraftRestoreError,{timeout:20000});
-            const init=await page.evaluate(()=>({ready:window.__ppcDraftRestoreReady===true,error:window.__ppcDraftRestoreError||'',draft:window.PPCDraftMode?.version||'',online:window.PPCDraftOnline?.version||''}));
-            assert(init.ready&&!init.error,`restore initialization failed: ${JSON.stringify(init)}`);
-            assert(init.draft==='8.69.3'&&init.online==='8.69.4',`unexpected Draft versions: ${JSON.stringify(init)}`);
-
-            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};state.user='Draft QA';window.nav?.()});
-            await page.waitForTimeout(250);
-            assert(await page.locator('[data-draft-nav]').count()>0,'desktop Draft launcher missing');
-
-            await page.evaluate(async()=>{if(typeof loadCards==='function')await loadCards()});
-            await page.waitForFunction(()=>{try{return Array.isArray(CARDS)&&CARDS.length>50}catch{return false}},{timeout:20000});
-            await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
-            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000});
-            const lobby=await page.evaluate(()=>({text:document.querySelector('#ppcDraftRoot')?.innerText||'',overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth}));
-            assert(/Rival Draft/i.test(lobby.text)&&/Draft vs CPU/i.test(lobby.text)&&/Local 2 Player/i.test(lobby.text)&&/ONLINE DRAFT ROOM/i.test(lobby.text),`Draft lobby incomplete: ${lobby.text}`);
-            assert(lobby.overflow<=12,`desktop Draft overflow ${lobby.overflow}px`);
-
-            await page.getByRole('button',{name:'Draft vs CPU',exact:true}).click();
-            for(let i=0;i<45;i++){
-              const s=await page.evaluate(()=>PPCDraftMode.read());
-              assert(s,'Draft session disappeared');
-              if(s.status==='complete')break;
-              assert(PPCDraftModeCountSafe(s.playerA)<=20&&PPCDraftModeCountSafe(s.playerB)<=20,'Draft exceeded 20 cards');
-              if(s.current?.picker==='A'){
-                const pick=page.locator('#ppcDraftRoot .draftPkg:not([disabled])').first();
-                assert(await pick.count(),'no legal Draft package available'); await pick.click(); await page.waitForTimeout(140);
-              }else await page.waitForTimeout(650);
-            }
-            function PPCDraftModeCountSafe(p){return (p?.cards||[]).reduce((n,c)=>n+Number(c.quantity||0),0)}
-            await page.waitForFunction(()=>{try{return PPCDraftMode.read()?.status==='complete'}catch{return false}},{timeout:5000});
-            const complete=await page.evaluate(()=>{const s=PPCDraftMode.read();return {a:PPCDraftMode.count(s.playerA),b:PPCDraftMode.count(s.playerB),auditA:PPCDraftMode.auditPlayer(s.playerA),auditB:PPCDraftMode.auditPlayer(s.playerB)}});
-            assert(complete.a===20&&complete.b===20&&complete.auditA.valid&&complete.auditB.valid,`Draft completion audit failed: ${JSON.stringify(complete)}`);
-
-            const before=await page.evaluate(()=>state.decks?.length||0);
-            await page.evaluate(()=>PPCDraftMode.saveDraftDecks());
-            const saved=await page.evaluate(()=>({count:state.decks?.length||0,ids:PPCDraftMode.read()?.savedDeckIds||{},decks:(state.decks||[]).filter(d=>d.source==='draft').slice(-2).map(d=>Object.values(d.cards||{}).reduce((n,q)=>n+Number(q||0),0))}));
-            assert(saved.count>=before+2&&saved.ids.A&&saved.ids.B&&saved.decks.length===2&&saved.decks.every(n=>n===20),`Draft deck save failed: ${JSON.stringify(saved)}`);
-
-            await page.evaluate(()=>PPCDraftMode.battleHandoff()); await page.waitForTimeout(250);
-            const handoff=await page.evaluate(()=>({page:state.page,root:!!document.getElementById('ppcDraftRoot'),ctx:state.battlePrefs?.draftContext||null}));
-            assert(handoff.page==='matches'&&!handoff.root&&handoff.ctx?.draftId,`Battle handoff failed: ${JSON.stringify(handoff)}`);
-
-            await page.setViewportSize({width:390,height:844});
-            await page.evaluate(()=>{PPCDraftMode.reset();PPCDraftMode.open()});
-            await page.waitForSelector('#ppcDraftRoot .draftLobby',{timeout:5000}); await page.waitForTimeout(180);
-            const mobile=await page.evaluate(()=>{const r=document.getElementById('ppcDraftRoot');return {page:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,root:r?Math.max(0,r.scrollWidth-r.clientWidth):999}});
-            assert(mobile.page<=12&&mobile.root<=12,`mobile Draft overflow: ${JSON.stringify(mobile)}`);
-            assert(errors.length===0,`browser errors: ${errors.join(' | ')}`);
-            console.log('DRAFT_MODE_RESTORE_QA_RESULT',JSON.stringify({init,complete,saved,handoff,mobile},null,2));
-            console.log('DRAFT_MODE_RESTORE_QA_OK');
-            await context.close(); await browser.close();
-          })().catch(e=>{console.error('DRAFT_MODE_RESTORE_QA_FAILURE',e);process.exit(1)});
-          NODE
-          node draft-mode-restore-qa.cjs
+        run: node qa/draft-mode-restore-qa.cjs
