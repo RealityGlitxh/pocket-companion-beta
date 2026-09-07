@@ -24,6 +24,10 @@ function navCategoryHtml(label,items){
  const active=items.some(navItemActive);
  return `<details class="navCategory ${active?'active':''}" data-category="${esc(label)}"><summary aria-haspopup="menu" aria-expanded="false">${esc(label)}<span class="navChevron">⌄</span></summary><div class="navCategoryMenu" role="menu">${items.map(x=>`<button class="navCategoryItem ${navItemActive(x)?'active':''}" role="menuitem" onclick="${navAction(x)}"><span class="navCategoryIcon">${x.icon}</span><span><strong>${esc(x.title)}</strong><small>${esc(x.description)}</small></span></button>`).join('')}</div></details>`;
 }
+function utilityMenuHtml(items){
+ const active=items.some(navItemActive);
+ return `<details class="navCategory headerUtilityMenu ${active?'active':''}" data-category="Utilities"><summary class="headerUtilityButton" aria-label="Open utilities and settings" title="Utilities & Settings" aria-haspopup="menu" aria-expanded="false">⚙</summary><div class="navCategoryMenu headerUtilityDropdown" role="menu">${items.map(x=>`<button class="navCategoryItem ${navItemActive(x)?'active':''}" role="menuitem" onclick="${navAction(x)}"><span class="navCategoryIcon">${x.icon}</span><span><strong>${esc(x.title)}</strong><small>${esc(x.description)}</small></span></button>`).join('')}</div></details>`;
+}
 function mobileMoreSheetHtml(){
  const groups=[
   ['PLAY',[{page:'rank',icon:'↗',title:'Rank'},{action:'gym',icon:'⚔',title:'Gym Battle'}]],
@@ -76,8 +80,7 @@ function nav(){
   {page:"coach",icon:"✦",title:"Pocket Coach",description:"Ask grounded questions across your PocketNexus data."},
   {page:"training",icon:"?",title:"Brain Teasers",description:"Daily What’s This Card? and competitive training challenges."}
  ];
- const more=[
-  {page:"profile",icon:"◉",title:"Profiles",description:"Public player stats, achievements, teams, and competitive identity."},
+ const utilities=[
   {page:"trade",icon:"⇄",title:"Trade",description:"Trading tools and trade planning."},
   {page:"streamer",icon:"▤",title:"Streamer",description:"OBS overlays and stream controls."},
   {search:true,icon:"⌕",title:"Search",description:"Jump to any page, deck, card, or tool."},
@@ -86,9 +89,11 @@ function nav(){
   {page:"about",icon:"ⓘ",title:"About & Privacy",description:"Independent-project positioning and data policy."},
   {page:"more",icon:"⚙",title:"Settings",description:"Appearance, backups, diagnostics, and advanced tools."}
  ];
- n.innerHTML=`<div class="categorizedNav foundationNav"><button class="navHome navPrimaryBtn ${state.page==='dashboard'?'active':''}" onclick="headerNavigate('dashboard')" aria-current="${state.page==='dashboard'?'page':'false'}">Home</button>${navCategoryHtml('Play',play)}${navCategoryHtml('Build',build)}${navCategoryHtml('Compete',compete)}${navCategoryHtml('Improve',improve)}${navCategoryHtml('More',more)}</div>`;
+ n.innerHTML=`<div class="categorizedNav foundationNav"><button class="navHome navPrimaryBtn ${state.page==='dashboard'?'active':''}" onclick="headerNavigate('dashboard')" aria-current="${state.page==='dashboard'?'page':'false'}">Home</button>${navCategoryHtml('Play',play)}${navCategoryHtml('Build',build)}${navCategoryHtml('Compete',compete)}${navCategoryHtml('Improve',improve)}</div>`;
  n.querySelectorAll('.navCategory').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)closeHeaderMenus(d);const sm=d.querySelector(':scope>summary');if(sm)sm.setAttribute('aria-expanded',d.open?'true':'false')}));
- document.getElementById("user").innerHTML=`<button class="userChip" onclick="headerNavigate('profile')" title="Open Profiles"><span class="userChipAvatar">${esc(String(identity).trim().charAt(0).toUpperCase()||"P")}</span><span class="userChipText">Profiles</span></button>`;
+ const userRoot=document.getElementById("user");
+ userRoot.innerHTML=`<div class="headerUserActions"><button class="userChip" onclick="headerNavigate('profile')" title="Open Profiles"><span class="userChipAvatar">${esc(String(identity).trim().charAt(0).toUpperCase()||"P")}</span><span class="userChipText">Profiles</span></button>${utilityMenuHtml(utilities)}</div>`;
+ userRoot.querySelectorAll('.navCategory').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)closeHeaderMenus(d);const sm=d.querySelector(':scope>summary');if(sm)sm.setAttribute('aria-expanded',d.open?'true':'false')}));
  const mobile=document.getElementById("mobileNav");
  if(mobile){
   const mobileItems=[
