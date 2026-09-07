@@ -1,0 +1,48 @@
+name: Pokemon Zone Card Source QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/services/pokemon-zone-card-source-v8.64.2.js"
+      - ".github/workflows/pokemon-zone-card-source-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pokemon-zone-card-source-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run adapter and live-source comparison QA
+        run: |
+          cat > pokemon-zone-card-source-qa.js <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const src=fs.readFileSync('js/services/pokemon-zone-card-source-v8.64.2.js','utf8')+'\n;globalThis.__PZ=PokemonZoneCardSource;';
+          const sandbox={URL,console};vm.createContext(sandbox);vm.runInContext(src,sandbox);const PZ=sandbox.__PZ;
+          const assert=(x,m)=>{if(!x)throw new Error(m)};
+          const iono=PZ.normalizeCard({name:'Iono',url:'/cards/a2b/69/iono/',type:'Trainer | Supporter',effect:'Each player shuffles.'});
+          assert(iono.setCode==='A2B','set parse failed');assert(iono.number==='69','number parse failed');assert(iono.source==='pokemon-zone','source tag failed');
+          const cmp=PZ.compare([{setCode:'A2B',number:69,name:'Iono'}],[{name:'Iono',url:'/cards/a2b/69/iono/'}]);
+          assert(cmp.green,'comparison contract failed');
+          (async()=>{
+            const r=await fetch('https://www.pokemon-zone.com/cards/',{headers:{'user-agent':'PocketNexus-QA/1.0'}});
+            assert(r.ok,`Pokemon Zone HTTP ${r.status}`);const html=await r.text();
+            assert(/Pok[eé]mon TCG Pocket Cards/i.test(html),'card catalog marker missing');
+            const links=[...html.matchAll(/href=["']([^"']*\/cards\/([^/"']+)\/(\d+)\/[^"']*)["'][^>]*>[\s\S]{0,500}?/gi)];
+            assert(links.length>=100,`too few card detail links: ${links.length}`);
+            const keys=new Set(links.map(m=>`${String(m[2]).toUpperCase()}:${parseInt(m[3],10)}`));
+            assert(keys.size>=100,`too few unique card keys: ${keys.size}`);
+            const sample=['A1:1','A1:4','A2B:69'];
+            const present=sample.filter(k=>keys.has(k));
+            assert(present.length>=2,`known-card sample coverage too low: ${present.join(',')}`);
+            console.log('POKEMON_ZONE_CARD_SOURCE_QA_OK',JSON.stringify({detailLinks:links.length,uniqueKeys:keys.size,present}));
+          })().catch(e=>{console.error('POKEMON_ZONE_CARD_SOURCE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node pokemon-zone-card-source-qa.js
