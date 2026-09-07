@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "index.html"
+      - "js/features/rc1-route-class-cleanup-v8.65.0.js"
       - "js/core/account-cloud-core-v8.64.1.js"
       - "js/core/account-cloud-runtime-v8.64.1.js"
       - "js/app/account_startup.js"
