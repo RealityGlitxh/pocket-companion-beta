@@ -45,9 +45,11 @@ jobs:
             const guest=page.getByRole('button',{name:/continue as guest/i});
             if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(400)}catch{}
             await page.evaluate(()=>window.goPage?.('rank'));
-            await page.waitForTimeout(1800);
+            await page.evaluate(async()=>{if(window.PPCFeatureLoader?.loadRoute)await window.PPCFeatureLoader.loadRoute('rank')});
+            await page.waitForFunction(()=>typeof rankSessionRecord==='function'&&typeof rankBorderQuickSummary==='function',{timeout:10000}).catch(()=>{});
             const result=await page.evaluate(async()=>{
-              if(typeof rankSessionRecord!=='function'||typeof rankBorderQuickSummary!=='function')return {missing:true};
+              const missing={rankSessionRecord:typeof rankSessionRecord!=='function',rankBorderQuickSummary:typeof rankBorderQuickSummary!=='function'};
+              if(missing.rankSessionRecord||missing.rankBorderQuickSummary)return {missing:true,missingHelpers:missing};
               state.rank=state.rank||{}; state.rank.points=900; state.rank.tier='Master Ball';
               let session={id:'qa-session',current_rp:900,current_win_streak:0,best_win_streak:0,wins:0,losses:0,ties:0,streak_bonus_rp:0,total_rp_gained:0};
               window.PPCRankSessionService={
