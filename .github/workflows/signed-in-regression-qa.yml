@@ -1,0 +1,78 @@
+name: PocketNexus Signed-In Regression QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "js/core/account-cloud-core-v8.64.1.js"
+      - "js/core/account-cloud-runtime-v8.64.1.js"
+      - "js/app/account_startup.js"
+      - ".github/workflows/signed-in-regression-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-in-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      POCKETNEXUS_QA_EMAIL: ${{ secrets.POCKETNEXUS_QA_EMAIL }}
+      POCKETNEXUS_QA_PASSWORD: ${{ secrets.POCKETNEXUS_QA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify QA secrets are configured
+        run: |
+          if [ -z "$POCKETNEXUS_QA_EMAIL" ] || [ -z "$POCKETNEXUS_QA_PASSWORD" ]; then
+            echo "::error::Signed-in QA requires repository secrets POCKETNEXUS_QA_EMAIL and POCKETNEXUS_QA_PASSWORD."
+            exit 1
+          fi
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start site
+        run: |
+          python3 -m http.server 4173 >/tmp/pocketnexus-http.log 2>&1 &
+          echo $! > /tmp/pocketnexus-http.pid
+      - name: Run authenticated route regression
+        run: |
+          cat > /tmp/signed-in-regression.js <<'NODE'
+          const { chromium } = require('playwright');
+          const email=process.env.POCKETNEXUS_QA_EMAIL,password=process.env.POCKETNEXUS_QA_PASSWORD;
+          const fatal=[];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof window.emailSignIn==='function'&&typeof window.headerNavigate==='function',{timeout:30000});
+            await page.evaluate(()=>{try{state.onboarding={...(state.onboarding||{}),completed:true};save?.()}catch{}});
+            await page.evaluate(()=>headerNavigate('account'));
+            await page.waitForSelector('#authEmail',{timeout:15000});
+            await page.fill('#authEmail',email);await page.fill('#authPassword',password);
+            await page.evaluate(()=>emailSignIn());
+            await page.waitForFunction(()=>window.cloudSession?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+            const auth=await page.evaluate(()=>({uid:cloudSession.user.id,email:cloudSession.user.email,mode:state.sessionMode}));
+            if(!auth.uid||auth.mode!=='cloud')throw new Error('authenticated cloud session was not established');
+            const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
+            for(const route of routes){
+              const before=fatal.length;
+              await page.evaluate(r=>headerNavigate(r),route);
+              await page.waitForTimeout(900);
+              const stateNow=await page.evaluate(()=>({page:state.page,uid:cloudSession?.user?.id||'',recovery:document.body.innerText.includes('Runtime recovery')}));
+              if(!stateNow.uid)throw new Error(`cloud session disappeared on ${route}`);
+              if(stateNow.recovery)throw new Error(`runtime recovery appeared on ${route}`);
+              if(fatal.length>before)throw new Error(`${route} emitted runtime errors: ${fatal.slice(before).join(' | ')}`);
+              console.log('SIGNED_IN_ROUTE_OK',route,stateNow.page);
+            }
+            await browser.close();console.log('SIGNED_IN_REGRESSION_QA_OK');
+          })().catch(async e=>{console.error('SIGNED_IN_REGRESSION_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node /tmp/signed-in-regression.js
