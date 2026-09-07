@@ -31,7 +31,7 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
       - name: Verify live source and Card Detail runtime
         run: |
-          cat > /tmp/card-detail-runtime.cjs <<'NODE'
+          cat > card-detail-runtime.cjs <<'NODE'
           const {chromium}=require('playwright');
           const ROOT='https://raw.githubusercontent.com/R4PH1/PTCGP-Data/main/data/';
           const files=['Pokemon.json','Items.json','Supporters.json','Tools.json','Stadiums.json','Fossils.json'];
@@ -107,4 +107,4 @@ jobs:
             await browser.close();console.log('CARD_DETAIL_ENRICHMENT_RUNTIME_QA_OK',JSON.stringify({catalog:samples.count,cases:10,mismatchRejected:true,fallback:true}));
           })().catch(e=>{console.error('CARD_DETAIL_ENRICHMENT_RUNTIME_QA_FAILURE',e);process.exit(1)});
           NODE
-          node /tmp/card-detail-runtime.cjs
+          node card-detail-runtime.cjs
