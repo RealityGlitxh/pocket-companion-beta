@@ -69,10 +69,17 @@ jobs:
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
             await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForFunction(()=>typeof window.accountPage==='function'&&window.PPCAccountCloudCore?.hydrate,{timeout:30000});
-            const seeded=await page.evaluate(async session=>{
-              await window.PPCAccountCloudCore.hydrate(session,'SIGNED_IN_QA');
-              return {uid:window.cloudSession?.user?.id||'',mode:window.state?.sessionMode||''};
-            },qaSession);
+            try{
+              await page.evaluate(session=>{
+                window.PPCAccountCloudCore.hydrate(session,'SIGNED_IN_QA');
+                return true;
+              },qaSession);
+            }catch(e){
+              if(!/Execution context was destroyed|navigation/i.test(String(e?.message||e))) throw e;
+            }
+            await page.waitForLoadState('domcontentloaded',{timeout:15000}).catch(()=>{});
+            await page.waitForFunction(()=>window.cloudSession?.user?.id&&window.state?.sessionMode==='cloud',{timeout:30000});
+            const seeded=await page.evaluate(()=>({uid:window.cloudSession?.user?.id||'',mode:window.state?.sessionMode||''}));
             if(!seeded.uid||seeded.mode!=='cloud')throw new Error('verified Supabase session was not hydrated by PocketNexus');
             const routes=['dashboard','matches','rank','meta','decks','collection','profile','coach','streamer','dashboard'];
             for(const route of routes){
