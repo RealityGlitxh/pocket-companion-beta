@@ -10,6 +10,15 @@ const BASE='https://cdn.jsdelivr.net/gh/RealityGlitxh/pocket-companion-beta';
 const DRAFT=`${BASE}@d813acaa5ac9ed6b0ad448e4e4aa7f1d3df3311f/js/features/draft-mode-v8.69.0.js`;
 const ONLINE=`${BASE}@a19a60adb6a8b15eef698dd7651fca5c82073732/js/features/draft-online-v8.69.4.js`;
 
+function exposeHistoricalGlobals(){
+  try{
+    if(!('state' in window))Object.defineProperty(window,'state',{configurable:true,get:()=>state});
+  }catch(error){console.warn('Draft restore state bridge unavailable',error)}
+  try{
+    if(!('cloudSession' in window))Object.defineProperty(window,'cloudSession',{configurable:true,get:()=>cloudSession});
+  }catch(error){console.warn('Draft restore session bridge unavailable',error)}
+}
+
 function load(src,id){
   return new Promise((resolve,reject)=>{
     const existing=document.getElementById(id);
@@ -27,6 +36,7 @@ function load(src,id){
 
 async function restore(){
   try{
+    exposeHistoricalGlobals();
     await load(DRAFT,'ppcDraftModeHistorical');
     if(!window.PPCDraftMode)throw new Error('Draft Mode did not initialize');
     await load(ONLINE,'ppcDraftOnlineHistorical');
