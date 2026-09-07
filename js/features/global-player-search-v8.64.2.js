@@ -10,6 +10,29 @@
     try{return typeof esc==='function'?esc(String(v??'')):String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]))}catch{return String(v??'')}
   }
 
+  if(typeof window.openPublicProfileByPublicId!=='function'){
+    window.openPublicProfileByPublicId=async function(publicId){
+      if(!publicId)return;
+      try{
+        const c=typeof ensurePublicClient==='function'?await ensurePublicClient():window.getPPCCloudClient?.();
+        if(!c)throw new Error('Public profile service unavailable');
+        const {data,error}=await c.rpc('get_public_profile_by_public_id',{p_public_profile_id:publicId});
+        if(error)throw error;
+        if(!data)throw new Error('Public profile not found');
+        if(typeof teamWarsState!=='undefined'){
+          teamWarsState.publicTeam=null;
+          teamWarsState.publicProfile=data;
+        }
+        if(typeof state!=='undefined')state.page='profile';
+        if(typeof profilePage==='function')await profilePage(false);
+        else if(typeof render==='function')render();
+      }catch(e){
+        if(typeof ppcNotice==='function')ppcNotice(e?.message||'Public profile is unavailable.');
+        else console.warn('Public profile open failed',e);
+      }
+    };
+  }
+
   function playerResultHtml(r){
     const name=r.display_name||r.username||'Pocket Player';
     const user=r.username?`@${r.username}`:'Public player';
@@ -83,7 +106,7 @@
       if(!publicId)return;
       try{globalSearchSaveRecent?.(document.getElementById('globalSearchInput')?.value||'Player');}catch{}
       try{closeGlobalSearch?.();}catch{}
-      if(typeof openPublicProfileByPublicId==='function')openPublicProfileByPublicId(publicId);
+      if(typeof window.openPublicProfileByPublicId==='function')window.openPublicProfileByPublicId(publicId);
     }
   };
 })();
