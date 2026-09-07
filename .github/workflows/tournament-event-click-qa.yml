@@ -79,3 +79,5 @@ jobs:
           })();
           NODE
           node tournament-click-qa.js
+
+# Gate #5 current-head baseline trigger
