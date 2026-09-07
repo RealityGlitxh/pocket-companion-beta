@@ -1,10 +1,14 @@
 /* PocketNexus V8.64.2 — lightweight eager Rank runtime
-   Shared helpers used outside the lazy Rank route must exist before Home renders. */
+   Shared helpers used outside the lazy Rank route must exist before Home/Battle renders. */
 (function(){
   if(window.PPCRankRuntimeCore)return;
 
   if(typeof window.rankBorderService!=="function"){
     window.rankBorderService=function(){return window.PPCRankBorderService||null};
+  }
+  // Battle/Matches can render before the lazy Rank bundle. Keep this accessor eager too.
+  if(typeof window.rankSessionService!=="function"){
+    window.rankSessionService=function(){return window.PPCRankSessionService||null};
   }
   if(typeof window.rankBorderFmt!=="function"){
     window.rankBorderFmt=function(n){return Number.isFinite(Number(n))?Number(n).toLocaleString():"—"};
@@ -28,5 +32,5 @@
     };
   }
 
-  window.PPCRankRuntimeCore={version:"8.64.2"};
+  window.PPCRankRuntimeCore={version:"8.64.2",rankSessionEager:true};
 })();
