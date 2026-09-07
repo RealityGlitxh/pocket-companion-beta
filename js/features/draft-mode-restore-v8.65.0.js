@@ -19,6 +19,20 @@ function exposeHistoricalGlobals(){
   }catch(error){console.warn('Draft restore session bridge unavailable',error)}
 }
 
+function installCompatibility(){
+  if(!window.PPCDraftMode||window.__ppcDraftRc1Compatibility)return;
+  window.__ppcDraftRc1Compatibility=true;
+  const baseBattleHandoff=window.PPCDraftMode.battleHandoff;
+  if(typeof baseBattleHandoff==='function'){
+    window.PPCDraftMode.battleHandoff=function(){
+      const result=baseBattleHandoff.apply(this,arguments);
+      try{window.PPCDraftMode.close?.()}catch{}
+      try{window.render?.()}catch{}
+      return result;
+    };
+  }
+}
+
 function load(src,id){
   return new Promise((resolve,reject)=>{
     const existing=document.getElementById(id);
@@ -40,6 +54,7 @@ async function restore(){
     await load(DRAFT,'ppcDraftModeHistorical');
     if(!window.PPCDraftMode)throw new Error('Draft Mode did not initialize');
     await load(ONLINE,'ppcDraftOnlineHistorical');
+    installCompatibility();
     window.__ppcDraftRestoreReady=true;
     try{window.nav?.()}catch{}
   }catch(error){
