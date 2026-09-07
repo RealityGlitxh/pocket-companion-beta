@@ -1,0 +1,53 @@
+name: PTCGP Data Rich Card Source QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/services/ptcgp-data-card-source-v8.64.2.js"
+      - ".github/workflows/ptcgp-data-card-source-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ptcgp-data-card-source-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run rich card adapter comparison QA
+        run: |
+          cat > ptcgp-data-card-source-qa.js <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const src=fs.readFileSync('js/services/ptcgp-data-card-source-v8.64.2.js','utf8')+'\n;globalThis.__SRC=PtcgpDataCardSource;';
+          const sandbox={URL,console,fetch};vm.createContext(sandbox);vm.runInContext(src,sandbox);const S=sandbox.__SRC;
+          const assert=(x,m)=>{if(!x)throw new Error(m)};
+          const b=S.normalizeCard({id:'A1-001',name:'Bulbasaur',type:'Grass',hp:70,stage:'Basic',attacks:[{cost:['Grass','Colorless'],name:'Vine Whip',damage:'40',effect:''}],weakness:'Fire',retreat:1},'pokemon');
+          assert(b.setCode==='A1'&&b.number==='1','ID normalization failed');
+          assert(b.attacks[0].name==='Vine Whip'&&b.attacks[0].damage==='40','attack normalization failed');
+          const t=S.normalizeCard({id:'A1a-064',name:'Pokémon Flute',effect:'Put a Basic Pokémon from your opponent’s discard pile onto their Bench.'},'item');
+          assert(t.effect.length>20,'trainer effect normalization failed');
+          const cmp=S.compare([{setCode:'A1',number:'1',name:'Bulbasaur'}],[b]);assert(cmp.green&&cmp.richGameplay===1,'comparison contract failed');
+          (async()=>{
+            const [pokemon,items,supporters]=await Promise.all(['pokemon','item','supporter'].map(k=>S.loadKind(k)));
+            assert(pokemon.length>500,`Pokemon coverage too low: ${pokemon.length}`);
+            assert(items.length>10,`Item coverage too low: ${items.length}`);
+            assert(supporters.length>10,`Supporter coverage too low: ${supporters.length}`);
+            const withAttacks=pokemon.filter(c=>c.attacks.length).length;
+            const withAttackEffects=pokemon.filter(c=>c.attacks.some(a=>a.effect)).length;
+            const withAbilities=pokemon.filter(c=>c.abilities.length).length;
+            const trainerEffects=[...items,...supporters].filter(c=>c.effect).length;
+            assert(withAttacks>400,`attack coverage too low: ${withAttacks}`);
+            assert(withAttackEffects>50,`attack-effect coverage too low: ${withAttackEffects}`);
+            assert(withAbilities>20,`ability coverage too low: ${withAbilities}`);
+            assert(trainerEffects>20,`trainer-effect coverage too low: ${trainerEffects}`);
+            const keys=new Set(pokemon.map(S.key));assert(keys.size>500,`unique card key coverage too low: ${keys.size}`);
+            console.log('PTCGP_DATA_CARD_SOURCE_QA_OK',JSON.stringify({pokemon:pokemon.length,items:items.length,supporters:supporters.length,withAttacks,withAttackEffects,withAbilities,trainerEffects,uniquePokemonKeys:keys.size}));
+          })().catch(e=>{console.error('PTCGP_DATA_CARD_SOURCE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node ptcgp-data-card-source-qa.js
