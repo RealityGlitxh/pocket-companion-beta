@@ -54,16 +54,21 @@ jobs:
                 await page.evaluate(r=>window.goPage(r),route);
                 await page.waitForTimeout(650);
                 await clear(page);
-                const state=await page.evaluate(()=>({
-                  route:state?.page||'',
-                  text:(document.querySelector('#app')?.innerText||'').trim(),
-                  overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
-                  recovery:/This page hit an error|Runtime Recovery|Startup Recovery/i.test(document.body.innerText||'')
-                }));
+                const state=await page.evaluate(()=>{
+                  const viewport=innerWidth;
+                  const offenders=[...document.querySelectorAll('#app *')].map(el=>{const r=el.getBoundingClientRect();return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,140),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:el.scrollWidth||0}}).filter(x=>x.right>viewport+12||x.left<-12||x.scrollWidth>viewport+12).sort((a,b)=>Math.max(b.right-viewport,b.scrollWidth-viewport)-Math.max(a.right-viewport,a.scrollWidth-viewport)).slice(0,8);
+                  return {
+                    route:state?.page||'',
+                    text:(document.querySelector('#app')?.innerText||'').trim(),
+                    overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-viewport,
+                    recovery:/This page hit an error|Runtime Recovery|Startup Recovery/i.test(document.body.innerText||''),
+                    offenders
+                  };
+                });
                 assert(state.route===route,`${label}/${route}: state routed to ${state.route}`);
                 assert(state.text.length>=20,`${label}/${route}: app surface is blank/near-empty`);
                 assert(!state.recovery,`${label}/${route}: recovery screen appeared`);
-                assert(state.overflow<=12,`${label}/${route}: horizontal overflow ${state.overflow}px`);
+                assert(state.overflow<=12,`${label}/${route}: horizontal overflow ${state.overflow}px; offenders=${JSON.stringify(state.offenders)}`);
                 assert(fatal.length===before,`${label}/${route}: runtime errors: ${fatal.slice(before).join(' | ')}`);
                 console.log('RC1_ROUTE_OK',label,route);
               }
