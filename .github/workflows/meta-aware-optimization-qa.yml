@@ -1,5 +1,6 @@
 name: Pocket Coach Meta-Aware Optimization QA
 
+# Integration gate rerun after Matchup-Aware wiring.
 on:
   push:
     branches: [main]
