@@ -1,0 +1,106 @@
+name: PocketNexus Final Hosted Beta Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/final-hosted-beta-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-beta-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify deployed assets and hosted beta behavior
+        env:
+          BETA_URL: https://beta.pocketnexus.app/
+        run: |
+          cat > hosted-beta-qa.cjs <<'NODE'
+          const {chromium,request}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const base=process.env.BETA_URL;
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const api=await request.newContext({extraHTTPHeaders:{'cache-control':'no-cache','pragma':'no-cache'}});
+            const backupRes=await api.get(`${base}js/features/local-backup-restore-v8.70.0.js?launch=${Date.now()}`);
+            assert(backupRes.ok(),`hosted backup asset HTTP ${backupRes.status()}`);
+            const backupJs=await backupRes.text();
+            assert(backupJs.includes('replaceLiveState'),'hosted beta is missing live-state backup restore repair');
+            assert(backupJs.includes("pocketnexus-local-backup"),'hosted backup asset is not the expected feature');
+            const loaderRes=await api.get(`${base}js/features/route-feature-loader-v8.64.1.js?launch=${Date.now()}`);
+            assert(loaderRes.ok(),`hosted route loader HTTP ${loaderRes.status()}`);
+            const loaderJs=await loaderRes.text();
+            assert(loaderJs.includes('pocket-sync-simple-v8.70.0.js'),'hosted route loader is missing player-first Pocket Sync');
+            await api.dispose();
+
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED|net::ERR_/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto(`${base}?launch=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof save==='function'&&typeof goPage==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();window.PPCWhatsNew?.close?.(true)});
+            await clearOverlays(page);
+
+            const routes=['dashboard','collection','decks','matches','stats','rank','meta','training','profile','sync','account','about'];
+            const routeResults=[];
+            for(const route of routes){
+              await page.evaluate(r=>goPage(r),route);
+              await page.waitForTimeout(route==='training'||route==='profile'||route==='sync'?1300:650);
+              await clearOverlays(page);
+              const result=await page.evaluate(r=>({route:r,text:(document.getElementById('app')?.innerText||'').trim(),overflow:Math.max(0,Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth)}),route);
+              assert(result.text.length>20,`${route} rendered empty on hosted beta`);
+              assert(!/Runtime Recovery|This page hit an error/i.test(result.text),`${route} hit runtime recovery on hosted beta`);
+              assert(result.overflow<=12,`${route} mobile horizontal overflow ${result.overflow}px`);
+              routeResults.push({route,overflow:result.overflow});
+            }
+
+            await page.evaluate(()=>goPage('sync'));
+            await page.waitForFunction(()=>document.getElementById('app')?.innerText?.includes('Keep your PocketNexus data together'),{timeout:30000});
+            await clearOverlays(page);
+            const syncText=await page.locator('#app').innerText();
+            assert(syncText.includes('Collection')&&syncText.includes('Battle History')&&syncText.includes('Rank History'),'player-first sync targets missing');
+            assert(syncText.includes('Automatic game import')&&syncText.includes('COMING LATER'),'safe automatic-import status missing');
+            assert(syncText.includes('Advanced / Developer Tools'),'advanced tools disclosure missing');
+            assert(!syncText.includes('Staged JSON Adapter'),'developer adapter leaked into default Pocket Sync view');
+            assert(!syncText.includes('Research Gate'),'old research-gate wording leaked into default Pocket Sync view');
+
+            await page.evaluate(()=>goPage('account'));
+            await page.waitForFunction(()=>!!window.PPCLocalBackupRestore&&!!document.getElementById('localBackupRestorePanel'),{timeout:30000});
+            await clearOverlays(page);
+            await page.evaluate(()=>{
+              state.decks=[{id:'hosted-backup-deck',name:'HOSTED_BACKUP_RESTORE_DECK',cards:{},energy:''}];
+              state.matches=[];state.collection={};state.rankHistory=[];save();
+            });
+            const snapshot=await page.evaluate(()=>window.PPCLocalBackupRestore.snapshot());
+            assert(snapshot.data?.decks?.some(d=>d.name==='HOSTED_BACKUP_RESTORE_DECK'),'hosted backup snapshot does not read live state');
+            const restorePayload={...snapshot,data:{...snapshot.data,decks:[{id:'hosted-restored-deck',name:'HOSTED_RESTORED_DECK',cards:{},energy:''}],matches:[],collection:{},rankHistory:[]}};
+            await page.evaluate(()=>{state.decks=[];save()});
+            await page.locator('#pocketNexusLocalRestoreInput').setInputFiles({name:'hosted-restore.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(restorePayload))});
+            await page.waitForFunction(()=>state.decks?.some(d=>d.name==='HOSTED_RESTORED_DECK'),{timeout:15000});
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>typeof save==='function',{timeout:60000});
+            const persisted=await page.evaluate(()=>state.decks?.some(d=>d.name==='HOSTED_RESTORED_DECK'));
+            assert(persisted,'hosted restored state did not survive reload');
+            assert(fatal.length===0,`hosted runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('FINAL_HOSTED_BETA_VALIDATION_OK',JSON.stringify({routes:routeResults.length,sync:'player-first',backupRestore:'persisted'}));
+          })().catch(e=>{console.error('FINAL_HOSTED_BETA_VALIDATION_FAILURE',e);process.exit(1)});
+          NODE
+          node hosted-beta-qa.cjs
