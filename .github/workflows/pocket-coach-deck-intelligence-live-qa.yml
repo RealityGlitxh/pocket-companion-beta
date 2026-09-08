@@ -1,0 +1,67 @@
+name: Pocket Coach Deck Intelligence Live QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'supabase/functions/pocket-coach/deck-audit.js'
+      - '.github/workflows/pocket-coach-deck-intelligence-live-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-deck-intelligence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      POCKETNEXUS_QA_EMAIL: ${{ secrets.POCKETNEXUS_QA_EMAIL }}
+      POCKETNEXUS_QA_PASSWORD: ${{ secrets.POCKETNEXUS_QA_PASSWORD }}
+      SUPABASE_URL: https://cdmzrsvwztndqfwzsumo.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
+    steps:
+      - name: Verify QA credentials are configured
+        run: |
+          if [ -z "$POCKETNEXUS_QA_EMAIL" ] || [ -z "$POCKETNEXUS_QA_PASSWORD" ]; then
+            echo "::error::Missing PocketNexus QA credentials"
+            exit 1
+          fi
+      - name: Create authenticated QA session
+        run: |
+          payload=$(jq -nc --arg email "$POCKETNEXUS_QA_EMAIL" --arg password "$POCKETNEXUS_QA_PASSWORD" '{email:$email,password:$password}')
+          code=$(curl -sS -o /tmp/auth.json -w "%{http_code}" \
+            -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$payload")
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::QA authentication failed ($code)"
+            cat /tmp/auth.json
+            exit 1
+          fi
+          token=$(jq -r '.access_token // empty' /tmp/auth.json)
+          if [ -z "$token" ]; then
+            echo "::error::No access token returned"
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "QA_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Verify live Pocket Coach Deck Intelligence capability
+        run: |
+          code=$(curl -sS -o /tmp/status.json -w "%{http_code}" \
+            -X POST "$SUPABASE_URL/functions/v1/pocket-coach" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $QA_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"action":"status"}')
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Pocket Coach status failed ($code)"
+            cat /tmp/status.json
+            exit 1
+          fi
+          jq -e '.deckIntelligenceAudit == true' /tmp/status.json >/dev/null || { echo "::error::deckIntelligenceAudit is not live"; cat /tmp/status.json; exit 1; }
+          jq -e '.knowledgeEngine == "v2"' /tmp/status.json >/dev/null || { echo "::error::knowledgeEngine v2 is not live"; cat /tmp/status.json; exit 1; }
+          jq -e '.verifiedCardGameplay == true' /tmp/status.json >/dev/null || { echo "::error::Verified card grounding regressed"; cat /tmp/status.json; exit 1; }
+          echo "POCKET_COACH_DECK_INTELLIGENCE_LIVE_QA_OK"
