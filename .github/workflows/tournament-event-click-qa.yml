@@ -5,8 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/tournament-event-click-qa.yml"
-      - "js/features/tournament-leaderboards-v8.31.js"
-      - "js/services/tournament-service.js"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
       - "index.html"
 
 permissions:
@@ -79,5 +80,3 @@ jobs:
           })();
           NODE
           node tournament-click-qa.js
-
-# Gate #5 current-head baseline trigger
