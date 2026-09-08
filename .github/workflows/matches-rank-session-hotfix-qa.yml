@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "js/core/rank-runtime-core-v8.64.2.js"
-      - "js/services/rank-session-service.js"
-      - "js/app/battle_gym.js"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
       - "index.html"
       - ".github/workflows/matches-rank-session-hotfix-qa.yml"
   workflow_dispatch:
