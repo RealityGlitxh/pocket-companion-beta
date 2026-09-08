@@ -1,0 +1,78 @@
+name: Pocket Coach Matchup Drill-Down QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'js/app/ai_coach.js'
+      - 'js/features/pocket-coach-matchup-drilldown-v8.65.0.js'
+      - '.github/workflows/pocket-coach-matchup-drilldown-qa.yml'
+  workflow_dispatch:
+
+jobs:
+  drilldown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start site
+        run: |
+          python3 -m http.server 8124 >/tmp/pn-coach-drilldown.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8124/index.html >/dev/null && break; sleep 1; done
+      - name: Verify clickable matchup drill-down
+        run: |
+          cat > coach-matchup-drilldown-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const errors=[];
+            const mock=[{deckId:'d1',deckName:'Mega Lucario Test',archetypeName:'Mega Lucario ex / Lucario',archetypeMatchConfidence:'high',snapshotGeneratedAt:'2026-09-08T03:00:00Z',topThreats:[
+              {opponentName:'Butterfree / Mega Sceptile ex',winRate:41.7,opponentUsagePct:14.2,matches:96,decided:91,evidence:'high',band:'unfavorable'},
+              {opponentName:'Mega Altaria ex / Espeon',winRate:47.3,opponentUsagePct:9.8,matches:73,decided:70,evidence:'high',band:'slightly-unfavorable'}
+            ],recommendations:[
+              {action:'consider-matchup-tech',cardName:'Test Tech',opponentArchetype:'Butterfree / Mega Sceptile ex',confidence:'medium-directional',evidence:{deltaWinRate:11.4}},
+              {action:'review-for-matchup',cardName:'Test Review',opponentArchetype:'Butterfree / Mega Sceptile ex',confidence:'review-only',evidence:{deltaWinRate:-9.2}}
+            ]}];
+            for(const vp of [{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}]){
+              const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
+              page.on('pageerror',e=>errors.push(`${vp.name} pageerror: ${e.message}`));
+              await page.goto('http://127.0.0.1:8124/index.html',{waitUntil:'domcontentloaded'});
+              await page.waitForTimeout(900);
+              await page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              const setup=await page.evaluate((mock)=>{
+                if(typeof window.coachMatchupReportHtml!=='function'||typeof window.coachOpenMatchupDetail!=='function')return {ready:false};
+                const host=document.createElement('div');host.id='qaHost';host.style.maxWidth='900px';host.style.margin='20px auto';host.innerHTML=window.coachMatchupReportHtml(mock);document.body.innerHTML='';document.body.appendChild(host);
+                window.headerNavigate=p=>window.__qaNav=p;
+                window.coachUsePrompt=t=>window.__qaPrompt=t;
+                return {ready:true,clickable:document.querySelectorAll('[data-coach-matchup-key]').length,overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth)};
+              },mock);
+              if(!setup.ready||setup.clickable<2||setup.overflow>2)errors.push(`${vp.name} setup: ${JSON.stringify(setup)}`);
+              await page.locator('[data-coach-matchup-key]').first().click();
+              const detail=await page.evaluate(()=>{const root=document.querySelector('.coachMatchupDetail');const text=(root?.innerText||'').toLowerCase();return {open:!!root,hasWr:text.includes('matchup wr'),hasShare:text.includes('meta share'),hasGames:text.includes('games'),hasConfidence:text.includes('confidence'),hasHelp:text.includes('cards helping / test'),hasReview:text.includes('cards to review'),hasTech:text.includes('test tech'),hasReviewCard:text.includes('test review'),hasWarning:text.includes('sample-dependent')||text.includes('preparation signal'),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};});
+              console.log(`DRILLDOWN_${vp.name.toUpperCase()}`,JSON.stringify(detail));
+              if(!detail.open||!detail.hasWr||!detail.hasShare||!detail.hasGames||!detail.hasConfidence||!detail.hasHelp||!detail.hasReview||!detail.hasTech||!detail.hasReviewCard||!detail.hasWarning||detail.overflow>2||detail.rootOverflow>2)errors.push(`${vp.name} detail: ${JSON.stringify(detail)}`);
+              await page.getByRole('button',{name:'Ask Pocket Coach about this matchup'}).click();
+              const prompt=await page.evaluate(()=>window.__qaPrompt||'');
+              if(!prompt.includes('Butterfree / Mega Sceptile ex')||!prompt.toLowerCase().includes('review-only'))errors.push(`${vp.name} prompt: ${prompt}`);
+              await page.locator('[data-coach-matchup-key]').first().focus();await page.keyboard.press('Enter');
+              if(!(await page.locator('.coachMatchupDetail').count()))errors.push(`${vp.name}: keyboard activation failed`);
+              await page.getByRole('button',{name:'Open Meta Center'}).click();
+              const nav=await page.evaluate(()=>window.__qaNav||'');
+              if(nav!=='meta')errors.push(`${vp.name} meta nav: ${nav}`);
+              await page.close();
+            }
+            await browser.close();
+            console.log('MATCHUP_DRILLDOWN_QA_ERRORS',JSON.stringify(errors,null,2));
+            if(errors.length)process.exit(1);
+            console.log('POCKET_COACH_MATCHUP_DRILLDOWN_QA_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node coach-matchup-drilldown-qa.cjs
