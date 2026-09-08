@@ -1,0 +1,88 @@
+name: PocketNexus Card Database + Detail Behavior QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/collection.js"
+      - "js/features/card-detail-enrichment-v8.64.2.js"
+      - "js/services/card-enrichment-service-v8.64.2.js"
+      - "css/**"
+      - ".github/workflows/card-database-detail-behavior-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  card-database-detail-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4173 >/tmp/pocketnexus-carddb.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-carddb.log
+          exit 1
+      - name: Verify Card Database search detail and mobile stability
+        run: |
+          cat > /tmp/card-db-detail-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const fatal=[];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click();
+            await page.waitForFunction(()=>typeof loadCards==='function'&&typeof headerNavigate==='function',{timeout:60000});
+            await page.evaluate(async()=>{await loadCards(true); headerNavigate('collection')});
+            await page.waitForFunction(()=>document.getElementById('collectionGrid')&&Array.isArray(window.CARDS||CARDS)&&(window.CARDS||CARDS).length>500,{timeout:60000});
+            const sample=await page.evaluate(()=>{const c=(window.CARDS||CARDS).find(x=>x&&x.id&&x.name&&x.setCode&&x.number);return c&&({id:String(c.id),name:String(c.name),setCode:String(c.setCode),number:String(c.number)})});
+            assert(sample,'no usable card sample');
+            await page.locator('#cq').fill(sample.name);
+            await page.waitForFunction(name=>document.getElementById('collectionGrid')?.innerText?.toLowerCase().includes(name.toLowerCase()),sample.name,{timeout:15000});
+            const gridText=await page.locator('#collectionGrid').innerText();
+            assert(gridText.toLowerCase().includes(sample.name.toLowerCase()),'search did not return sample card');
+            const cardButton=page.locator('#collectionGrid .collectionBrowseCard').filter({hasText:sample.name}).first();
+            assert(await cardButton.count(),'search result card was not clickable');
+            await cardButton.click();
+            await page.waitForFunction(name=>document.getElementById('cardModal')?.style.display==='flex'&&document.getElementById('cardModalBody')?.innerText?.includes(name),sample.name,{timeout:15000});
+            const detail=await page.locator('#cardModalBody').innerText();
+            assert(detail.includes(sample.name),'card name missing from detail');
+            assert(detail.includes(`#${sample.number}`),'card number missing from detail');
+            assert(!/\bundefined\b|\bnull\b/i.test(detail),'undefined/null leaked into card detail');
+            assert(!detail.includes('Runtime Recovery'),'Runtime Recovery appeared in detail');
+            const image=page.locator('#cardModalBody img').first();
+            assert(await image.count(),'card detail image missing');
+            await page.waitForFunction(()=>{const img=document.querySelector('#cardModalBody img');return !!img&&(img.complete||img.naturalWidth>0)},{timeout:15000}).catch(()=>{});
+            const overflow=await page.evaluate(()=>Math.max(0,document.documentElement.scrollWidth-window.innerWidth));
+            assert(overflow<=12,`mobile horizontal overflow ${overflow}px`);
+            await page.locator('#cardModalBody button').filter({hasText:'Close'}).first().click();
+            await page.waitForFunction(()=>document.getElementById('cardModal')?.style.display!=='flex',{timeout:10000});
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof loadCards==='function',{timeout:60000});
+            await page.evaluate(async()=>{await loadCards(true); state.page='collection'; save(); render()});
+            await page.waitForFunction(()=>document.getElementById('collectionGrid'),{timeout:30000});
+            const recovery=await page.locator('body').innerText();
+            assert(!recovery.includes('Runtime Recovery'),'Runtime Recovery appeared after reload');
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('CARD_DATABASE_DETAIL_BEHAVIOR_QA_OK',JSON.stringify({sample,overflow}));
+          })().catch(e=>{console.error('CARD_DATABASE_DETAIL_BEHAVIOR_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node /tmp/card-db-detail-qa.cjs
