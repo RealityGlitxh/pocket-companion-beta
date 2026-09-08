@@ -1,0 +1,37 @@
+name: Patch Pocket Coach Before After QA Settle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-pocket-coach-before-after-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add startup settle to focused browser QA
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/pocket-coach-before-after-qa.yml')
+          s=p.read_text()
+          old="await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof window.coachMatchupReportHtml==='function'&&typeof window.coachPreviewDeckChange==='function');"
+          new=old+"await page.waitForTimeout(1200);"
+          if "await page.waitForTimeout(1200);" not in s:
+            assert old in s
+            s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Commit QA-only repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/pocket-coach-before-after-qa.yml
+          git diff --cached --quiet || git commit -m 'qa: wait for startup before Coach comparison checks'
+          git push
