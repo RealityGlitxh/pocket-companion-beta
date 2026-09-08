@@ -35,10 +35,10 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
   };
   const stageRank = (stage) => {
     const s = norm(stage);
-    if (!s || s === 'basic' || s === '0') return 0;
+    if (s === 'basic' || s === '0') return 0;
     if (s.includes('stage 1') || s === '1') return 1;
     if (s.includes('stage 2') || s === '2') return 2;
-    return 0;
+    return -1;
   };
   const kindOf = (c) => {
     const type = norm(c?.type), stage = norm(c?.stage);
@@ -56,10 +56,11 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
     const names = new Map();
     const resolved = [];
     let totalCards = 0, pokemonCount = 0, trainerCount = 0, unknownCount = 0, basicCount = 0;
-    for (const entry of entries) {
+    for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+      const entry = entries[entryIndex];
       const qty = Math.max(1, num(entry?.qty ?? entry?.quantity ?? 1));
       totalCards += qty;
-      const nameKey = norm(entry?.name) || `unknown:${entry?.id ?? Math.random()}`;
+      const nameKey = norm(entry?.name) || `unknown:${String(entry?.id ?? entryIndex)}`;
       names.set(nameKey, (names.get(nameKey) || 0) + qty);
       const hit = resolveCard(entry), card = hit.card;
       const kind = card ? kindOf(card) : 'unknown';
@@ -78,7 +79,8 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
     const deckNames = new Set(resolved.map(x => norm(x.name)).filter(Boolean));
     const evolutionIssues = [];
     for (const x of resolved) {
-      if (x.kind !== 'pokemon' || stageRank(x.stage) === 0) continue;
+      const rank = stageRank(x.stage);
+      if (x.kind !== 'pokemon' || rank <= 0) continue;
       const parent = norm(x.evolvesFrom);
       if (parent && !deckNames.has(parent)) evolutionIssues.push({ card: x.name, evolvesFrom: x.evolvesFrom, issue: 'missing-required-previous-stage' });
       else if (!parent) evolutionIssues.push({ card: x.name, evolvesFrom: null, issue: 'evolution-parent-metadata-unverified' });
@@ -93,11 +95,12 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
       .map(({stageRank: _stageRank, isExLike: _isExLike, ...x}) => x);
     const trainerCore = resolved.filter(x => x.kind === 'trainer' && x.qty >= 2).sort((a,b) => b.qty-a.qty || a.name.localeCompare(b.name)).slice(0, 8).map(x => ({name:x.name,qty:x.qty}));
     const singletonPokemon = resolved.filter(x => x.kind === 'pokemon' && x.qty === 1).map(x => x.name);
+    const unknownPokemonStages = resolved.filter(x => x.kind === 'pokemon' && stageRank(x.stage) < 0).length;
 
     const hardFailures = [];
     if (totalCards !== 20) hardFailures.push({ rule: 'deck-size', message: `Deck has ${totalCards}/20 cards.` });
     if (duplicateViolations.length) hardFailures.push({ rule: 'same-name-copy-limit', message: 'One or more card names exceed the two-copy limit.', cards: duplicateViolations });
-    const basicCheckReliable = unknownCount === 0;
+    const basicCheckReliable = unknownCount === 0 && unknownPokemonStages === 0;
     if (basicCheckReliable && basicCount < 1) hardFailures.push({ rule: 'basic-pokemon-required', message: 'No Basic Pokémon found.' });
 
     const consistencySignals = [];
@@ -105,7 +108,7 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
     if (evolutionIssues.some(x => x.issue === 'missing-required-previous-stage')) consistencySignals.push({ type: 'incomplete-evolution-line', severity: 'structural', message: 'At least one Evolution Pokémon is missing its verified previous stage.' });
     if (energyTypes.length > 2) consistencySignals.push({ type: 'multi-energy', severity: 'strategy-dependent', message: `${energyTypes.length} Energy types can make Energy sequencing less consistent depending on attack costs.` });
     if (singletonPokemon.length >= 3) consistencySignals.push({ type: 'pokemon-singletons', severity: 'strategy-dependent', message: `${singletonPokemon.length} Pokémon are single-copy inclusions; verify each has a clear role.` });
-    if (unknownCount > 0) consistencySignals.push({ type: 'unresolved-card-metadata', severity: 'data-quality', message: `${unknownCount} card slot(s) could not be classified from the verified catalog.` });
+    if (unknownCount > 0 || unknownPokemonStages > 0) consistencySignals.push({ type: 'unresolved-card-metadata', severity: 'data-quality', message: `${unknownCount} card slot(s) and ${unknownPokemonStages} Pokémon stage record(s) could not be fully classified from the verified catalog.` });
 
     return {
       deckId: deck?.id || '',
@@ -113,7 +116,7 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
       archetype: deck?.archetype || '',
       totalCards,
       targetCards: 20,
-      counts: { pokemon: pokemonCount, trainers: trainerCount, unresolved: unknownCount, basics: basicCount },
+      counts: { pokemon: pokemonCount, trainers: trainerCount, unresolved: unknownCount, basics: basicCount, unknownPokemonStages },
       energyTypes,
       duplicateViolations,
       evolutionIssues,
