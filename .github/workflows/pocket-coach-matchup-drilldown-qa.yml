@@ -1,6 +1,6 @@
 name: Pocket Coach Matchup Drill-Down QA
 
-# RC1 regression rerun after Personal Matchup Learning integration.
+# RC1 regression rerun after Verified Matchup Plan integration.
 on:
   push:
     branches: [main]
