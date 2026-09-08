@@ -1,0 +1,54 @@
+name: Apply Verified Matchup Plan UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'qa/apply-verified-matchup-plan-ui.mjs'
+      - '.github/workflows/apply-verified-matchup-plan-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply UI patch
+        run: node qa/apply-verified-matchup-plan-ui.mjs
+      - name: Verify UI contract
+        run: |
+          node --check js/features/pocket-coach-matchup-drilldown-v8.65.0.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('js/features/pocket-coach-matchup-drilldown-v8.65.0.js').read_text()
+          checks={
+            'button':'Build Matchup Plan' in s,
+            'handler':'window.coachBuildMatchupPlan=function' in s,
+            'verified prompt':'verified matchup-plan and verified card-gameplay evidence' in s,
+            'separate evidence':'GLOBAL META' in s and 'YOUR RESULTS' in s,
+            'no invented order':'Do not invent an optimal turn order' in s,
+            'no invented targets':'opponent target priority' in s,
+          }
+          print('VERIFIED_MATCHUP_PLAN_UI_CONTRACT',checks)
+          bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('FAILED: '+', '.join(bad))
+          PY
+      - name: Commit UI integration
+        run: |
+          if git diff --quiet -- js/features/pocket-coach-matchup-drilldown-v8.65.0.js; then
+            echo 'No UI integration change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/features/pocket-coach-matchup-drilldown-v8.65.0.js
+          git commit -m 'feat: add Build Matchup Plan action'
+          git push
