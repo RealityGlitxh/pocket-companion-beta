@@ -50,6 +50,12 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
     const raw = Array.isArray(energy) ? energy : String(energy ?? '').split(/[,/+|]/g);
     return [...new Set(raw.map(x => String(x ?? '').replace(/energy/ig, '').trim()).filter(Boolean))];
   };
+  const catalogCandidate = (name) => {
+    const rows = byName.get(norm(name)) || [];
+    if (rows.length !== 1) return null;
+    const c = rows[0], id = identity(c);
+    return { name: String(c?.name || name), set: id.set, number: id.number, kind: kindOf(c), stage: c?.stage ?? null, evidence: 'verified-catalog-unique-name' };
+  };
 
   return (decks || []).map((deck) => {
     const entries = Array.isArray(deck?.cards) ? deck.cards : [];
@@ -68,8 +74,10 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
       else if (kind === 'trainer') trainerCount += qty;
       else unknownCount += qty;
       if (kind === 'pokemon' && stageRank(card?.stage) === 0) basicCount += qty;
+      const id = card ? identity(card) : identity(entry);
       resolved.push({
         name: String(entry?.name || card?.name || 'Unknown card'), qty, kind,
+        set: id.set || null, number: id.number || null,
         stage: card?.stage ?? null, evolvesFrom: card?.evolvesFrom ?? card?.evolves_from ?? null,
         resolution: hit.confidence
       });
@@ -110,6 +118,104 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
     if (singletonPokemon.length >= 3) consistencySignals.push({ type: 'pokemon-singletons', severity: 'strategy-dependent', message: `${singletonPokemon.length} Pokémon are single-copy inclusions; verify each has a clear role.` });
     if (unknownCount > 0 || unknownPokemonStages > 0) consistencySignals.push({ type: 'unresolved-card-metadata', severity: 'data-quality', message: `${unknownCount} card slot(s) and ${unknownPokemonStages} Pokémon stage record(s) could not be fully classified from the verified catalog.` });
 
+    // Deterministic optimization candidates. These are evidence-backed possibilities, not automatic edits.
+    const requiredCuts = [];
+    for (const d of duplicateViolations) requiredCuts.push({
+      cardName: d.name,
+      quantity: d.qty - 2,
+      reason: 'same-name-copy-limit',
+      confidence: 'required',
+      evidence: `Deck contains ${d.qty} copies; known limit is 2.`
+    });
+    if (totalCards > 20) {
+      const alreadyRequired = requiredCuts.reduce((n,x)=>n+x.quantity,0);
+      const remaining = Math.max(0, totalCards - 20 - alreadyRequired);
+      if (remaining > 0) requiredCuts.push({
+        cardName: null,
+        quantity: remaining,
+        reason: 'deck-size-overage',
+        confidence: 'required-count-only',
+        evidence: `${remaining} additional card slot(s) must be removed to reach 20; the audit cannot safely choose which strategic cards to cut.`
+      });
+    }
+
+    const addCandidates = [];
+    const seenAdds = new Set();
+    for (const issue of evolutionIssues.filter(x=>x.issue==='missing-required-previous-stage' && x.evolvesFrom)) {
+      const candidate = catalogCandidate(issue.evolvesFrom);
+      if (!candidate) continue;
+      const k = norm(candidate.name);
+      if (seenAdds.has(k)) continue;
+      seenAdds.add(k);
+      const existingQty = names.get(k) || 0;
+      if (existingQty >= 2) continue;
+      addCandidates.push({
+        ...candidate,
+        quantity: 1,
+        reason: 'complete-evolution-line',
+        supports: issue.card,
+        confidence: 'structural-high',
+        evidence: `${issue.card} is verified as evolving from ${candidate.name}, which is absent from the deck.`
+      });
+    }
+    if (basicCheckReliable && basicCount <= 2) {
+      for (const x of resolved.filter(x=>x.kind==='pokemon' && stageRank(x.stage)===0 && x.qty===1)) {
+        const k = norm(x.name);
+        if (seenAdds.has(k) || (names.get(k)||0) >= 2) continue;
+        seenAdds.add(k);
+        addCandidates.push({
+          name:x.name,set:x.set,number:x.number,kind:'pokemon',stage:x.stage,quantity:1,
+          reason:'increase-basic-redundancy',confidence:'strategy-dependent',
+          evidence:`${x.name} is already a verified Basic in the deck at one copy; a second copy is legal and may improve access, but whether it is optimal depends on the deck plan.`
+        });
+      }
+    }
+
+    const reviewCutCandidates = resolved
+      .filter(x => x.qty === 1)
+      .map(x => ({
+        cardName:x.name,kind:x.kind,stage:x.stage,
+        reason:x.kind==='unknown'?'unresolved-singleton':'singleton-review',
+        confidence:x.kind==='unknown'?'data-quality':'strategy-dependent',
+        evidence:x.kind==='unknown'?'Card metadata is unresolved, so its role cannot be verified.':'Single-copy inclusion; only cut it if its role is less important than the proposed addition.'
+      }))
+      .slice(0, 10);
+
+    const suggestedSwaps = [];
+    for (const add of addCandidates.filter(x=>x.confidence==='structural-high')) {
+      const exactCut = requiredCuts.find(x=>x.cardName && x.quantity>0);
+      if (exactCut) suggestedSwaps.push({
+        remove:{cardName:exactCut.cardName,quantity:1,reason:exactCut.reason},
+        add:{cardName:add.name,quantity:1,set:add.set,number:add.number,reason:add.reason},
+        confidence:'high-structural',
+        explanation:`This simultaneously fixes a required cut and restores the verified evolution chain for ${add.supports}.`
+      });
+    }
+
+    const priorities = [];
+    if (hardFailures.length) priorities.push({rank:1,type:'legality',message:'Fix known construction-rule failures before strategic tuning.'});
+    if (evolutionIssues.some(x=>x.issue==='missing-required-previous-stage')) priorities.push({rank:hardFailures.length?2:1,type:'evolution-structure',message:'Repair verified missing evolution parents before lower-confidence consistency changes.'});
+    if (consistencySignals.some(x=>x.type==='unresolved-card-metadata')) priorities.push({rank:3,type:'data-quality',message:'Resolve unknown card metadata before making confident optimization claims.'});
+    if (consistencySignals.some(x=>x.type==='low-basic-count')) priorities.push({rank:4,type:'opening-consistency',message:'Review Basic count only after legality and evolution structure are sound.'});
+    if (consistencySignals.some(x=>x.type==='multi-energy')) priorities.push({rank:5,type:'energy-consistency',message:'Review Energy types against verified attack costs before changing Energy settings.'});
+
+    const optimization = {
+      mode:'deterministic-structural-v1',
+      autoApply:false,
+      requiredCuts,
+      addCandidates: addCandidates.slice(0,8),
+      reviewCutCandidates,
+      suggestedSwaps: suggestedSwaps.slice(0,5),
+      priorities,
+      guardrails:[
+        'Required cuts are based only on known deck-size or same-name copy rules.',
+        'Add candidates come only from verified catalog identity or an already-verified Basic in the deck.',
+        'Strategy-dependent candidates are suggestions, not legality requirements.',
+        'No card is auto-removed solely because it is a singleton.',
+        'Energy changes require verified attack-cost evidence before being presented as specific optimization advice.'
+      ]
+    };
+
     return {
       deckId: deck?.id || '',
       deckName: deck?.name || 'Untitled deck',
@@ -129,6 +235,7 @@ export function buildDeckAudits(decks = [], catalogRows = []) {
         basicCheckReliable
       },
       consistencySignals,
+      optimization,
       resolvedCards: resolved
     };
   });
