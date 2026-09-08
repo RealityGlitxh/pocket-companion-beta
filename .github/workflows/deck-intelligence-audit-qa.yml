@@ -1,12 +1,11 @@
 name: Pocket Coach Deck Intelligence Audit QA
 
-# RC1 regression rerun after Personal Matchup Learning integration.
+# Beta launch regression gate for deterministic deck analysis.
 on:
   push:
     branches: [main]
     paths:
-      - 'supabase/functions/pocket-coach/index.ts'
-      - 'supabase/functions/pocket-coach/deck-audit.js'
+      - 'supabase/functions/pocket-coach/**'
       - 'qa/deck-intelligence-audit-qa.mjs'
       - '.github/workflows/deck-intelligence-audit-qa.yml'
   workflow_dispatch:
