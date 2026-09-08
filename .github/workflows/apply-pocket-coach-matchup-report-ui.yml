@@ -1,0 +1,50 @@
+name: Apply Pocket Coach Matchup Report UI
+
+on:
+  push:
+    paths:
+      - 'qa/apply-pocket-coach-matchup-report-ui.mjs'
+      - '.github/workflows/apply-pocket-coach-matchup-report-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply presentation patch
+        run: node qa/apply-pocket-coach-matchup-report-ui.mjs
+      - name: Verify visual report anchors
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const ui=fs.readFileSync('js/app/ai_coach.js','utf8');
+          const edge=fs.readFileSync('supabase/functions/pocket-coach/index.ts','utf8');
+          const assert=(x,m)=>{if(!x)throw new Error(m)};
+          assert(ui.includes('coachMatchupReportHtml'),'report renderer missing');
+          assert(ui.includes('MATCHUP REPORT'),'report title missing');
+          assert(ui.includes('Cards helping / test'),'helping section missing');
+          assert(ui.includes('Cards to review'),'review section missing');
+          assert(ui.includes('Matchup WR')&&ui.includes('Meta share')&&ui.includes('Games')&&ui.includes('Confidence'),'report metrics missing');
+          assert(ui.includes('matchupReport:pocketCoachState.matchupReport'),'live response is not attached to assistant message');
+          assert(edge.includes('matchupReport:matchupOptimizations.filter'),'compact matchup payload missing');
+          console.log('POCKET_COACH_MATCHUP_REPORT_UI_STATIC_QA_OK');
+          NODE
+      - name: Commit presentation changes
+        run: |
+          if git diff --quiet -- js/app/ai_coach.js supabase/functions/pocket-coach/index.ts; then
+            echo 'No presentation changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/app/ai_coach.js supabase/functions/pocket-coach/index.ts
+          git commit -m 'feat: add Pocket Coach matchup report card'
+          git push origin HEAD:main
