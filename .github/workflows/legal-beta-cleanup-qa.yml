@@ -9,12 +9,9 @@ on:
       - "terms.html"
       - "support.html"
       - "index.html"
-      - "js/app/utility_pages-v8.64.1.js"
-      - "js/features/experience-v8.36.js"
-      - "js/features/gate6-about-beta-status-hotfix.js"
-      - "js/features/route-feature-loader-v8.64.1.js"
-      - "js/core/navigation-v8.33.js"
-      - "css/app.css"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
       - ".github/workflows/legal-beta-cleanup-qa.yml"
 
 permissions:
