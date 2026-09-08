@@ -28,7 +28,7 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
       - name: Render and verify Matchup Report
         run: |
-          cat > /tmp/coach-matchup-report-qa.cjs <<'NODE'
+          cat > coach-matchup-report-qa.cjs <<'NODE'
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -64,4 +64,4 @@ jobs:
             console.log('POCKET_COACH_MATCHUP_REPORT_UI_QA_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
-          node /tmp/coach-matchup-report-qa.cjs
+          node coach-matchup-report-qa.cjs
