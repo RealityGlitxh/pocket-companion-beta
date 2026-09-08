@@ -64,25 +64,25 @@ jobs:
             const formText=(await page.locator('#app').innerText()).slice(0,2500);
             assert(/Quick Record/i.test(formText),'Battle Quick Record form did not render');
 
-            const deckSelect=page.locator('label').filter({hasText:/My Deck/i}).locator('select').first();
-            assert(await deckSelect.count(),'My Deck select missing');
-            const deckOptions=await deckSelect.locator('option').allTextContents();
-            const deckIndex=deckOptions.findIndex(x=>/QA Persistence Deck/i.test(x));
-            assert(deckIndex>=0,`Seeded QA deck not available: ${JSON.stringify(deckOptions)}`);
+            const selectInfo=await page.locator('#app select').evaluateAll(xs=>xs.map((s,index)=>({index,id:s.id||'',options:[...s.options].map(o=>o.textContent.trim())})));
+            console.log('BATTLE_SELECTS',JSON.stringify(selectInfo,null,2));
+            const deckMeta=selectInfo.find(x=>x.options.some(o=>/QA Persistence Deck/i.test(o)));
+            assert(deckMeta,`Seeded QA deck select not found: ${JSON.stringify(selectInfo)}`);
+            const deckSelect=page.locator('#app select').nth(deckMeta.index);
+            const deckIndex=deckMeta.options.findIndex(x=>/QA Persistence Deck/i.test(x));
             await deckSelect.selectOption({index:deckIndex});
 
-            const matchType=page.locator('label').filter({hasText:/Match Type/i}).locator('select').first();
-            assert(await matchType.count(),'Match Type select missing');
-            const matchOptions=await matchType.locator('option').allTextContents();
-            const rankedIndex=matchOptions.findIndex(x=>/Ranked/i.test(x));
-            assert(rankedIndex>=0,`Ranked match option missing: ${JSON.stringify(matchOptions)}`);
+            const matchMeta=selectInfo.find(x=>x.options.some(o=>/Ranked/i.test(o))&&x.index!==deckMeta.index);
+            assert(matchMeta,`Ranked match select not found: ${JSON.stringify(selectInfo)}`);
+            const matchType=page.locator('#app select').nth(matchMeta.index);
+            const rankedIndex=matchMeta.options.findIndex(x=>/Ranked/i.test(x));
             await matchType.selectOption({index:rankedIndex});
 
-            const opponent=page.locator('label').filter({hasText:/Opponent Archetype/i}).locator('select').first();
-            assert(await opponent.count(),'Opponent Archetype select missing');
-            const oppOptions=await opponent.locator('option').allTextContents();
-            const oppIndex=oppOptions.findIndex((x,i)=>i>0&&String(x).trim());
-            assert(oppIndex>0,`No opponent archetype options available: ${JSON.stringify(oppOptions.slice(0,8))}`);
+            const opponentMeta=selectInfo.find(x=>x.index!==deckMeta.index&&x.index!==matchMeta.index&&x.options.some(o=>/opponent|archetype/i.test(o))) || selectInfo.find(x=>x.index!==deckMeta.index&&x.index!==matchMeta.index&&x.options.length>3);
+            assert(opponentMeta,`Opponent archetype select not found: ${JSON.stringify(selectInfo)}`);
+            const opponent=page.locator('#app select').nth(opponentMeta.index);
+            const oppIndex=opponentMeta.options.findIndex((x,i)=>i>0&&String(x).trim()&&!/select|choose/i.test(x));
+            assert(oppIndex>0,`No opponent archetype option available: ${JSON.stringify(opponentMeta.options.slice(0,8))}`);
             await opponent.selectOption({index:oppIndex});
 
             const second=page.getByRole('button',{name:/Went Second/i}).first();
