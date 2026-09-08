@@ -1,0 +1,43 @@
+name: Apply Pocket Coach Matchup Drill-Down
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/features/pocket-coach-matchup-drilldown-v8.65.0.js'
+      - '.github/workflows/apply-pocket-coach-matchup-drilldown.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Load drill-down after Pocket Coach
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          tag='<script src="js/features/pocket-coach-matchup-drilldown-v8.65.0.js?v=865020"></script>'
+          anchor='<script src="js/app/ai_coach.js?v=86418"></script>'
+          if tag not in s:
+              if anchor not in s: raise SystemExit('Pocket Coach script anchor missing')
+              s=s.replace(anchor,anchor+'\n'+tag,1)
+              p.write_text(s)
+          assert tag in p.read_text()
+          print('POCKET_COACH_MATCHUP_DRILLDOWN_LOAD_OK')
+          PY
+      - name: Commit loader
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'feat: load Pocket Coach matchup drill-down'
+          git push
