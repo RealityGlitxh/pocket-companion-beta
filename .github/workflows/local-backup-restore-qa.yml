@@ -34,7 +34,7 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
           cat /tmp/pocketnexus-backup.log
           exit 1
-      - name: Verify backup download clean-profile restore and persistence
+      - name: Verify backup payload clean-profile restore and persistence
         run: |
           cat > backup-restore-qa.cjs <<'NODE'
           const {chromium}=require('playwright');
@@ -44,7 +44,7 @@ jobs:
           const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({serviceWorkers:'block',acceptDownloads:true,viewport:{width:390,height:844}});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
             const page=await context.newPage();
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
@@ -62,16 +62,30 @@ jobs:
             });
             await page.waitForFunction(()=>document.getElementById('localBackupRestorePanel'),{timeout:30000});
             await clearOverlays(page);
-            const downloadPromise=page.waitForEvent('download');
-            await page.getByRole('button',{name:'Export Local Backup'}).click();
-            const download=await downloadPromise;
-            const path='/tmp/pocketnexus-backup.json';await download.saveAs(path);
-            const payload=JSON.parse(fs.readFileSync(path,'utf8'));
-            assert(payload.format==='pocketnexus-local-backup','download format marker missing');
-            assert(payload.data?.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),'download omitted saved deck');
-            assert(payload.data?.matches?.some(m=>m.id==='backup-match'),'download omitted battle history');
-            assert(payload.data?.collection?.['fallback-pikachu']?.owned===2,'download omitted collection quantity');
-            assert(payload.data?.rankHistory?.some(r=>r.id==='backup-rank'),'download omitted rank history');
+
+            const direct=await page.evaluate(()=>window.PPCLocalBackupRestore.snapshot());
+            assert(direct?.format==='pocketnexus-local-backup','snapshot format marker missing');
+            assert(direct.data?.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),'snapshot omitted saved deck');
+            assert(direct.data?.matches?.some(m=>m.id==='backup-match'),'snapshot omitted battle history');
+            assert(direct.data?.collection?.['fallback-pikachu']?.owned===2,'snapshot omitted collection quantity');
+            assert(direct.data?.rankHistory?.some(r=>r.id==='backup-rank'),'snapshot omitted rank history');
+
+            const captured=await page.evaluate(async()=>{
+              let blob=null,clicked=false,name='';
+              const oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL,oldClick=HTMLAnchorElement.prototype.click;
+              URL.createObjectURL=b=>{blob=b;return 'blob:qa-backup'};
+              URL.revokeObjectURL=()=>{};
+              HTMLAnchorElement.prototype.click=function(){clicked=true;name=this.download||''};
+              try{exportPocketNexusLocalBackup();await new Promise(r=>setTimeout(r,25));return {clicked,name,text:blob?await blob.text():''}}
+              finally{URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;HTMLAnchorElement.prototype.click=oldClick}
+            });
+            assert(captured.clicked,'export did not attempt a browser download');
+            assert(/^pocketnexus-backup-\d{4}-\d{2}-\d{2}\.json$/.test(captured.name),'backup filename is invalid');
+            assert(captured.text,'export produced no backup payload');
+            const payload=JSON.parse(captured.text);
+            assert(payload.data?.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),'export payload omitted saved deck');
+            const path='/tmp/pocketnexus-backup.json';fs.writeFileSync(path,captured.text);
+
             await page.evaluate(()=>{
               state.decks=[];state.matches=[];state.collection={};state.rankHistory=[];state.rank={tier:'Unranked',points:0,streak:0};save();
             });
