@@ -56,7 +56,7 @@ export function buildMetaAwareOptimizations({decks=[],audits=[],snapshot=null,ar
     const commonOneCopy=benchmarkReliable?stats.filter(x=>x.inclusionRate>=0.6&&x.avgQty>=1.65&&names.has(norm(x.name))&&flattenDeckCards(deck).find(c=>norm(c.name)===norm(x.name))?.qty===1).slice(0,6):[];
     const unusual=benchmarkReliable?flattenDeckCards(deck).map(c=>{const s=stats.find(x=>norm(x.name)===norm(c.name));return {name:c.name,qty:c.qty,inclusionRate:s?s.inclusionRate:0}}).filter(x=>x.inclusionRate<=0.15).slice(0,8):[];
     const recs=[];
-    for(const x of coreMissing)recs.push({action:'consider-add',cardName:x.name,reason:'high-archetype-inclusion',confidence:lists.length>=20&&x.inclusionRate>=0.8?'high-meta':'medium-meta',evidence:{benchmarkDecks:lists.length,inclusionRate:Math.round(x.inclusionRate*1000)/1000,avgQty:Math.round(x.avgQty*100)/100}});
+    for(const x of coreMissing)recs.push({action:'consider-add',cardName:x.name,set:x.set,number:x.number,reason:'high-archetype-inclusion',confidence:lists.length>=20&&x.inclusionRate>=0.8?'high-meta':'medium-meta',evidence:{benchmarkDecks:lists.length,inclusionRate:Math.round(x.inclusionRate*1000)/1000,avgQty:Math.round(x.avgQty*100)/100}});
     for(const x of commonOneCopy)recs.push({action:'consider-second-copy',cardName:x.name,reason:'benchmark-often-runs-two',confidence:lists.length>=20?'medium-meta':'low-meta',evidence:{benchmarkDecks:lists.length,inclusionRate:Math.round(x.inclusionRate*1000)/1000,avgQty:Math.round(x.avgQty*100)/100}});
     const guardrails=[];
     if(match.confidence==='low')guardrails.push('Archetype match confidence is low; treat all meta comparisons as exploratory.');
