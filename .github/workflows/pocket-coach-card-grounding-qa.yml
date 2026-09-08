@@ -1,5 +1,6 @@
 name: Pocket Coach Verified Card Grounding QA
 
+# Integration gate rerun after Matchup-Aware wiring.
 on:
   push:
     branches: [main]
