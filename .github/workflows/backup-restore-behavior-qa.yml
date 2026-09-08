@@ -1,0 +1,103 @@
+name: PocketNexus Backup + Restore Behavior QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/bootstrap.js"
+      - "js/app/account_startup.js"
+      - "js/core/account-cloud-*.js"
+      - "js/services/storage-service.js"
+      - ".github/workflows/backup-restore-behavior-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backup-restore-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4176 >/tmp/pocketnexus-backup.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4176/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-backup.log
+          exit 1
+      - name: Verify backup clean-profile restore round trip
+        run: |
+          cat > backup-restore-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},acceptDownloads:true});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            page.on('dialog',d=>d.accept().catch(()=>{}));
+            await page.goto('http://127.0.0.1:4176/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof goPage==='function'&&typeof save==='function',{timeout:60000});
+            const seed=await page.evaluate(async()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              if(typeof loadCards==='function')await loadCards(true);
+              const c=(window.CARDS||CARDS||[]).find(x=>x?.id);
+              if(!c)throw new Error('No card available for backup seed');
+              state.collection={[String(c.id)]:{owned:2,wanted:1,tradeable:1}};
+              state.decks=[{id:'qa-backup-deck',name:'QA Backup Deck',cards:{[String(c.id)]:2},energy:[]}];
+              state.matches=[{id:'qa-backup-match',timestamp:Date.now(),deckId:'qa-backup-deck',deckName:'QA Backup Deck',opponentArchetype:'QA Opponent',result:'win',gameMode:'ranked'}];
+              state.rankHistory=[{id:'qa-backup-rank',timestamp:Date.now(),tier:'Master Ball',points:1234,result:'win',change:10}];
+              state.localProfileName='QA Backup Player';
+              save();goPage('account');
+              return {cardId:String(c.id)};
+            });
+            await page.waitForTimeout(1500);await clearOverlays(page);
+            const accountText=await page.locator('#app').innerText();
+            assert(/backup|export/i.test(accountText),'Account page does not expose a backup/export action');
+            const exportButton=page.getByRole('button',{name:/export.*backup|backup.*export|download.*backup/i}).first();
+            assert(await exportButton.count(),`Could not find backup export button. Account text: ${accountText.slice(0,800)}`);
+            const downloadPromise=page.waitForEvent('download',{timeout:15000});
+            await exportButton.click();
+            const download=await downloadPromise;
+            const backupPath=await download.path();
+            assert(backupPath&&fs.existsSync(backupPath),'Backup download was not created');
+            const raw=fs.readFileSync(backupPath,'utf8');
+            assert(raw.includes('qa-backup-deck')&&raw.includes('qa-backup-match'),'Backup file omitted representative data');
+            await page.evaluate(()=>{state.collection={};state.decks=[];state.matches=[];state.rankHistory=[];state.localProfileName='Clean QA Profile';save();render()});
+            const clean=await page.evaluate(()=>({collection:Object.keys(state.collection||{}).length,decks:(state.decks||[]).length,matches:(state.matches||[]).length,ranks:(state.rankHistory||[]).length}));
+            assert(clean.collection===0&&clean.decks===0&&clean.matches===0&&clean.ranks===0,'Clean-profile reset failed before restore');
+            await page.evaluate(()=>goPage('account'));await page.waitForTimeout(500);await clearOverlays(page);
+            const fileInput=page.locator('input[type="file"]').first();
+            assert(await fileInput.count(),'Backup restore file input is missing from Account page');
+            await fileInput.setInputFiles(backupPath);
+            await page.waitForFunction(({cardId})=>Number(state.collection?.[cardId]?.owned||0)===2&&(state.decks||[]).some(d=>d.id==='qa-backup-deck')&&(state.matches||[]).some(m=>m.id==='qa-backup-match')&&(state.rankHistory||[]).some(r=>r.id==='qa-backup-rank'),seed,{timeout:15000});
+            const restored=await page.evaluate(({cardId})=>({collection:state.collection?.[cardId],deck:(state.decks||[]).find(d=>d.id==='qa-backup-deck')||null,match:(state.matches||[]).find(m=>m.id==='qa-backup-match')||null,rank:(state.rankHistory||[]).find(r=>r.id==='qa-backup-rank')||null,name:state.localProfileName,recovery:document.body.innerText.includes('Runtime Recovery')}),seed);
+            assert(Number(restored.collection?.owned)===2&&Number(restored.collection?.wanted)===1&&Number(restored.collection?.tradeable)===1,'Collection record was not restored');
+            assert(restored.deck&&restored.match&&restored.rank,'Deck/Match/Rank data was not restored');
+            assert(restored.name==='QA Backup Player','Local profile name was not restored');
+            assert(!restored.recovery,'Runtime Recovery appeared during backup/restore');
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof state==='object',{timeout:60000});
+            const persisted=await page.evaluate(({cardId})=>({owned:Number(state.collection?.[cardId]?.owned||0),deck:(state.decks||[]).some(d=>d.id==='qa-backup-deck'),match:(state.matches||[]).some(m=>m.id==='qa-backup-match'),rank:(state.rankHistory||[]).some(r=>r.id==='qa-backup-rank')}),seed);
+            assert(persisted.owned===2&&persisted.deck&&persisted.match&&persisted.rank,'Restored data did not survive reload');
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('BACKUP_RESTORE_BEHAVIOR_QA_OK');
+          })().catch(e=>{console.error('BACKUP_RESTORE_BEHAVIOR_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node backup-restore-qa.cjs
