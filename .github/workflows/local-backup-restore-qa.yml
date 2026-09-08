@@ -1,0 +1,96 @@
+name: PocketNexus Local Backup + Restore QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/bootstrap.js"
+      - "js/app/account_startup.js"
+      - "js/features/local-backup-restore-v8.70.0.js"
+      - ".github/workflows/local-backup-restore-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  local-backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4173 >/tmp/pocketnexus-backup.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-backup.log
+          exit 1
+      - name: Verify backup download clean-profile restore and persistence
+        run: |
+          cat > backup-restore-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',acceptDownloads:true,viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof save==='function'&&!!window.PPCLocalBackupRestore,{timeout:60000});
+            await page.evaluate(()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              state.decks=[{id:'backup-deck',name:'BACKUP_RESTORE_DECK',cards:{'fallback-pikachu':2},energy:'Lightning'}];
+              state.matches=[{id:'backup-match',result:'win',deckName:'BACKUP_RESTORE_DECK',opponentArchetype:'Backup QA Opponent',timestamp:1700000000000}];
+              state.collection={'fallback-pikachu':{owned:2,wanted:1,tradeable:1}};
+              state.rankHistory=[{id:'backup-rank',points:1234,tier:'Master Ball',timestamp:1700000000000}];
+              state.rank={tier:'Master Ball',points:1234,streak:2};
+              save();state.page='account';save();render();
+            });
+            await page.waitForFunction(()=>document.getElementById('localBackupRestorePanel'),{timeout:30000});
+            await clearOverlays(page);
+            const downloadPromise=page.waitForEvent('download');
+            await page.getByRole('button',{name:'Export Local Backup'}).click();
+            const download=await downloadPromise;
+            const path='/tmp/pocketnexus-backup.json';await download.saveAs(path);
+            const payload=JSON.parse(fs.readFileSync(path,'utf8'));
+            assert(payload.format==='pocketnexus-local-backup','download format marker missing');
+            assert(payload.data?.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),'download omitted saved deck');
+            assert(payload.data?.matches?.some(m=>m.id==='backup-match'),'download omitted battle history');
+            assert(payload.data?.collection?.['fallback-pikachu']?.owned===2,'download omitted collection quantity');
+            assert(payload.data?.rankHistory?.some(r=>r.id==='backup-rank'),'download omitted rank history');
+            await page.evaluate(()=>{
+              state.decks=[];state.matches=[];state.collection={};state.rankHistory=[];state.rank={tier:'Unranked',points:0,streak:0};save();
+            });
+            const clean=await page.evaluate(()=>({decks:state.decks.length,matches:state.matches.length,collection:Object.keys(state.collection).length,rankHistory:state.rankHistory.length}));
+            assert(clean.decks===0&&clean.matches===0&&clean.collection===0&&clean.rankHistory===0,'clean-profile setup failed');
+            await page.locator('#pocketNexusLocalRestoreInput').setInputFiles(path);
+            await page.waitForFunction(()=>state.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),{timeout:15000});
+            const restored=await page.evaluate(()=>({deck:state.decks.find(d=>d.name==='BACKUP_RESTORE_DECK'),match:state.matches.find(m=>m.id==='backup-match'),collection:state.collection?.['fallback-pikachu'],rankHistory:state.rankHistory.find(r=>r.id==='backup-rank'),rank:state.rank,text:document.body.innerText,overflow:Math.max(0,document.documentElement.scrollWidth-window.innerWidth)}));
+            assert(restored.deck,'deck not restored');assert(restored.match,'match not restored');assert(restored.collection?.owned===2&&restored.collection?.wanted===1&&restored.collection?.tradeable===1,'collection not restored');assert(restored.rankHistory,'rank history not restored');assert(restored.rank?.points===1234,'rank state not restored');
+            assert(!restored.text.includes('Runtime Recovery'),'Runtime Recovery appeared after restore');assert(restored.overflow<=12,`mobile horizontal overflow ${restored.overflow}px`);
+            const safetyCount=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('ppc_local_restore_safety_')).length);
+            assert(safetyCount>=1,'restore safety snapshot was not created');
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof save==='function',{timeout:60000});
+            const persisted=await page.evaluate(()=>({deck:state.decks?.some(d=>d.name==='BACKUP_RESTORE_DECK'),match:state.matches?.some(m=>m.id==='backup-match'),owned:state.collection?.['fallback-pikachu']?.owned,rank:state.rank?.points}));
+            assert(persisted.deck&&persisted.match&&persisted.owned===2&&persisted.rank===1234,'restored data did not persist after reload');
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('LOCAL_BACKUP_RESTORE_QA_OK',JSON.stringify({safetyCount,overflow:restored.overflow}));
+          })().catch(e=>{console.error('LOCAL_BACKUP_RESTORE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node backup-restore-qa.cjs
