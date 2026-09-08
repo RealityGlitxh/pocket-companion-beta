@@ -1,0 +1,35 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const src=await fs.readFile('supabase/functions/pocket-coach/meta-aware-optimizer.js','utf8');
+const {buildMetaAwareOptimizations}=await import(`data:text/javascript;base64,${Buffer.from(src).toString('base64')}`);
+assert.equal(typeof buildMetaAwareOptimizations,'function');
+const deck={id:'d1',name:'Lucario Build',archetype:'Mega Lucario ex / Lucario',cards:[
+{name:'Riolu',qty:2},{name:'Lucario',qty:2},{name:'Mega Lucario ex',qty:2},{name:"Professor's Research",qty:2},{name:'Poké Ball',qty:1},{name:'Cyrus',qty:2},{name:'X Speed',qty:2},{name:'Potion',qty:2},{name:'Sabrina',qty:2},{name:'Red Card',qty:1},{name:'Rocky Helmet',qty:2}
+]};
+const archetype={id:'lucario',name:'Mega Lucario ex / Lucario',pokemon:['Mega Lucario ex','Lucario'],key_cards:[],aliases:['Lucario'],rank:2,usage_pct:10.68,win_rate:56.52,matches:119,sample_size:22,confidence:'Medium'};
+const mk=(i,cards)=>({id:`m${i}`,archetype_id:'lucario',is_valid:true,cards:{pokemon:[{name:'Riolu',quantity:2},{name:'Lucario',quantity:2},{name:'Mega Lucario ex',quantity:2}],trainer:cards}});
+const lists=Array.from({length:20},(_,i)=>mk(i,[{name:"Professor's Research",quantity:2},{name:'Poké Ball',quantity:i<18?2:1},{name:'Cyrus',quantity:2},{name:'X Speed',quantity:2},{name:'Potion',quantity:2},{name:'Rocky Helmet',quantity:2}]));
+const out=buildMetaAwareOptimizations({decks:[deck],audits:[{deckId:'d1',legality:{status:'passes-known-rules'}}],snapshot:{generated_at:'2026-09-08T00:00:00Z',window_hours:168},archetypes:[archetype],decklists:lists})[0];
+assert.equal(out.status,'matched');
+assert.equal(out.archetypeMatch.name,'Mega Lucario ex / Lucario');
+assert.equal(out.archetypeMatch.confidence,'high');
+assert.equal(out.competitive.evidence,'high');
+assert.equal(out.competitive.band,'strong-current-results');
+assert.equal(out.benchmark.recentClassifiedDecks,20);
+assert.equal(out.benchmark.reliable,true);
+assert.ok(out.recommendations.some(x=>x.action==='consider-second-copy'&&x.cardName==='Poké Ball'));
+assert.ok(out.benchmark.unusualReview.some(x=>x.name==='Sabrina'));
+assert.equal(out.structuralStatus,'passes-known-rules');
+assert.equal(out.recommendations.some(x=>x.action==='remove'),false);
+const missingDeck={...deck,id:'d2',cards:deck.cards.filter(c=>c.name!=='Rocky Helmet')};
+const missing=buildMetaAwareOptimizations({decks:[missingDeck],audits:[],snapshot:{},archetypes:[archetype],decklists:lists})[0];
+assert.ok(missing.recommendations.some(x=>x.action==='consider-add'&&x.cardName==='Rocky Helmet'&&x.reason==='high-archetype-inclusion'));
+const few=buildMetaAwareOptimizations({decks:[deck],audits:[],snapshot:{},archetypes:[archetype],decklists:lists.slice(0,4)})[0];
+assert.equal(few.benchmark.reliable,false);
+assert.equal(few.recommendations.length,0);
+assert.ok(few.guardrails.some(x=>x.includes('Only 4 recent classified benchmark')));
+const unknown=buildMetaAwareOptimizations({decks:[{id:'x',name:'Unknown',cards:[{name:'Completely Different',qty:2}]}],audits:[],snapshot:{},archetypes:[archetype],decklists:lists})[0];
+assert.equal(unknown.status,'no-reliable-archetype-match');
+assert.equal(unknown.recommendations.length,0);
+assert.deepEqual(buildMetaAwareOptimizations({decks:[deck],audits:[],snapshot:{},archetypes:[archetype],decklists:lists}),buildMetaAwareOptimizations({decks:[deck],audits:[],snapshot:{},archetypes:[archetype],decklists:lists}));
+console.log('META_AWARE_OPTIMIZATION_QA_OK');
