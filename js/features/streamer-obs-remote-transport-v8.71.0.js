@@ -52,11 +52,20 @@ async function copySource(m=currentMode()){
   try{await ensureRemote();await publish(true);const u=sourceUrl(m);if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
 }
 async function openTest(m=currentMode()){try{await ensureRemote();await publish(true);window.open(sourceUrl(m),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
+async function waitForIdle(maxMs=3000){
+  const started=Date.now();
+  while(busy&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
+  if(busy)throw new Error('Overlay publisher is still busy. Please try again.');
+}
 async function regenerate(m=currentMode()){
-  if(busy)return;busy=true;
   try{
-    const c=client(),old=readCreds();if(old&&c)await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});clearCreds();lastSerialized='';await createRemote();busy=false;await publish(true);window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl(m)
-  }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError)}finally{busy=false}
+    await waitForIdle();busy=true;
+    const c=client(),old=readCreds();
+    if(old&&c){const {data,error}=await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});if(error)throw error;if(!data?.ok)throw new Error('Previous overlay URL could not be revoked.');}
+    clearCreds();lastSerialized='';await createRemote();busy=false;
+    const published=await publish(true);if(!published)throw new Error(lastError||'New overlay state could not be published.');
+    window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl(m)
+  }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError);return ''}finally{busy=false}
 }
 function statusText(kind){if(kind==='connected')return 'Remote OBS: Ready';if(kind==='error')return 'Remote OBS: Connection issue';return 'Remote OBS: Connecting…'}
 function updateUi(kind='connecting'){
