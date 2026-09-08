@@ -15,7 +15,7 @@ permissions:
 jobs:
   live-deck-intelligence:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       POCKETNEXUS_QA_EMAIL: ${{ secrets.POCKETNEXUS_QA_EMAIL }}
       POCKETNEXUS_QA_PASSWORD: ${{ secrets.POCKETNEXUS_QA_PASSWORD }}
@@ -48,7 +48,19 @@ jobs:
           fi
           echo "::add-mask::$token"
           echo "QA_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
-      - name: Verify live Pocket Coach Deck Intelligence capability
+      - name: Verify Edge Function preflight transport
+        run: |
+          code=$(curl -sS -o /tmp/preflight.txt -w "%{http_code}" \
+            -X OPTIONS "$SUPABASE_URL/functions/v1/pocket-coach" \
+            -H "Origin: https://beta.pocketnexus.app" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: authorization,apikey,content-type")
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Pocket Coach preflight failed ($code)"
+            cat /tmp/preflight.txt
+            exit 1
+          fi
+      - name: Verify live Pocket Coach status transport
         run: |
           code=$(curl -sS -o /tmp/status.json -w "%{http_code}" \
             -X POST "$SUPABASE_URL/functions/v1/pocket-coach" \
@@ -62,6 +74,22 @@ jobs:
             exit 1
           fi
           jq -e '.deckIntelligenceAudit == true' /tmp/status.json >/dev/null || { echo "::error::deckIntelligenceAudit is not live"; cat /tmp/status.json; exit 1; }
-          jq -e '.knowledgeEngine == "v2"' /tmp/status.json >/dev/null || { echo "::error::knowledgeEngine v2 is not live"; cat /tmp/status.json; exit 1; }
+          jq -e '.knowledgeEngine == "v4"' /tmp/status.json >/dev/null || { echo "::error::knowledgeEngine v4 is not live"; cat /tmp/status.json; exit 1; }
           jq -e '.verifiedCardGameplay == true' /tmp/status.json >/dev/null || { echo "::error::Verified card grounding regressed"; cat /tmp/status.json; exit 1; }
-          echo "POCKET_COACH_DECK_INTELLIGENCE_LIVE_QA_OK"
+      - name: Verify live Pocket Coach send path
+        run: |
+          payload=$(jq -nc --arg message "Build me a deck around Team Rocket's Articuno ex" '{message:$message}')
+          code=$(curl -sS --max-time 90 -o /tmp/send.json -w "%{http_code}" \
+            -X POST "$SUPABASE_URL/functions/v1/pocket-coach" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $QA_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$payload")
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Pocket Coach send failed ($code)"
+            cat /tmp/send.json
+            exit 1
+          fi
+          jq -e '.answer | type == "string" and length > 0' /tmp/send.json >/dev/null || { echo "::error::Pocket Coach send returned no answer"; cat /tmp/send.json; exit 1; }
+          jq -e '.conversationId | type == "string" and length > 0' /tmp/send.json >/dev/null || { echo "::error::Pocket Coach send returned no conversationId"; cat /tmp/send.json; exit 1; }
+          echo "POCKET_COACH_LIVE_TRANSPORT_SEND_QA_OK"
