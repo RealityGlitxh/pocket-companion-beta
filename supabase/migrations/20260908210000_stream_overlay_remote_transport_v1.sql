@@ -34,11 +34,11 @@ set search_path = public, pg_temp
 as $$
 declare
   v_id uuid := gen_random_uuid();
-  v_token text := encode(gen_random_bytes(32), 'hex');
+  v_token text := encode(extensions.gen_random_bytes(32), 'hex');
   v_uid uuid := auth.uid();
 begin
   insert into public.stream_overlay_sessions(overlay_id, write_token_hash, user_id, state)
-  values (v_id, digest(v_token, 'sha256'), v_uid, public.stream_overlay_sanitize(coalesce(p_state, '{}'::jsonb)));
+  values (v_id, extensions.digest(v_token, 'sha256'), v_uid, public.stream_overlay_sanitize(coalesce(p_state, '{}'::jsonb)));
   return jsonb_build_object('overlay_id', v_id, 'write_token', v_token, 'updated_at', now());
 end;
 $$;
@@ -56,7 +56,7 @@ begin
   if not found or v_row.revoked_at is not null then
     return jsonb_build_object('ok', false, 'status', 'invalid');
   end if;
-  if v_row.write_token_hash <> digest(coalesce(p_write_token,''), 'sha256') then
+  if v_row.write_token_hash <> extensions.digest(coalesce(p_write_token,''), 'sha256') then
     return jsonb_build_object('ok', false, 'status', 'forbidden');
   end if;
   update public.stream_overlay_sessions
@@ -94,7 +94,7 @@ declare
 begin
   select * into v_row from public.stream_overlay_sessions where overlay_id = p_overlay_id;
   if not found then return jsonb_build_object('ok',false,'status','invalid'); end if;
-  if v_row.write_token_hash <> digest(coalesce(p_write_token,''), 'sha256') then
+  if v_row.write_token_hash <> extensions.digest(coalesce(p_write_token,''), 'sha256') then
     return jsonb_build_object('ok',false,'status','forbidden');
   end if;
   update public.stream_overlay_sessions set revoked_at=now(), updated_at=now() where overlay_id=p_overlay_id;
