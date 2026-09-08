@@ -45,26 +45,31 @@ async function publish(force=false){
     lastSerialized=serialized;lastError='';updateUi('connected');return true;
   }catch(e){lastError=e?.message||String(e);updateUi('error');return false}finally{busy=false}
 }
-function sourceUrl(m=currentMode()){
-  const creds=readCreds();const u=new URL('overlay.html',location.href);u.searchParams.set('mode',m);if(creds?.overlay_id)u.searchParams.set('overlay',creds.overlay_id);u.searchParams.set('v','871000');return u.href;
+function sourceUrl(){
+  const creds=readCreds();const u=new URL('overlay.html',location.href);
+  if(creds?.overlay_id)u.searchParams.set('overlay',creds.overlay_id);
+  // Remote OBS sources intentionally do not pin ?mode=. The backend snapshot's
+  // activeMode is authoritative so an already-added OBS source follows the
+  // Stream Control Center when the player switches Ranked/Tournament/Caster.
+  u.searchParams.set('v','871001');return u.href;
 }
-async function copySource(m=currentMode()){
-  try{await ensureRemote();await publish(true);const u=sourceUrl(m);if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
+async function copySource(){
+  try{await ensureRemote();await publish(true);const u=sourceUrl();if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
 }
-async function openTest(m=currentMode()){try{await ensureRemote();await publish(true);window.open(sourceUrl(m),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
+async function openTest(){try{await ensureRemote();await publish(true);window.open(sourceUrl(),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
 async function waitForIdle(maxMs=3000){
   const started=Date.now();
   while(busy&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
   if(busy)throw new Error('Overlay publisher is still busy. Please try again.');
 }
-async function regenerate(m=currentMode()){
+async function regenerate(){
   try{
     await waitForIdle();busy=true;
     const c=client(),old=readCreds();
     if(old&&c){const {data,error}=await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});if(error)throw error;if(!data?.ok)throw new Error('Previous overlay URL could not be revoked.');}
     clearCreds();lastSerialized='';await createRemote();busy=false;
     const published=await publish(true);if(!published)throw new Error(lastError||'New overlay state could not be published.');
-    window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl(m)
+    window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl()
   }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError);return ''}finally{busy=false}
 }
 function statusText(kind){if(kind==='connected')return 'Remote OBS: Ready';if(kind==='error')return 'Remote OBS: Connection issue';return 'Remote OBS: Connecting…'}
@@ -76,7 +81,7 @@ function updateUi(kind='connecting'){
     if(el.title!==title)el.title=title;
   });
 }
-function setupHtml(m){return `<div class="pnObsRemoteSetup" data-pn-remote-obs="${m}" style="margin:12px 0;padding:14px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff08"><div class="between" style="gap:12px;align-items:flex-start"><div><span class="pnObsEyebrow">OBS BROWSER SOURCE</span><h3 style="margin:4px 0">Remote OBS Overlay</h3><p class="muted" style="margin:0">Works in OBS even when it does not share PocketNexus browser storage.</p></div><span class="pnObsStatus active" data-pn-remote-obs-status>Remote OBS: Connecting…</span></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="secondary" onclick="PPCStreamerOBSRemote.copySource('${m}')">Copy Overlay URL</button><button class="secondary" onclick="PPCStreamerOBSRemote.openTest('${m}')">Test Overlay</button><button class="secondary" onclick="PPCStreamerOBSRemote.regenerate('${m}')">Regenerate URL</button><span class="muted tiny">Recommended: 1920 × 1080</span></div></div>`}
+function setupHtml(m){return `<div class="pnObsRemoteSetup" data-pn-remote-obs="${m}" style="margin:12px 0;padding:14px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff08"><div class="between" style="gap:12px;align-items:flex-start"><div><span class="pnObsEyebrow">OBS BROWSER SOURCE</span><h3 style="margin:4px 0">Remote OBS Overlay</h3><p class="muted" style="margin:0">Works in OBS even when it does not share PocketNexus browser storage. This URL follows the active Stream Control Center workspace.</p></div><span class="pnObsStatus active" data-pn-remote-obs-status>Remote OBS: Connecting…</span></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="secondary" onclick="PPCStreamerOBSRemote.copySource()">Copy Overlay URL</button><button class="secondary" onclick="PPCStreamerOBSRemote.openTest()">Test Overlay</button><button class="secondary" onclick="PPCStreamerOBSRemote.regenerate()">Regenerate URL</button><span class="muted tiny">Recommended: 1920 × 1080</span></div></div>`}
 function inject(){
   for(const m of MODES){const studio=document.querySelector(`.pnObsStudio[data-mode="${m}"]`);if(!studio||studio.querySelector('[data-pn-remote-obs]'))continue;const row=studio.querySelector('.pnObsStatusRow');if(row)row.insertAdjacentHTML('afterend',setupHtml(m));else studio.insertAdjacentHTML('afterbegin',setupHtml(m));}
   updateUi(lastError?'error':readCreds()?'connected':'connecting');
