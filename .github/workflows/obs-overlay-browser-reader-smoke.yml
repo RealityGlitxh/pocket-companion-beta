@@ -1,0 +1,51 @@
+name: PocketNexus OBS Overlay Browser Reader Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/obs-overlay-browser-reader-smoke.yml"
+      - "overlay.html"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-reader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SUPABASE_URL: https://cdmzrsvwztndqfwzsumo.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Create remote fixture
+        run: |
+          payload='{"p_state":{"modes":{"ranked":{"config":{"overlayMode":"ranked","scenes":{"rank":true},"opacity":92,"scale":100},"rank":{"tier":"Master Ball","points":1444},"record":{"wins":3,"losses":1,"ties":0,"streak":"W2","winRate":75},"deck":{"name":"Reader Smoke Deck","cards":[]},"rpJourney":[1400,1444]}},"activeMode":"ranked","version":"reader-smoke"}}'
+          created=$(curl --connect-timeout 5 --max-time 15 -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/create_stream_overlay" -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" --data "$payload")
+          id=$(jq -r '.overlay_id' <<<"$created"); token=$(jq -r '.write_token' <<<"$created")
+          echo "::add-mask::$token"; echo "OVERLAY_ID=$id" >> "$GITHUB_ENV"; echo "WRITE_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8123/overlay.html >/dev/null && break; sleep 1; done
+      - name: Open overlay in isolated browser context
+        run: |
+          cat > reader-smoke.js <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{const browser=await chromium.launch({headless:true});const ctx=await browser.newContext({viewport:{width:1920,height:1080},serviceWorkers:'block'});const p=await ctx.newPage();p.setDefaultTimeout(15000);p.setDefaultNavigationTimeout(15000);const errors=[];p.on('pageerror',e=>errors.push(String(e.message||e)));await p.route('https://cdn.jsdelivr.net/**',r=>r.abort());const url=`http://127.0.0.1:8123/overlay.html?mode=ranked&overlay=${process.env.OVERLAY_ID}&v=reader-smoke`;console.log('OPEN_READER');await p.goto(url,{waitUntil:'domcontentloaded'});console.log('DOM_READY');await p.waitForFunction(()=>window.d?.rank?.points===1444);const out=await p.evaluate(()=>({points:d.rank.points,deck:d.deck.name,text:document.body.innerText,local:localStorage.getItem('ppc_stream_overlay_v83')}));console.log('READER_RESULT',JSON.stringify(out));if(out.points!==1444||out.deck!=='Reader Smoke Deck'||out.local||errors.length)throw new Error(JSON.stringify({out,errors}));await browser.close();console.log('OBS_OVERLAY_BROWSER_READER_OK')})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node reader-smoke.js
+      - name: Revoke fixture
+        if: always()
+        run: |
+          curl --connect-timeout 5 --max-time 15 -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/revoke_stream_overlay" -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" --data "$(jq -nc --arg id "$OVERLAY_ID" --arg token "$WRITE_TOKEN" '{p_overlay_id:$id,p_write_token:$token}')" >/dev/null
