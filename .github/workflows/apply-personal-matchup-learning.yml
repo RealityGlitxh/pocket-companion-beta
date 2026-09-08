@@ -1,0 +1,57 @@
+name: Apply Pocket Coach Personal Matchup Learning
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'qa/apply-personal-matchup-learning.mjs'
+      - '.github/workflows/apply-personal-matchup-learning.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply surgical integration
+        run: node qa/apply-personal-matchup-learning.mjs
+      - name: Validate contracts
+        run: |
+          node --check js/app/ai_coach.js
+          node <<'NODE'
+          const fs=require('fs');
+          const idx=fs.readFileSync('supabase/functions/pocket-coach/index.ts','utf8');
+          const ui=fs.readFileSync('js/app/ai_coach.js','utf8');
+          const assert=(x,m)=>{if(!x)throw new Error(m)};
+          assert(idx.includes("buildPersonalMatchupLearning"),'personal helper not imported/invoked');
+          assert(idx.includes("personalMatchupLearning:true"),'status/response feature flag missing');
+          assert(idx.includes("personalMatchupVersion:'v1'"),'personal matchup context version missing');
+          assert(idx.includes("personalMatchup:personalMatchups"),'personal matchup context missing');
+          assert(idx.includes("sources.push('Personal Matchup Learning')"),'source label missing');
+          assert(idx.includes('Fewer than 5 decided personal games is insufficient evidence'),'personal sample guardrail missing');
+          assert(idx.includes('personalMatchup:personalMatch'),'persisted report personal evidence missing');
+          assert(ui.includes('Global Meta + Your Results'),'separate evidence UI heading missing');
+          assert(ui.includes('Insufficient evidence — fewer than 5 decided games'),'low sample UI guardrail missing');
+          assert(ui.includes('never blended into the Global Meta percentage'),'no-blend UI guardrail missing');
+          console.log('PERSONAL_MATCHUP_INTEGRATION_CONTRACT_OK');
+          NODE
+      - name: Commit product integration
+        run: |
+          if git diff --quiet -- supabase/functions/pocket-coach/index.ts js/app/ai_coach.js; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/pocket-coach/index.ts js/app/ai_coach.js
+          git commit -m 'feat: wire personal matchup learning into Pocket Coach'
+          git push origin main
