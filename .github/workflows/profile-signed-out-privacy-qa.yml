@@ -1,0 +1,90 @@
+name: PocketNexus Signed-Out Profile Privacy QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/profile_teamwars.js"
+      - "js/features/profile-*.js"
+      - "js/features/route-feature-loader-v8.64.1.js"
+      - "css/**"
+      - ".github/workflows/profile-signed-out-privacy-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-out-profile-privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4173 >/tmp/pocketnexus-profile-privacy.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-profile-privacy.log
+          exit 1
+      - name: Verify signed-out Profile exposes only public hub data
+        run: |
+          cat > profile-privacy-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof headerNavigate==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              state.decks=[{id:'privacy-deck',name:'PRIVATE_DECK_DO_NOT_RENDER',cards:{},energy:''}];
+              state.matches=[{id:'privacy-match',result:'win',opponentName:'PRIVATE_OPPONENT_DO_NOT_RENDER',notes:'PRIVATE_MATCH_NOTE_DO_NOT_RENDER'}];
+              state.collection={'privacy-card':{owned:9,wanted:8,tradeable:7}};
+              state.rankHistory=[{id:'privacy-rank',points:4321,tier:'PRIVATE_RANK_DO_NOT_RENDER'}];
+              save();
+              headerNavigate('profile');
+            });
+            await page.waitForFunction(()=>typeof profilePage==='function'&&document.body.innerText.includes('Public competitive profiles'),{timeout:60000});
+            await clearOverlays(page);
+            const stateCheck=await page.evaluate(()=>({signed:typeof ptSigned==='function'?ptSigned():null,session:window.getPPCCloudSession?.()||window.cloudSession||null}));
+            assert(stateCheck.signed===false,'QA browser unexpectedly has a signed-in cloud session');
+            const text=await page.locator('#app').innerText();
+            assert(text.includes('Public competitive profiles'),'signed-out public Profiles hub did not render');
+            assert(text.includes('Sign in to manage my profile'),'signed-out profile management gate missing');
+            assert(text.includes('Find a competitor'),'public player search missing');
+            for(const secret of ['PRIVATE_DECK_DO_NOT_RENDER','PRIVATE_OPPONENT_DO_NOT_RENDER','PRIVATE_MATCH_NOTE_DO_NOT_RENDER','PRIVATE_RANK_DO_NOT_RENDER','4321'])assert(!text.includes(secret),`private local value leaked into signed-out profile: ${secret}`);
+            for(const privateControl of ['Edit Profile','Account & Cloud','Featured decks','Competitive badge collection'])assert(!text.includes(privateControl),`signed-in profile control leaked to signed-out hub: ${privateControl}`);
+            assert(!text.includes('Runtime Recovery'),'Runtime Recovery appeared in signed-out Profiles');
+            const overflow=await page.evaluate(()=>Math.max(0,document.documentElement.scrollWidth-window.innerWidth));
+            assert(overflow<=12,`mobile horizontal overflow ${overflow}px`);
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof headerNavigate==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();headerNavigate('profile')});
+            await page.waitForFunction(()=>typeof profilePage==='function'&&document.body.innerText.includes('Public competitive profiles'),{timeout:60000});
+            await clearOverlays(page);
+            const after=await page.locator('#app').innerText();
+            assert(!after.includes('PRIVATE_DECK_DO_NOT_RENDER'),'private deck leaked after reload');
+            assert(!after.includes('PRIVATE_MATCH_NOTE_DO_NOT_RENDER'),'private match note leaked after reload');
+            assert(!after.includes('Runtime Recovery'),'Runtime Recovery appeared after reload');
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('SIGNED_OUT_PROFILE_PRIVACY_QA_OK',JSON.stringify({overflow}));
+          })().catch(e=>{console.error('SIGNED_OUT_PROFILE_PRIVACY_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node profile-privacy-qa.cjs
