@@ -1,0 +1,26 @@
+name: Pocket Coach Personal Matchup Learning QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/personal-matchup-learning.js'
+      - 'qa/personal-matchup-learning-qa.mjs'
+      - '.github/workflows/personal-matchup-learning-qa.yml'
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'js/app/ai_coach.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  personal-matchup-learning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic personal matchup learning QA
+        run: node qa/personal-matchup-learning-qa.mjs
