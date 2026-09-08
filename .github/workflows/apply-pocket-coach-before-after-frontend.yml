@@ -1,4 +1,4 @@
-# RC1 surgical frontend integration; this comment retriggers the existing workflow.
+# RC1 surgical frontend integration; robust token-level repair after exact-anchor mismatch.
 name: Apply Pocket Coach Before After Frontend
 
 on:
@@ -22,10 +22,9 @@ jobs:
           from pathlib import Path
           p=Path('js/features/pocket-coach-deck-comparison-v8.65.0.js')
           s=p.read_text()
-          old="if(!window.state||!Array.isArray(window.state.decks)){alert('Deck storage is unavailable.');return}window.state.decks.push(d);window.state.selected=d.id;"
-          new="if(typeof state==='undefined'||!Array.isArray(state.decks)){alert('Deck storage is unavailable.');return}state.decks.push(d);state.selected=d.id;"
-          assert old in s
-          s=s.replace(old,new,1)
+          if "window.state.decks" in s:s=s.replace("window.state.decks","state.decks")
+          if "window.state.selected" in s:s=s.replace("window.state.selected","state.selected")
+          if "!window.state||!Array.isArray(state.decks)" in s:s=s.replace("!window.state||!Array.isArray(state.decks)","typeof state==='undefined'||!Array.isArray(state.decks)")
           p.write_text(s)
 
           p=Path('index.html');s=p.read_text()
@@ -38,6 +37,7 @@ jobs:
       - name: Verify frontend integration
         run: |
           grep -q "typeof state==='undefined'" js/features/pocket-coach-deck-comparison-v8.65.0.js
+          ! grep -q "window.state.decks" js/features/pocket-coach-deck-comparison-v8.65.0.js
           grep -q "pocket-coach-deck-comparison-v8.65.0.js?v=865030" index.html
           node --check js/features/pocket-coach-deck-comparison-v8.65.0.js
       - name: Commit frontend comparison
