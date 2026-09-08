@@ -36,7 +36,7 @@ jobs:
           const {chromium,webkit}=require('playwright');
           const routes=['dashboard','decks','matches','rank','meta','collection','profile','training','more','about'];
           const matrix=[
-            {name:'safari-ios-proxy',engine:webkit,viewport:{width:390,height:844},mobile:true,touch:true,physicalIphoneValidated:true},
+            {name:'safari-ios-proxy',engine:webkit,viewport:{width:390,height:844},mobile:true,touch:true},
             {name:'safari-desktop-proxy',engine:webkit,viewport:{width:1440,height:900},mobile:false,touch:false},
             {name:'chrome-mobile-proxy',engine:chromium,viewport:{width:390,height:844},mobile:true,touch:true},
             {name:'chrome-desktop-proxy',engine:chromium,viewport:{width:1440,height:900},mobile:false,touch:false},
@@ -45,10 +45,6 @@ jobs:
           const assert=(v,m)=>{if(!v)throw new Error(m)};
           function assertOverflow(cfg,scope,overflow){
             if(overflow<=12)return;
-            if(cfg.physicalIphoneValidated&&/training|landscape|portrait-return/.test(scope)&&overflow<=40){
-              console.warn('RC1_PROXY_ADVISORY',`${cfg.name}/${scope}: simulated WebKit overflow ${overflow}px; actual iPhone Safari physical validation is GREEN`);
-              return;
-            }
             throw new Error(`${cfg.name}/${scope}: horizontal overflow ${overflow}px`);
           }
           function expectedLocalWebkitSupabaseError(cfg,message,currentUrl){
