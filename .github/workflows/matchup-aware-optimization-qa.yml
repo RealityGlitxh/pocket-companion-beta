@@ -1,6 +1,6 @@
 name: Pocket Coach Matchup-Aware Optimization QA
 
-# RC1 regression rerun after Before/After Deck Comparison integration.
+# RC1 regression rerun after Personal Matchup Learning integration.
 on:
   push:
     paths:
