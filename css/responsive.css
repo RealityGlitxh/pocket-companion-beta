@@ -41,7 +41,6 @@ body:has(#staticEntry) .mobileBottomNav{display:none}
  .pwaStandalone .mobileMoreSheet,.pwaStandalone .modal{padding-bottom:max(18px,env(safe-area-inset-bottom))}
 }
 
-
 /* V8.62.4 mobile QA + release-candidate hardening */
 @media(max-width:760px){
   html,body{max-width:100%;overflow-x:hidden}
@@ -58,4 +57,54 @@ body:has(#staticEntry) .mobileBottomNav{display:none}
   .row,.between{min-width:0}
   .row>*,.between>*{min-width:0}
   .pwaNotice{left:8px;right:8px;max-width:none}
+}
+
+/* V8.65.0 mobile density pass — based on physical iPhone beta screenshots. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(max-width:520px){
+  body{padding-bottom:78px}
+  #app{width:calc(100% - 18px);padding-top:12px;padding-bottom:82px}
+  .appHeaderBar{height:54px;min-height:54px;width:calc(100% - 18px)}
+  .appBrand:before{width:24px;height:33px;border-radius:6px;box-shadow:-5px 4px 0 -2px #0a111a,-5px 4px 0 -1px #31465d}
+  .appBrand strong{font-size:.78rem}
+  .mobileBottomNav{left:max(7px,env(safe-area-inset-left));right:max(7px,env(safe-area-inset-right));bottom:max(6px,env(safe-area-inset-bottom));padding:4px;border-radius:15px}
+  .mobileBottomNav button{min-height:52px!important;padding:5px 2px!important;border-radius:11px;font-size:.63rem!important;line-height:1}
+  .mobileBottomNav button>span{display:block;font-size:.98rem;line-height:1}
+  .mobileBottomNav small{margin-top:4px;font-size:.61rem;line-height:1.05}
+
+  .pocketCommandHero{gap:10px;margin-bottom:10px}
+  .pocketCommandCopy{min-height:0!important;padding:20px 18px!important;border-radius:21px}
+  .pocketCommandCopy h1{font-size:2.12rem!important;line-height:1.01;margin:.12em 0 .25em}
+  .pocketCommandCopy p{font-size:.86rem!important;line-height:1.5;margin-bottom:0}
+  .pocketCommandCopy .row{gap:7px;margin-top:14px}
+  .pocketCommandCopy .row button{min-height:44px;padding:9px 10px;font-size:.8rem}
+  .pocketCommandCopy:after{right:-34px;bottom:-92px;transform:scale(.82) rotate(14deg);opacity:.38}
+
+  .pocketCommandToday{min-height:0!important;padding:18px!important;gap:14px;border-radius:21px}
+  .pocketCommandToday>div:first-child>strong{font-size:3.35rem!important}
+  .pocketCommandToday>div:first-child p{font-size:.8rem;margin-bottom:8px}
+  .todayStats{grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr)!important;gap:7px}
+  .todayStats>div{padding:10px 11px!important}
+  .todayStats b{font-size:.84rem!important}
+
+  .pocketHubGrid,.foundationIntelGrid{gap:10px;margin-bottom:10px}
+  .pocketHubCard{min-height:168px!important;padding:15px 16px 14px!important;border-radius:16px}
+  .hubIcon{width:40px;height:48px;margin-bottom:9px}
+  .pocketHubCard h2{font-size:1rem;margin:.12rem 0 .35rem}
+  .pocketHubCard p{font-size:.78rem;line-height:1.42;margin-bottom:10px}
+  .hubFoot{padding-top:9px;font-size:.7rem}
+
+  .foundationIntelGrid>.panel{padding:15px 16px!important;border-radius:16px}
+  .commandCardHead h2{font-size:1.05rem}
+  .commandMetric{margin:10px 0 6px}
+  .commandMetric strong{font-size:1.85rem}
+  .commandMetaList{gap:6px;margin:10px 0 8px}
+  .commandMetaList button{padding:8px 9px;min-height:46px}
+  .focusBox{margin:10px 0 3px;padding:10px 11px}
+  .focusBox strong{font-size:.82rem;line-height:1.35}
+  .commandWhy{font-size:.82rem;line-height:1.45}
+  .commandLink{margin-top:10px}
+
+  .homeRecent{padding:15px!important;border-radius:16px}
+  .homeRecent .deckrow{min-height:50px;padding:9px 1px}
 }
