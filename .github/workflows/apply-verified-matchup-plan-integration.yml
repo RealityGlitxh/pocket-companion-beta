@@ -1,0 +1,57 @@
+name: Apply Verified Matchup Plan Integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'qa/apply-verified-matchup-plan-integration.mjs'
+      - '.github/workflows/apply-verified-matchup-plan-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply integration
+        run: node qa/apply-verified-matchup-plan-integration.mjs
+      - name: Verify integration contract
+        run: |
+          node --check supabase/functions/pocket-coach/verified-matchup-plan.js
+          node qa/verified-matchup-plan-qa.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('supabase/functions/pocket-coach/index.ts').read_text()
+          checks={
+            'import':"buildVerifiedMatchupPlans" in s,
+            'builder':"const verifiedMatchupPlans=buildVerifiedMatchupPlans" in s,
+            'context':"verifiedMatchupPlanVersion:'v1'" in s and 'verifiedMatchupPlans' in s,
+            'source':"sources.push('Verified Matchup Plan')" in s,
+            'prompt':'NOT a guaranteed optimal turn order' in s,
+            'opponent guardrail':'Never invent an opponent target priority' in s,
+            'status':'verifiedMatchupPlan:true' in s,
+            'count':'verifiedMatchupPlanCount' in s,
+          }
+          print('VERIFIED_MATCHUP_PLAN_INTEGRATION_CONTRACT',checks)
+          bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('FAILED: '+', '.join(bad))
+          PY
+      - name: Commit product integration
+        run: |
+          if git diff --quiet -- supabase/functions/pocket-coach/index.ts; then
+            echo 'No integration change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/pocket-coach/index.ts
+          git commit -m 'feat: wire verified matchup sequencing into Pocket Coach'
+          git push
