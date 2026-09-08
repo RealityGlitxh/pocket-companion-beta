@@ -1,0 +1,36 @@
+name: Pocket Coach Beta Launch Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pocket-coach-beta-launch-gate.yml'
+      - 'supabase/functions/pocket-coach/**'
+      - 'qa/meta-aware-optimization-qa.mjs'
+      - 'qa/matchup-aware-optimization-qa.mjs'
+      - 'qa/personal-matchup-learning-qa.mjs'
+      - 'qa/verified-matchup-plan-qa.mjs'
+      - 'js/app/ai_coach.js'
+      - 'js/features/pocket-coach-**'
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-coach-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Meta-Aware Optimization
+        run: node qa/meta-aware-optimization-qa.mjs
+      - name: Matchup-Aware Optimization
+        run: node qa/matchup-aware-optimization-qa.mjs
+      - name: Personal Matchup Learning
+        run: node qa/personal-matchup-learning-qa.mjs
+      - name: Verified Matchup Plan
+        run: node qa/verified-matchup-plan-qa.mjs
