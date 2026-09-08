@@ -31,8 +31,8 @@ async function coachLoadConversations(){
 async function coachOpenConversation(id){
  const c=coachClient(),s=coachSession(); if(!c||!s?.user)return;
  pocketCoachState.conversationId=id;pocketCoachState.loading=true;pocketCoachPage(true);
- const {data,error}=await c.from('ai_messages').select('id,role,content,source_labels,created_at,model_provider,model_name').eq('user_id',s.user.id).eq('conversation_id',id).order('created_at',{ascending:true}).limit(100);
- pocketCoachState.messages=data||[];pocketCoachState.matchupReport=[];pocketCoachState.error=error?.message||'';pocketCoachState.loading=false;pocketCoachPage(true);
+ const {data,error}=await c.from('ai_messages').select('id,role,content,source_labels,created_at,model_provider,model_name,matchup_report').eq('user_id',s.user.id).eq('conversation_id',id).order('created_at',{ascending:true}).limit(100);
+ pocketCoachState.messages=(data||[]).map(m=>({...m,matchupReport:Array.isArray(m.matchup_report)?m.matchup_report:[]}));pocketCoachState.matchupReport=[];pocketCoachState.error=error?.message||'';pocketCoachState.loading=false;pocketCoachPage(true);
 }
 function coachNewChat(){pocketCoachState.conversationId=null;pocketCoachState.messages=[];pocketCoachState.matchupReport=[];pocketCoachState.error='';pocketCoachPage(true)}
 function coachUsePrompt(text){const el=document.getElementById('coachInput');if(el){el.value=text;el.focus()}}
