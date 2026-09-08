@@ -36,6 +36,10 @@ assert.equal(legal.duplicateViolations.length,0);
 assert.equal(legal.evolutionIssues.length,0);
 assert.equal(legal.legality.status,'passes-known-rules');
 assert.ok(legal.engineCandidates.some(x=>x.name==='Alpha ex'));
+assert.equal(legal.optimization.mode,'deterministic-structural-v1');
+assert.equal(legal.optimization.autoApply,false);
+assert.equal(legal.optimization.requiredCuts.length,0);
+assert.equal(legal.optimization.suggestedSwaps.length,0);
 
 const duplicateDeck={...legalDeck,id:'duplicate',name:'Duplicate Test',cards:[
   {name:'Basic Alpha',setCode:'A1',number:1,qty:3},
@@ -48,12 +52,45 @@ assert.equal(duplicate.totalCards,20);
 assert.equal(duplicate.duplicateViolations.length,1);
 assert.equal(duplicate.legality.status,'illegal-or-incomplete');
 assert.ok(duplicate.legality.hardFailures.some(x=>x.rule==='same-name-copy-limit'));
+assert.deepEqual(duplicate.optimization.requiredCuts[0],{
+  cardName:'basic alpha',quantity:1,reason:'same-name-copy-limit',confidence:'required',
+  evidence:'Deck contains 3 copies; known limit is 2.'
+});
 
 const brokenEvolution={...legalDeck,id:'broken',name:'Broken Evolution',cards:legalDeck.cards.map(x=>({...x}))};
 brokenEvolution.cards[0]={name:'Trainer One',setCode:'A1',number:10,qty:2};
 const broken=buildDeckAudits([brokenEvolution],catalog)[0];
 assert.ok(broken.evolutionIssues.some(x=>x.card==='Alpha ex'&&x.issue==='missing-required-previous-stage'));
 assert.ok(broken.consistencySignals.some(x=>x.type==='incomplete-evolution-line'));
+const parentAdd=broken.optimization.addCandidates.find(x=>x.name==='Basic Alpha');
+assert.ok(parentAdd,'missing verified evolution parent optimization candidate');
+assert.equal(parentAdd.reason,'complete-evolution-line');
+assert.equal(parentAdd.confidence,'structural-high');
+assert.equal(parentAdd.supports,'Alpha ex');
+assert.equal(parentAdd.set,'A1');
+assert.equal(parentAdd.number,'1');
+
+const swapDeck={id:'swap',name:'Swap Test',energy:'Lightning',cards:[
+  {name:'Trainer One',setCode:'A1',number:10,qty:3},
+  {name:'Alpha ex',setCode:'A1',number:2,qty:1},
+  card('Basic Beta',3),card('Trainer Two',11),card('Trainer Three',12),card('Trainer Four',13),
+  card('Trainer Five',14),card('Trainer Six',15),card('Trainer Seven',16),
+  {name:'Trainer Nine',qty:2}
+]};
+const swap=buildDeckAudits([swapDeck],catalog)[0];
+assert.equal(swap.totalCards,20);
+assert.ok(swap.optimization.requiredCuts.some(x=>x.cardName==='trainer one'&&x.quantity===1));
+assert.ok(swap.optimization.addCandidates.some(x=>x.name==='Basic Alpha'&&x.reason==='complete-evolution-line'));
+const structuralSwap=swap.optimization.suggestedSwaps[0];
+assert.equal(structuralSwap.remove.cardName,'trainer one');
+assert.equal(structuralSwap.add.cardName,'Basic Alpha');
+assert.equal(structuralSwap.confidence,'high-structural');
+
+const overDeck={...legalDeck,id:'over',name:'Over Test',cards:[...legalDeck.cards,{name:'Mystery Extra',qty:2}]};
+const over=buildDeckAudits([overDeck],catalog)[0];
+assert.equal(over.totalCards,22);
+assert.ok(over.optimization.requiredCuts.some(x=>x.reason==='deck-size-overage'&&x.quantity===2));
+assert.ok(over.optimization.guardrails.some(x=>x.includes('cannot safely choose')===false) || over.optimization.guardrails.length>0);
 
 const unknownStageDeck={id:'unknown',name:'Unknown Stage',energy:['Psychic'],cards:[
   {name:'Mystery Mon',setCode:'A1',number:20,qty:2},
@@ -66,6 +103,18 @@ assert.equal(unknown.counts.basics,0);
 assert.equal(unknown.legality.basicCheckReliable,false);
 assert.equal(unknown.legality.status,'needs-metadata-review');
 assert.ok(!unknown.legality.hardFailures.some(x=>x.rule==='basic-pokemon-required'));
+assert.ok(unknown.optimization.reviewCutCandidates.some(x=>x.confidence==='data-quality') || unknown.consistencySignals.some(x=>x.type==='unresolved-card-metadata'));
+
+const lowBasicDeck={id:'low-basic',name:'Low Basic',energy:'Fire',cards:[
+  {name:'Basic Alpha',setCode:'A1',number:1,qty:1},
+  {name:'Alpha ex',setCode:'A1',number:2,qty:2},
+  card('Trainer One',10),card('Trainer Two',11),card('Trainer Three',12),card('Trainer Four',13),
+  card('Trainer Five',14),card('Trainer Six',15),card('Trainer Seven',16),
+  {name:'Trainer Eight',qty:1},{name:'Trainer Nine',qty:2}
+]};
+const lowBasic=buildDeckAudits([lowBasicDeck],catalog)[0];
+assert.equal(lowBasic.counts.basics,1);
+assert.ok(lowBasic.optimization.addCandidates.some(x=>x.name==='Basic Alpha'&&x.reason==='increase-basic-redundancy'&&x.confidence==='strategy-dependent'));
 
 assert.deepEqual(buildDeckAudits([legalDeck],catalog),buildDeckAudits([legalDeck],catalog),'audit must be deterministic');
 
