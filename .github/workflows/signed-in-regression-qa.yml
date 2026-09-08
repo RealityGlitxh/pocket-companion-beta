@@ -5,17 +5,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "index.html"
-      - "js/features/rc1-route-class-cleanup-v8.65.0.js"
-      - "js/core/account-cloud-core-v8.64.1.js"
-      - "js/core/account-cloud-runtime-v8.64.1.js"
-      - "js/app/account_startup.js"
-      - "js/features/profile-media-upload-v8.64.2.js"
-      - "js/features/global-player-search-v8.64.2.js"
-      - "js/services/ptcgp-data-card-source-v8.64.2.js"
-      - "js/services/card-enrichment-service-v8.64.2.js"
-      - "js/features/card-detail-enrichment-v8.64.2.js"
       - ".github/workflows/signed-in-regression-qa.yml"
+      - "index.html"
+      - "overlay.html"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
+      - "assets/**"
 
 permissions:
   contents: read
