@@ -1,0 +1,25 @@
+name: Pocket Coach Deck Intelligence Audit QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'supabase/functions/pocket-coach/deck-audit.js'
+      - 'qa/deck-intelligence-audit-qa.mjs'
+      - '.github/workflows/deck-intelligence-audit-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deck-intelligence-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic deck audit QA
+        run: node qa/deck-intelligence-audit-qa.mjs
