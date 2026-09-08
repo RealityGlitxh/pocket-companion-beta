@@ -1,0 +1,25 @@
+name: Pocket Coach Meta-Aware Optimization QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/meta-aware-optimizer.js'
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'qa/meta-aware-optimization-qa.mjs'
+      - '.github/workflows/meta-aware-optimization-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  meta-aware-optimization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run meta-aware optimization QA
+        run: node qa/meta-aware-optimization-qa.mjs
