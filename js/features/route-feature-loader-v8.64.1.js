@@ -1,4 +1,4 @@
-/* PocketNexus V8.64.1 — route-level classic-script loader
+/* PocketNexus V8.70.0 — route-level classic-script loader
    Performance Pass 2D: keep optional feature bundles out of the startup path. */
 (function(){
   if(window.PPCFeatureLoader)return;
@@ -7,7 +7,7 @@
     rank:{ready:()=>typeof window.rankBorderPage==='function',label:'Rank Intelligence',scripts:['js/app/rank_tools-v8.64.1.js?v=864124']},
     streamer:{ready:()=>typeof window.streamerPage==='function'&&!!window.PPCStreamerWorkspaces&&!!window.PPCStreamerRankedRefine&&!!window.PPCStreamerInlineOverlayGuard&&!!window.PPCStreamerOBS2&&!!window.PPCLimitlessLiveTable&&!!window.PPCStreamerLimitlessLiveTable&&!!window.PPCStreamerLiveTableOverlayBridge,label:'Streamer Control Center',scripts:['js/app/streamer_tools-v8.64.1.js?v=864125','js/features/streamer-workspaces-v8.67.0.js?v=867103','js/features/streamer-ranked-refine-v8.67.2.js?v=867606','js/features/streamer-obs-embed-style-v8.67.6.js?v=867606','js/features/streamer-inline-overlay-guard-v8.67.7.js?v=867707','js/features/streamer-obs-system-style-v8.68.0.js?v=868000','js/features/streamer-obs-system-v8.68.0.js?v=868000','js/features/streamer-obs-connection-v8.68.0.js?v=868000','js/services/limitless-live-table-service-v8.68.1.js?v=868101','js/features/streamer-limitless-live-table-v8.68.3.js?v=868300','js/features/streamer-live-table-overlay-bridge-v8.68.3.js?v=868300']},
     training:{ready:()=>typeof window.trainingPage==='function'&&!!window.PPCBrainAdaptive,label:'Brain Teasers',scripts:['js/app/training.js?v=864121','js/features/training-slide-hotfix-v8.64.1.js?v=864121','js/features/training-cleanup-hotfix-v8.64.1.js?v=864121','js/features/training-adaptive-brain-v8.68.5.js?v=868600']},
-    sync:{ready:()=>typeof window.pocketSyncPage==='function',label:'Pocket Sync',scripts:['js/services/pocket-sync-adapter-service.js?v=864121','js/services/pocket-sync-orchestrator-service.js?v=864121','js/app/pocket_sync.js?v=864121']},
+    sync:{ready:()=>typeof window.pocketSyncPage==='function'&&!!window.PPCPocketSyncSimple,label:'Pocket Sync',scripts:['js/services/pocket-sync-adapter-service.js?v=864121','js/services/pocket-sync-orchestrator-service.js?v=864121','js/app/pocket_sync.js?v=864121','js/features/pocket-sync-simple-v8.70.0.js?v=870000']},
     profile:{ready:()=>typeof window.profilePage==='function'&&!!window.PPCProfileMedia,label:'Profiles',scripts:profileTeamScripts},teamwars:{ready:()=>typeof window.teamWarsPage==='function'&&!!window.PPCTeamWarsScoutingDropdown&&!!window.PPCProfileMedia,label:'Team Wars',scripts:profileTeamScripts},
     about:{ready:()=>!!window.PPCGate6AboutStatus,label:'About & Privacy',scripts:['js/features/gate6-about-beta-status-hotfix.js?v=865600']}
   };
