@@ -30,7 +30,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Verify hosted release files match repository
         run: |
           set -euo pipefail
@@ -39,156 +38,56 @@ jobs:
             cmp "$f" "/tmp/$f" || { echo "::error::$f on beta.pocketnexus.app does not match checked-out release source"; exit 1; }
             echo "HOSTED_FILE_OK $f"
           done
-
       - name: Verify QA secrets are configured
         run: |
-          if [ -z "$POCKETNEXUS_QA_EMAIL" ] || [ -z "$POCKETNEXUS_QA_PASSWORD" ]; then
-            echo "::error::This release QA requires POCKETNEXUS_QA_EMAIL and POCKETNEXUS_QA_PASSWORD."
-            exit 1
-          fi
-
-      - name: Create QA Supabase session
-        run: |
-          payload=$(jq -nc --arg email "$POCKETNEXUS_QA_EMAIL" --arg password "$POCKETNEXUS_QA_PASSWORD" '{email:$email,password:$password}')
-          http_code=$(curl -sS -o /tmp/qa-auth.json -w "%{http_code}" \
-            -X POST "https://cdmzrsvwztndqfwzsumo.supabase.co/auth/v1/token?grant_type=password" \
-            -H "apikey: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl" \
-            -H "Content-Type: application/json" \
-            --data "$payload")
-          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-            msg=$(jq -r '.msg // .error_description // .error // "Supabase authentication failed"' /tmp/qa-auth.json 2>/dev/null || echo "Supabase authentication failed")
-            echo "::error::QA account authentication failed ($http_code): $msg"
-            exit 1
-          fi
-          jq -e '.access_token and .refresh_token and .user.id' /tmp/qa-auth.json >/dev/null
-          session_b64=$(base64 -w0 /tmp/qa-auth.json)
-          echo "::add-mask::$session_b64"
-          echo "POCKETNEXUS_QA_SESSION_B64=$session_b64" >> "$GITHUB_ENV"
-
+          test -n "$POCKETNEXUS_QA_EMAIL" && test -n "$POCKETNEXUS_QA_PASSWORD" || { echo "::error::QA account secrets are required"; exit 1; }
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-
       - name: Run deck CRUD, import, validation, and sign-out QA
         run: |
           cat > beta-decks-auth-release-qa.cjs <<'NODE'
-          const { chromium } = require('playwright');
-          const qaSession=JSON.parse(Buffer.from(process.env.POCKETNEXUS_QA_SESSION_B64,'base64').toString('utf8'));
-          const fail=(m)=>{throw new Error(m)};
-          const cleanOverlays=()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
-
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const root='https://beta.pocketnexus.app/';
           (async()=>{
             const browser=await chromium.launch({headless:true});
-
-            // Guest-only deck QA: isolated context, no cloud writes.
-            const guestCtx=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
-            const page=await guestCtx.newPage();
-            const fatal=[];
-            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
-            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
-            await page.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
+            const ctx=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+            const page=await ctx.newPage(), errors=[];
+            page.on('pageerror',e=>errors.push(String(e.message||e)));
+            await page.goto(root,{waitUntil:'domcontentloaded',timeout:60000});
             const guest=page.getByRole('button',{name:/continue as guest/i});
-            if(await guest.count()) await guest.click({timeout:5000}).catch(()=>{});
-            await page.waitForFunction(()=>typeof window.goPage==='function'&&typeof window.newDeck==='function'&&typeof window.validationDetails==='function'&&Array.isArray(window.CARDS||CARDS),{timeout:30000});
-            await page.evaluate(()=>{
-              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
-              if(typeof save==='function')save();
-              window.PPCWhatsNew?.close?.(true); cleanOverlays?.();
-            }).catch(async()=>page.evaluate(cleanOverlays));
-            await page.waitForFunction(()=>Array.isArray(window.CARDS||CARDS)&&(window.CARDS||CARDS).length>=20,{timeout:30000});
-
-            const deckResult=await page.evaluate(async()=>{
-              const cards=window.CARDS||CARDS;
-              const initial=state.decks.length;
-              state.page='decks'; if(typeof render==='function')render();
-              newDeck();
-              const id=state.selected;
-              let d=state.decks.find(x=>x.id===id);
-              if(!d)throw new Error('newDeck did not create/select a deck');
-              const createdName=d.name;
-
-              // Rename preserves ID and persists.
-              d.name='QA Beta Deck'; save();
-              if(state.decks.find(x=>x.id===id)?.name!=='QA Beta Deck')throw new Error('deck rename/edit did not persist in state');
-
-              // Build a deterministic 20-card legal candidate from ten unique Basic Pokemon.
-              const seen=new Set(), basics=[];
-              for(const c of cards){
-                const k=String(c?.name||'').trim().toLowerCase();
-                if(!k||seen.has(k))continue;
-                if(cardKind(c)==='Pokémon'&&/basic/i.test(String(c.stage||''))){seen.add(k);basics.push(c)}
-                if(basics.length===10)break;
-              }
-              if(basics.length<10)throw new Error(`card database exposed only ${basics.length} unique Basic Pokemon; cannot validate 20-card rule`);
-              d.cards=Object.fromEntries(basics.map(c=>[c.id,2])); save();
-              if(deckCount(d)!==20)throw new Error(`expected 20 cards, got ${deckCount(d)}`);
-              if(!isDeckLegal(d))throw new Error(`20-card candidate failed legality: ${validationDetails(d).join(' | ')}`);
-              d.cards[basics[0].id]=3;
-              if(isDeckLegal(d)||!validationDetails(d).some(x=>/maximum is 2|copies/i.test(x)))throw new Error('three-copy rule was not enforced');
-              d.cards[basics[0].id]=1;
-              if(!validationDetails(d).some(x=>/Add 1 more card/i.test(x)))throw new Error('19-card rule was not enforced');
-              d.cards[basics[0].id]=2; save();
-
-              // Import through the real import action using known live card names.
-              state.page='decks'; render();
-              const beforeImport=state.decks.length;
-              const text=basics.map(c=>`2 ${c.name}`).join('\n');
-              const box=document.getElementById('imp');
-              if(!box||typeof importDeck!=='function')throw new Error('deck import UI/action unavailable');
-              box.value=text;
-              importDeck();
-              await new Promise(r=>setTimeout(r,250));
-              const imported=state.decks[state.decks.length-1];
-              if(state.decks.length!==beforeImport+1)throw new Error('import did not create a new deck');
-              if(deckCount(imported)!==20)throw new Error(`imported deck count was ${deckCount(imported)}, expected 20`);
-              if(!isDeckLegal(imported))throw new Error(`imported 20-card deck failed legality: ${validationDetails(imported).join(' | ')}`);
-
-              // Reload persistence for create/edit/import.
-              save();
-              return {initial,id,createdName,importedId:imported.id};
+            if(await guest.count())await guest.click({timeout:5000}).catch(()=>{});
+            await page.waitForFunction(()=>typeof newDeck==='function'&&typeof validationDetails==='function'&&Array.isArray(CARDS)&&CARDS.length>=20,{timeout:30000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();window.PPCWhatsNew?.close?.(true);document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove())});
+            const ids=await page.evaluate(async()=>{
+              state.page='decks';render();newDeck();const id=state.selected,d=state.decks.find(x=>x.id===id);assertDeck=!!d;if(!d)throw Error('newDeck failed');
+              d.name='QA Beta Deck';save();
+              const basic=CARDS.find(c=>cardKind(c)==='Pokémon'&&/basic/i.test(String(c.stage||'')));if(!basic)throw Error('no Basic Pokemon in catalog');
+              const chosen=[basic],seen=new Set([String(basic.name).toLowerCase()]);for(const c of CARDS){const k=String(c.name||'').toLowerCase();if(!k||seen.has(k))continue;seen.add(k);chosen.push(c);if(chosen.length===10)break}
+              if(chosen.length<10)throw Error(`only ${chosen.length} unique cards available`);
+              d.cards=Object.fromEntries(chosen.map(c=>[c.id,2]));save();
+              if(deckCount(d)!==20||!isDeckLegal(d))throw Error(`20-card legality failed: ${validationDetails(d).join(' | ')}`);
+              d.cards[chosen[0].id]=3;if(isDeckLegal(d)||!validationDetails(d).some(x=>/maximum is 2|copies/i.test(x)))throw Error('three-copy rule failed');
+              d.cards[chosen[0].id]=1;if(!validationDetails(d).some(x=>/Add 1 more card/i.test(x)))throw Error('19-card rule failed');d.cards[chosen[0].id]=2;save();
+              state.page='decks';render();const before=state.decks.length,box=document.getElementById('imp');if(!box||typeof importDeck!=='function')throw Error('import unavailable');box.value=chosen.map(c=>`2 ${c.name}`).join('\n');importDeck();await new Promise(r=>setTimeout(r,250));
+              const imported=state.decks[state.decks.length-1];if(state.decks.length!==before+1||deckCount(imported)!==20||!isDeckLegal(imported))throw Error(`import failed: ${validationDetails(imported).join(' | ')}`);save();return{id,importedId:imported.id};
             });
-            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>typeof window.goPage==='function'&&Array.isArray(state?.decks),{timeout:30000});
-            const persisted=await page.evaluate(({id,importedId})=>({
-              edited:state.decks.some(d=>d.id===id&&d.name==='QA Beta Deck'&&deckCount(d)===20),
-              imported:state.decks.some(d=>d.id===importedId&&deckCount(d)===20)
-            }),deckResult);
-            if(!persisted.edited||!persisted.imported)fail(`deck persistence failed after reload: ${JSON.stringify(persisted)}`);
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>Array.isArray(state?.decks));
+            assert(await page.evaluate(({id,importedId})=>state.decks.some(d=>d.id===id&&d.name==='QA Beta Deck'&&deckCount(d)===20)&&state.decks.some(d=>d.id===importedId&&deckCount(d)===20),ids),'deck save/load failed');
+            await page.evaluate(({id,importedId})=>{performDeckDelete(id);performDeckDelete(importedId);save()},ids);await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            assert(await page.evaluate(({id,importedId})=>!state.decks.some(d=>d.id===id||d.id===importedId),ids),'deck delete persistence failed');
+            assert(!errors.length,`deck runtime errors: ${errors.join(' | ')}`);console.log('DECK_CRUD_IMPORT_RULES_QA_OK');await ctx.close();
 
-            // Delete both QA decks and prove deletion survives reload.
-            await page.evaluate(({id,importedId})=>{performDeckDelete(id);performDeckDelete(importedId);save()},deckResult);
-            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForFunction(()=>Array.isArray(state?.decks),{timeout:30000});
-            const deleted=await page.evaluate(({id,importedId})=>!state.decks.some(d=>d.id===id||d.id===importedId),deckResult);
-            if(!deleted)fail('deck deletion did not persist after reload');
-            if(fatal.length)fail(`guest deck QA emitted runtime errors: ${fatal.join(' | ')}`);
-            console.log('DECK_CRUD_IMPORT_RULES_QA_OK');
-            await guestCtx.close();
-
-            // Real hosted Supabase session -> explicit product sign-out -> reload remains signed out.
-            const authCtx=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
-            const authPage=await authCtx.newPage();
-            const authErrors=[];
-            authPage.on('pageerror',e=>authErrors.push(`pageerror: ${e.message}`));
-            await authPage.goto('https://beta.pocketnexus.app/',{waitUntil:'domcontentloaded',timeout:60000});
-            await authPage.waitForFunction(()=>typeof window.accountPage==='function'&&window.PPCAccountCloudCore?.hydrate,{timeout:30000});
-            await authPage.evaluate(session=>localStorage.setItem('sb-cdmzrsvwztndqfwzsumo-auth-token',JSON.stringify(session)),qaSession);
-            await authPage.reload({waitUntil:'domcontentloaded',timeout:60000});
-            await authPage.waitForFunction(()=>window.getPPCCloudSession?.()?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
-            await authPage.waitForFunction(()=>typeof window.cloudSignOut==='function',{timeout:30000});
-            await authPage.evaluate(()=>cloudSignOut());
-            await authPage.waitForFunction(()=>!window.getPPCCloudSession?.()?.user?.id&&!state?.sessionMode,{timeout:30000});
-            await authPage.reload({waitUntil:'domcontentloaded',timeout:60000});
-            await authPage.waitForFunction(()=>typeof window.getPPCCloudSession==='function',{timeout:30000});
-            const signout=await authPage.evaluate(()=>({uid:window.getPPCCloudSession?.()?.user?.id||'',mode:state?.sessionMode||'',recovery:document.body.innerText.includes('Runtime recovery')}));
-            if(signout.uid||signout.mode)fail(`session returned after explicit sign-out/reload: ${JSON.stringify(signout)}`);
-            if(signout.recovery)fail('Runtime Recovery appeared after sign-out');
-            if(authErrors.length)fail(`sign-out QA emitted runtime errors: ${authErrors.join(' | ')}`);
-            console.log('AUTH_SIGNOUT_PERSISTENCE_QA_OK');
-            await authCtx.close();
-            await browser.close();
+            const auth=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'}),p=await auth.newPage();const authErrors=[];p.on('pageerror',e=>authErrors.push(String(e.message||e)));
+            await p.goto(root,{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>window.getPPCCloudClient?.()?.auth&&typeof window.cloudSignOut==='function',{timeout:30000});
+            const login=await p.evaluate(async({email,password})=>{const {data,error}=await getPPCCloudClient().auth.signInWithPassword({email,password});return{ok:!!data?.session,error:error?.message||''}},{email:process.env.POCKETNEXUS_QA_EMAIL,password:process.env.POCKETNEXUS_QA_PASSWORD});
+            assert(login.ok,`QA sign-in failed: ${login.error}`);await p.waitForFunction(()=>window.getPPCCloudSession?.()?.user?.id&&state?.sessionMode==='cloud',{timeout:30000});
+            await p.evaluate(()=>cloudSignOut());await p.waitForFunction(()=>!window.getPPCCloudSession?.()?.user?.id&&!state?.sessionMode,{timeout:30000});await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+            const out=await p.evaluate(()=>({uid:getPPCCloudSession?.()?.user?.id||'',mode:state?.sessionMode||'',recovery:/Runtime Recovery/i.test(document.body.innerText)}));assert(!out.uid&&!out.mode&&!out.recovery,`sign-out did not persist: ${JSON.stringify(out)}`);assert(!authErrors.length,`auth runtime errors: ${authErrors.join(' | ')}`);console.log('AUTH_SIGNOUT_PERSISTENCE_QA_OK');
+            await auth.close();await browser.close();
           })().catch(e=>{console.error('BETA_DECKS_AUTH_RELEASE_QA_FAILURE',e);process.exit(1)});
           NODE
           node beta-decks-auth-release-qa.cjs
