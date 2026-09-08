@@ -1,6 +1,6 @@
 name: Pocket Coach Deck Intelligence Audit QA
 
-# Integration gate rerun after Matchup-Aware wiring.
+# RC1 regression rerun after Before/After Deck Comparison integration.
 on:
   push:
     branches: [main]
