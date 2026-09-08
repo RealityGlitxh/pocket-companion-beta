@@ -49,18 +49,23 @@ function sourceUrl(m=currentMode()){
   const creds=readCreds();const u=new URL('overlay.html',location.href);u.searchParams.set('mode',m);if(creds?.overlay_id)u.searchParams.set('overlay',creds.overlay_id);u.searchParams.set('v','871000');return u.href;
 }
 async function copySource(m=currentMode()){
-  try{await ensureRemote();await publish(true);const u=sourceUrl(m);if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else copyFallbackDialog?.(u,'OBS Browser Source');ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
+  try{await ensureRemote();await publish(true);const u=sourceUrl(m);if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
 }
-async function openTest(m=currentMode()){try{await ensureRemote();await publish(true);window.open(sourceUrl(m),'_blank')}catch(e){ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
+async function openTest(m=currentMode()){try{await ensureRemote();await publish(true);window.open(sourceUrl(m),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
 async function regenerate(m=currentMode()){
   if(busy)return;busy=true;
   try{
-    const c=client(),old=readCreds();if(old&&c)await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});clearCreds();lastSerialized='';await createRemote();busy=false;await publish(true);ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl(m)
-  }catch(e){lastError=e?.message||String(e);ppcNotice?.('Could not regenerate the overlay URL: '+lastError)}finally{busy=false}
+    const c=client(),old=readCreds();if(old&&c)await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});clearCreds();lastSerialized='';await createRemote();busy=false;await publish(true);window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl(m)
+  }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError)}finally{busy=false}
 }
 function statusText(kind){if(kind==='connected')return 'Remote OBS: Ready';if(kind==='error')return 'Remote OBS: Connection issue';return 'Remote OBS: Connecting…'}
 function updateUi(kind='connecting'){
-  document.querySelectorAll('[data-pn-remote-obs-status]').forEach(el=>{el.textContent=statusText(kind);el.dataset.state=kind;el.title=kind==='error'?lastError:''});
+  const text=statusText(kind),title=kind==='error'?lastError:'';
+  document.querySelectorAll('[data-pn-remote-obs-status]').forEach(el=>{
+    if(el.textContent!==text)el.textContent=text;
+    if(el.dataset.state!==kind)el.dataset.state=kind;
+    if(el.title!==title)el.title=title;
+  });
 }
 function setupHtml(m){return `<div class="pnObsRemoteSetup" data-pn-remote-obs="${m}" style="margin:12px 0;padding:14px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff08"><div class="between" style="gap:12px;align-items:flex-start"><div><span class="pnObsEyebrow">OBS BROWSER SOURCE</span><h3 style="margin:4px 0">Remote OBS Overlay</h3><p class="muted" style="margin:0">Works in OBS even when it does not share PocketNexus browser storage.</p></div><span class="pnObsStatus active" data-pn-remote-obs-status>Remote OBS: Connecting…</span></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="secondary" onclick="PPCStreamerOBSRemote.copySource('${m}')">Copy Overlay URL</button><button class="secondary" onclick="PPCStreamerOBSRemote.openTest('${m}')">Test Overlay</button><button class="secondary" onclick="PPCStreamerOBSRemote.regenerate('${m}')">Regenerate URL</button><span class="muted tiny">Recommended: 1920 × 1080</span></div></div>`}
 function inject(){
