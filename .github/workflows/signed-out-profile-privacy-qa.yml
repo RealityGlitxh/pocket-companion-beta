@@ -1,0 +1,90 @@
+name: PocketNexus Signed-Out Profile Privacy QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/profile_teamwars.js"
+      - "js/app/account_startup.js"
+      - "js/core/account-cloud-*.js"
+      - "js/features/route-feature-loader-v8.64.1.js"
+      - ".github/workflows/signed-out-profile-privacy-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-out-profile-privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4175 >/tmp/pocketnexus-profile-privacy.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4175/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-profile-privacy.log
+          exit 1
+      - name: Verify signed-out Profile does not expose private account residue
+        run: |
+          cat > signed-out-profile-privacy-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const SENTINEL_EMAIL='private-sentinel-user@example.invalid';
+          const SENTINEL_TOKEN='PRIVATE_SENTINEL_TOKEN_9f1d';
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4175/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof goPage==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(({email,token})=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              try{cloudSession=null}catch{};
+              try{cloudProfile={id:'stale-private-profile',display_name:'Private Sentinel',username:'private-sentinel',email,private_note:token}}catch{}
+              window.cloudSession=null;
+              window.cloudProfile={id:'stale-private-profile',display_name:'Private Sentinel',username:'private-sentinel',email,private_note:token};
+              try{localStorage.setItem('pn_private_sentinel',JSON.stringify({email,token}))}catch{}
+              save();goPage('profile');
+            },{email:SENTINEL_EMAIL,token:SENTINEL_TOKEN});
+            await page.waitForFunction(()=>typeof profilePage==='function',{timeout:60000});
+            await page.waitForTimeout(1800);await clearOverlays(page);
+            const snapshot=await page.evaluate(()=>({text:document.getElementById('app')?.innerText||'',html:document.getElementById('app')?.innerHTML||'',signed:typeof ptSigned==='function'?ptSigned():null,recovery:document.body.innerText.includes('Runtime Recovery')}));
+            assert(snapshot.signed===false,'Profile privacy QA unexpectedly became signed in');
+            assert(!snapshot.text.includes(SENTINEL_EMAIL),'signed-out Profile exposed stale private email');
+            assert(!snapshot.text.includes(SENTINEL_TOKEN),'signed-out Profile exposed stale private token/note');
+            assert(!snapshot.html.includes(SENTINEL_EMAIL),'signed-out Profile HTML contained stale private email');
+            assert(!snapshot.html.includes(SENTINEL_TOKEN),'signed-out Profile HTML contained stale private token/note');
+            assert(!snapshot.recovery,'Runtime Recovery appeared on signed-out Profile');
+            assert(/sign in|public profile|player search|profile/i.test(snapshot.text),'signed-out Profile did not render a safe guest/public state');
+            const overflow=await page.evaluate(()=>Math.max(0,document.documentElement.scrollWidth-window.innerWidth));
+            assert(overflow<=12,`signed-out Profile mobile horizontal overflow ${overflow}px`);
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof goPage==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{try{cloudSession=null}catch{};window.cloudSession=null;state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();goPage('profile')});
+            await page.waitForFunction(()=>typeof profilePage==='function',{timeout:60000});
+            await page.waitForTimeout(1200);await clearOverlays(page);
+            const after=await page.locator('#app').innerText();
+            assert(!after.includes(SENTINEL_EMAIL)&&!after.includes(SENTINEL_TOKEN),'private sentinel appeared after signed-out reload');
+            assert(!after.includes('Runtime Recovery'),'Runtime Recovery appeared after signed-out Profile reload');
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('SIGNED_OUT_PROFILE_PRIVACY_QA_OK',JSON.stringify({overflow}));
+          })().catch(e=>{console.error('SIGNED_OUT_PROFILE_PRIVACY_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node signed-out-profile-privacy-qa.cjs
