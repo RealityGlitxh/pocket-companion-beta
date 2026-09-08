@@ -28,6 +28,17 @@
     return true;
   }
 
+  // Rank tools are lazy-loaded. Re-install immediately after that route bundle
+  // resolves so the first ended-season render cannot race the polling fallback.
+  if(window.PPCFeatureLoader?.loadRoute&&!window.PPCFeatureLoader.loadRoute.__endedSeasonHook){
+    const baseLoadRoute=window.PPCFeatureLoader.loadRoute.bind(window.PPCFeatureLoader);
+    const hooked=function(page){
+      return Promise.resolve(baseLoadRoute(page)).then(result=>{if(page==='rank')install();return result});
+    };
+    hooked.__endedSeasonHook=true;
+    window.PPCFeatureLoader.loadRoute=hooked;
+  }
+
   if(!install()){
     let tries=0;
     const timer=setInterval(()=>{if(install()||++tries>240)clearInterval(timer)},50);
