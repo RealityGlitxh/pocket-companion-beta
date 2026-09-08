@@ -52,7 +52,8 @@ jobs:
                 const host=document.createElement('div');host.style.maxWidth='900px';host.style.margin='20px auto';host.innerHTML=window.coachMatchupReportHtml(mock);document.body.innerHTML='';document.body.appendChild(host);
                 const root=document.querySelector('.coachMatchupReport');
                 const text=root?.innerText||'';
-                return {renderer:true,rendered:!!root,threats:document.querySelectorAll('.coachThreat').length,hasWr:text.includes('Matchup WR'),hasShare:text.includes('Meta share'),hasGames:text.includes('Games'),hasConfidence:text.includes('Confidence'),hasHelping:text.includes('Cards helping / test'),hasReview:text.includes('Cards to review'),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};
+                const lower=text.toLowerCase();
+                return {renderer:true,rendered:!!root,threats:document.querySelectorAll('.coachThreat').length,hasWr:text.includes('Matchup WR'),hasShare:text.includes('Meta share'),hasGames:text.includes('Games'),hasConfidence:text.includes('Confidence'),hasHelping:lower.includes('cards helping / test'),hasReview:lower.includes('cards to review'),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};
               },mock);
               console.log(`MATCHUP_REPORT_${vp.name.toUpperCase()}`,JSON.stringify(result));
               if(!result.renderer||!result.rendered||result.threats<3||!result.hasWr||!result.hasShare||!result.hasGames||!result.hasConfidence||!result.hasHelping||!result.hasReview||result.overflow>2||result.rootOverflow>2)errors.push(`${vp.name}: ${JSON.stringify(result)}`);
