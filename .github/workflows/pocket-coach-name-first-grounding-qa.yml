@@ -1,0 +1,52 @@
+name: Pocket Coach Name-First Card Grounding QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/services/card-service.js"
+      - "supabase/functions/pocket-coach/name-first-production-v8.71.ts"
+      - ".github/workflows/pocket-coach-name-first-grounding-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  name-first-grounding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify normalized unique-name resolution and safe ambiguity
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          let src=fs.readFileSync('js/services/card-service.js','utf8')+'\n;globalThis.__CardService=CardService;';
+          const ctx={};vm.createContext(ctx);vm.runInContext(src,ctx);
+          const S=ctx.__CardService;
+          const canonical={id:'B4a-14',setCode:'B4a',number:14,name:"Team Rocket's Articuno ex",hp:130};
+          const variants=["Team Rocket’s Articuno ex","Team Rocket's Articuno ex","team rocket’s articuno ex"," TEAM ROCKET'S ARTICUNO EX "];
+          const cards=[canonical,{id:'A1-1',name:'Pikachu'}],map=S.buildNameMap(cards);
+          for(const name of variants){const r=S.resolveByName(cards,map,name);assert(r.status==='resolved',`name did not resolve: ${name}`);assert(r.card===canonical,`variant resolved to wrong card: ${name}`)}
+          const duplicateA={id:'QA-1',name:'Example ex',hp:100},duplicateB={id:'QA-2',name:'Example ex',hp:120};
+          const dup=[duplicateA,duplicateB],dupMap=S.buildNameMap(dup),amb=S.resolveByName(dup,dupMap,'EXAMPLE EX');
+          assert(amb.status==='ambiguous'&&amb.cards.length===2,'duplicate normalized names must remain ambiguous');
+          assert(S.getByName(dup,dupMap,'Example ex')===null,'getByName must not silently choose an ambiguous card');
+
+          const bridge=fs.readFileSync('supabase/functions/pocket-coach/name-first-production-v8.71.ts','utf8');
+          assert(bridge.includes("ARTICUNO_NAME=\"Team Rocket's Articuno ex\""),'verified Articuno supplement missing');
+          assert(bridge.includes("id:'B4a-14'")&&bridge.includes("number:14"),'canonical internal identity missing');
+          assert(bridge.includes("hp:130")&&bridge.includes("retreat:2"),'verified gameplay identity incomplete');
+          assert(bridge.includes("name:'Ice Wing'")&&bridge.includes("damage:'40'")&&bridge.includes("cost:['Water','Colorless']"),'Ice Wing verification missing');
+          assert(bridge.includes("name:'Hailstorm'")&&bridge.includes("damage:'130'")&&bridge.includes("cost:['Water','Water','Colorless']"),'Hailstorm verification missing');
+          assert(bridge.includes('This attack also does 20 damage to each of your Benched Pokémon.'),'Hailstorm effect verification missing');
+          assert(bridge.includes('alternatePrintNumbers:[80,89]'),'alternate-print equivalence metadata missing');
+          assert(bridge.includes('Never overwrite a source record'),'upstream-source precedence guardrail missing');
+          assert(bridge.includes('await import(VALIDATED_COACH)'),'validated Coach must load only after supplement bridge');
+          console.log('POCKET_COACH_NAME_FIRST_GROUNDING_QA_OK');
+          NODE
