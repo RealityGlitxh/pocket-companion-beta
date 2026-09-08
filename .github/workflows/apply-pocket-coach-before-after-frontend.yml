@@ -1,0 +1,48 @@
+name: Apply Pocket Coach Before After Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-pocket-coach-before-after-frontend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix state access and load comparison feature
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('js/features/pocket-coach-deck-comparison-v8.65.0.js')
+          s=p.read_text()
+          old="if(!window.state||!Array.isArray(window.state.decks)){alert('Deck storage is unavailable.');return}window.state.decks.push(d);window.state.selected=d.id;"
+          new="if(typeof state==='undefined'||!Array.isArray(state.decks)){alert('Deck storage is unavailable.');return}state.decks.push(d);state.selected=d.id;"
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('index.html');s=p.read_text()
+          anchor='<script src="js/features/pocket-coach-matchup-drilldown-v8.65.0.js?v=865020"></script>'
+          load='<script src="js/features/pocket-coach-deck-comparison-v8.65.0.js?v=865030"></script>'
+          assert anchor in s
+          if load not in s:s=s.replace(anchor,anchor+'\n'+load,1)
+          p.write_text(s)
+          PY
+      - name: Verify frontend integration
+        run: |
+          grep -q "typeof state==='undefined'" js/features/pocket-coach-deck-comparison-v8.65.0.js
+          grep -q "pocket-coach-deck-comparison-v8.65.0.js?v=865030" index.html
+          node --check js/features/pocket-coach-deck-comparison-v8.65.0.js
+      - name: Commit frontend comparison
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/features/pocket-coach-deck-comparison-v8.65.0.js index.html
+          git diff --cached --quiet || git commit -m 'feat: wire Pocket Coach before-after deck comparison'
+          git push
