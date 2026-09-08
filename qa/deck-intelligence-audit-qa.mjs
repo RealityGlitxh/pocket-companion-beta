@@ -17,6 +17,8 @@ const catalog = [
   {id:'A1-14',set:'A1',number:'14',name:'Trainer Five',type:'Item'},
   {id:'A1-15',set:'A1',number:'15',name:'Trainer Six',type:'Tool'},
   {id:'A1-16',set:'A1',number:'16',name:'Trainer Seven',type:'Stadium'},
+  {id:'A1-17',set:'A1',number:'17',name:'Trainer Eight',type:'Item'},
+  {id:'A1-18',set:'A1',number:'18',name:'Trainer Nine',type:'Supporter'},
   {id:'A1-20',set:'A1',number:'20',name:'Mystery Mon',type:'Pokemon',stage:''}
 ];
 const card=(name,number,qty=2)=>({name,setCode:'A1',number,qty});
@@ -75,7 +77,7 @@ const swapDeck={id:'swap',name:'Swap Test',energy:'Lightning',cards:[
   {name:'Alpha ex',setCode:'A1',number:2,qty:1},
   card('Basic Beta',3),card('Trainer Two',11),card('Trainer Three',12),card('Trainer Four',13),
   card('Trainer Five',14),card('Trainer Six',15),card('Trainer Seven',16),
-  {name:'Trainer Nine',qty:2}
+  card('Trainer Nine',18,2)
 ]};
 const swap=buildDeckAudits([swapDeck],catalog)[0];
 assert.equal(swap.totalCards,20);
@@ -90,30 +92,31 @@ const overDeck={...legalDeck,id:'over',name:'Over Test',cards:[...legalDeck.card
 const over=buildDeckAudits([overDeck],catalog)[0];
 assert.equal(over.totalCards,22);
 assert.ok(over.optimization.requiredCuts.some(x=>x.reason==='deck-size-overage'&&x.quantity===2));
-assert.ok(over.optimization.guardrails.some(x=>x.includes('cannot safely choose')===false) || over.optimization.guardrails.length>0);
 
 const unknownStageDeck={id:'unknown',name:'Unknown Stage',energy:['Psychic'],cards:[
   {name:'Mystery Mon',setCode:'A1',number:20,qty:2},
   card('Trainer One',10),card('Trainer Two',11),card('Trainer Three',12),card('Trainer Four',13),
   card('Trainer Five',14),card('Trainer Six',15),card('Trainer Seven',16),
-  {name:'Trainer Eight',qty:2},{name:'Trainer Nine',qty:2}
+  card('Trainer Eight',17,2),card('Trainer Nine',18,2)
 ]};
 const unknown=buildDeckAudits([unknownStageDeck],catalog)[0];
 assert.equal(unknown.counts.basics,0);
 assert.equal(unknown.legality.basicCheckReliable,false);
 assert.equal(unknown.legality.status,'needs-metadata-review');
 assert.ok(!unknown.legality.hardFailures.some(x=>x.rule==='basic-pokemon-required'));
-assert.ok(unknown.optimization.reviewCutCandidates.some(x=>x.confidence==='data-quality') || unknown.consistencySignals.some(x=>x.type==='unresolved-card-metadata'));
+assert.ok(unknown.consistencySignals.some(x=>x.type==='unresolved-card-metadata'));
 
 const lowBasicDeck={id:'low-basic',name:'Low Basic',energy:'Fire',cards:[
   {name:'Basic Alpha',setCode:'A1',number:1,qty:1},
   {name:'Alpha ex',setCode:'A1',number:2,qty:2},
   card('Trainer One',10),card('Trainer Two',11),card('Trainer Three',12),card('Trainer Four',13),
   card('Trainer Five',14),card('Trainer Six',15),card('Trainer Seven',16),
-  {name:'Trainer Eight',qty:1},{name:'Trainer Nine',qty:2}
+  card('Trainer Eight',17,1),card('Trainer Nine',18,2)
 ]};
 const lowBasic=buildDeckAudits([lowBasicDeck],catalog)[0];
+assert.equal(lowBasic.totalCards,20);
 assert.equal(lowBasic.counts.basics,1);
+assert.equal(lowBasic.legality.basicCheckReliable,true);
 assert.ok(lowBasic.optimization.addCandidates.some(x=>x.name==='Basic Alpha'&&x.reason==='increase-basic-redundancy'&&x.confidence==='strategy-dependent'));
 
 assert.deepEqual(buildDeckAudits([legalDeck],catalog),buildDeckAudits([legalDeck],catalog),'audit must be deterministic');
