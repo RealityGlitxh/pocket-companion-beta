@@ -1,0 +1,44 @@
+name: PocketNexus OBS Transport API Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/obs-transport-api-smoke.yml"
+      - "supabase/migrations/*stream_overlay*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://cdmzrsvwztndqfwzsumo.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
+    steps:
+      - name: Create, read, publish, revoke overlay as public browser client
+        shell: bash
+        run: |
+          set -euo pipefail
+          call(){ curl --connect-timeout 5 --max-time 15 -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/$1" -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" --data "$2"; }
+          initial='{"p_state":{"modes":{"ranked":{"rank":{"tier":"QA","points":1000},"record":{"wins":0,"losses":0},"deck":{"name":"QA Initial"}}},"activeMode":"ranked","version":"api-smoke"}}'
+          created=$(call create_stream_overlay "$initial")
+          id=$(jq -r '.overlay_id // empty' <<<"$created")
+          token=$(jq -r '.write_token // empty' <<<"$created")
+          test -n "$id" && test -n "$token"
+          echo "::add-mask::$token"
+          read1=$(call read_stream_overlay "$(jq -nc --arg id "$id" '{p_overlay_id:$id}')")
+          jq -e '.status=="ok" and .state.modes.ranked.rank.points==1000 and .state.modes.ranked.deck.name=="QA Initial"' <<<"$read1" >/dev/null
+          next='{"modes":{"ranked":{"rank":{"tier":"QA","points":1100},"record":{"wins":1,"losses":0},"deck":{"name":"QA Updated"}}},"activeMode":"ranked","version":"api-smoke"}'
+          pub=$(call publish_stream_overlay "$(jq -nc --arg id "$id" --arg token "$token" --argjson state "$next" '{p_overlay_id:$id,p_write_token:$token,p_state:$state}')")
+          jq -e '.ok==true' <<<"$pub" >/dev/null
+          read2=$(call read_stream_overlay "$(jq -nc --arg id "$id" '{p_overlay_id:$id}')")
+          jq -e '.status=="ok" and .state.modes.ranked.rank.points==1100 and .state.modes.ranked.record.wins==1 and .state.modes.ranked.deck.name=="QA Updated"' <<<"$read2" >/dev/null
+          revoked=$(call revoke_stream_overlay "$(jq -nc --arg id "$id" --arg token "$token" '{p_overlay_id:$id,p_write_token:$token}')")
+          jq -e '.ok==true and .status=="revoked"' <<<"$revoked" >/dev/null
+          read3=$(call read_stream_overlay "$(jq -nc --arg id "$id" '{p_overlay_id:$id}')")
+          jq -e '.status=="revoked"' <<<"$read3" >/dev/null
+          echo OBS_TRANSPORT_API_SMOKE_OK
