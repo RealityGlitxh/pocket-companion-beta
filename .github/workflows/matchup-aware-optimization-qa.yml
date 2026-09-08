@@ -1,6 +1,6 @@
 name: Pocket Coach Matchup-Aware Optimization QA
 
-# Integration gate rerun for Matchup-Aware Pocket Coach.
+# Integration gate rerun after Matchup Report response exposure.
 on:
   push:
     paths:
