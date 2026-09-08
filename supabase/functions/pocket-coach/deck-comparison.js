@@ -1,7 +1,7 @@
 // RC1 deterministic proposal helper; changing this file retriggers the surgical comparison integration QA.
 export function buildDeckComparisonProposal({deck=null,remove=null,add=null}={}){
   const norm=v=>String(v??'').normalize('NFKC').toLowerCase().replace(/[’‘`´]/g,"'").replace(/[^a-z0-9' -]/g,' ').replace(/\s+/g,' ').trim();
-  const cards=Array.isArray(deck?.cards)?deck.cards.map(c=>({...c,qty:Math.max(1,Number(c?.qty??c?.quantity??1)||1)}):[];
+  const cards=Array.isArray(deck?.cards)?deck.cards.map(c=>({...c,qty:Math.max(1,Number(c?.qty??c?.quantity??1)||1)})):[];
   if(!deck||!cards.length)return {ok:false,error:'A structured deck snapshot is required.'};
   if(!remove?.cardName||!add?.cardName)return {ok:false,error:'A structured remove and add recommendation is required.'};
   if(!String(add?.set||'').trim()||!String(add?.number??'').trim())return {ok:false,error:'The recommended add card is missing verified set/card identity.'};
