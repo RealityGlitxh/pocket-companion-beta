@@ -1,5 +1,6 @@
 name: Pocket Coach Before After QA
 
+# RC1 regression rerun after Personal Matchup Learning integration.
 on:
   push:
     branches: [main]
@@ -72,13 +73,11 @@ jobs:
           const names=['QA Basic A','QA Basic B','QA Basic C','QA Basic D','QA Basic E','QA Trainer A','QA Trainer B','QA Trainer C','QA Review','QA Tech'];
           const cards=names.map((name,i)=>({id:`qa-${i+1}`,name,category:i<5?'Pokémon':'Trainer',stage:i<5?'Basic':'Item',setCode:'QA',setName:'QA',number:String(i+1),image:'',rarity:''}));
           const snapshot={id:'qa-deck',name:'QA Deck',archetype:'QA Archetype',energy:'Lightning',cards:names.slice(0,9).map((name,i)=>({id:`qa-${i+1}`,name,setCode:'QA',number:String(i+1),qty:i===0?4:2}))};
-          // total = 4 + 8*2 = 20; QA Review is the ninth card.
           const proposed=JSON.parse(JSON.stringify(snapshot));
           proposed.name='QA Deck — Coach Preview';proposed.id='qa-deck-coach-preview';
           proposed.cards=proposed.cards.map(x=>({...x}));
           const review=proposed.cards.find(x=>x.name==='QA Review');review.qty-=1;
           proposed.cards.push({id:'qa-10',name:'QA Tech',setCode:'QA',number:'10',qty:1});
-          const audit=(d)=>({deckId:d.id,deckName:d.name,totalCards:d.cards.reduce((n,x)=>n+x.qty,0),counts:{basics:5,pokemon:10,trainers:10},legality:{status:'passes-known-rules',hardFailures:[]},evolutionIssues:[],consistencySignals:[]});
           const report=[{deckId:'qa-deck',deckName:'QA Deck',archetypeName:'QA Archetype',archetypeMatchConfidence:'high',snapshotGeneratedAt:'2026-09-08T04:00:00Z',deckSnapshot:snapshot,metaRecommendations:[{action:'consider-add',cardName:'QA Tech',set:'QA',number:'10',confidence:'medium-meta'}],metaBenchmark:{recentClassifiedDecks:24,reliable:true,unusualReview:[]},topThreats:[{opponentName:'QA Threat',winRate:47,opponentUsagePct:12.5,matches:40,evidence:'high',band:'slightly-unfavorable'}],recommendations:[{action:'consider-matchup-tech',cardName:'QA Tech',set:'QA',number:'10',opponentArchetype:'QA Threat',confidence:'medium-directional',evidence:{deltaWinRate:9.2,cardGames:16,matchupGames:40}},{action:'review-for-matchup',cardName:'QA Review',set:'QA',number:'9',opponentArchetype:'QA Threat',confidence:'review-only',evidence:{deltaWinRate:-8.5,cardGames:14,matchupGames:40}}]}];
           (async()=>{const browser=await chromium.launch({headless:true});
             for(const width of widths){const page=await browser.newPage({viewport:{width,height:900}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
