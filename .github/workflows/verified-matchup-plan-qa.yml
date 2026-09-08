@@ -1,0 +1,26 @@
+name: Pocket Coach Verified Matchup Plan QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/verified-matchup-plan.js'
+      - 'qa/verified-matchup-plan-qa.mjs'
+      - '.github/workflows/verified-matchup-plan-qa.yml'
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'js/features/pocket-coach-matchup-drilldown-v8.65.0.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verified-matchup-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic verified matchup plan QA
+        run: node qa/verified-matchup-plan-qa.mjs
