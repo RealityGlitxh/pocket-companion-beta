@@ -1,0 +1,38 @@
+name: Pocket Coach Matchup History QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/app/ai_coach.js'
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'supabase/migrations/20260908042000_persist_pocket_coach_matchup_reports.sql'
+      - '.github/workflows/pocket-coach-matchup-history-qa.yml'
+  workflow_dispatch:
+
+jobs:
+  persistence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify persistence contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          b=Path('supabase/functions/pocket-coach/index.ts').read_text()
+          f=Path('js/app/ai_coach.js').read_text()
+          m=Path('supabase/migrations/20260908042000_persist_pocket_coach_matchup_reports.sql').read_text()
+          checks={
+            'backend builds one compact report':'const matchupReport=matchupOptimizations.filter' in b,
+            'backend persists report':'matchup_report:matchupReport' in b,
+            'backend returns same report':'matchupReport' in b[b.find('return json({conversationId'):],
+            'history selects report':'model_name,matchup_report' in f,
+            'history hydrates report':'Array.isArray(m.matchup_report)?m.matchup_report:[]' in f,
+            'renderer consumes hydrated property':'Array.isArray(m.matchupReport)' in f,
+            'migration adds jsonb column':'add column if not exists matchup_report jsonb' in m.lower(),
+          }
+          print('MATCHUP_HISTORY_QA_RESULTS',checks)
+          failed=[k for k,v in checks.items() if not v]
+          if failed: raise SystemExit('FAILED: '+', '.join(failed))
+          print('POCKET_COACH_MATCHUP_HISTORY_QA_OK')
+          PY
