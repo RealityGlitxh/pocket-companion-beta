@@ -18,8 +18,29 @@
     console[bad?'warn':'log'](message);
   }
 
+  // bootstrap.js keeps the canonical app state in a global lexical `state`
+  // binding. It is intentionally not a window property, so Backup & Restore
+  // must read and replace that binding rather than maintaining a second copy.
+  function liveState(){
+    try{if(typeof state!=='undefined'&&state&&typeof state==='object')return state}catch{}
+    return window.state&&typeof window.state==='object'?window.state:{};
+  }
+
+  function replaceLiveState(next){
+    let repaired=next;
+    try{if(typeof repairStateShape==='function')repaired=repairStateShape({...next})}
+    catch(e){console.warn('Backup shape repair skipped',e)}
+    try{
+      state=repaired;
+      return state;
+    }catch{
+      window.state=repaired;
+      return window.state;
+    }
+  }
+
   function snapshot(){
-    const clean=JSON.parse(JSON.stringify(window.state||{}));
+    const clean=JSON.parse(JSON.stringify(liveState()));
     return {
       format:'pocketnexus-local-backup',
       version:1,
@@ -56,7 +77,7 @@
   function makeSafetyBackup(){
     try{
       const key=SAFETY_PREFIX+Date.now();
-      localStorage.setItem(key,JSON.stringify(window.state||{}));
+      localStorage.setItem(key,JSON.stringify(liveState()));
       return key;
     }catch{return ''}
   }
@@ -67,13 +88,11 @@
     try{
       const incoming=parseBackup(await file.text());
       makeSafetyBackup();
-      let repaired=incoming;
-      try{if(typeof window.repairStateShape==='function')repaired=window.repairStateShape({...incoming})}catch(e){console.warn('Backup shape repair skipped',e)}
-      window.state=repaired;
-      try{if(typeof window.ensureStableLocalIds==='function')window.ensureStableLocalIds()}catch{}
-      if(typeof window.save==='function')window.save();
-      else if(typeof window.safeStorageSet==='function'&&typeof window.STORE!=='undefined')window.safeStorageSet(window.STORE,JSON.stringify(window.state));
-      if(typeof window.render==='function')window.render();
+      replaceLiveState(incoming);
+      try{if(typeof ensureStableLocalIds==='function')ensureStableLocalIds()}catch{}
+      if(typeof save==='function')save();
+      else if(typeof window.safeStorageSet==='function'&&typeof window.STORE!=='undefined')window.safeStorageSet(window.STORE,JSON.stringify(liveState()));
+      if(typeof render==='function')render();
       requestAnimationFrame(()=>notice('Local backup restored successfully.'));
     }catch(e){
       console.error('Local backup restore failed',e);
@@ -110,5 +129,5 @@
   window.restorePocketNexusLocalBackup=importLocalBackup;
   window.PPCLocalBackupRestore={exportLocalBackup,importLocalBackup,injectPanel,snapshot};
 
-  try{if(window.state?.page==='account'){window.accountPage?.()}}catch{}
+  try{if(liveState()?.page==='account'){window.accountPage?.()}}catch{}
 })();
