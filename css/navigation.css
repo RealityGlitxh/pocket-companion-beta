@@ -16,6 +16,18 @@
 .headerNav{min-width:0;overflow:visible}
 .headerTools{display:flex;align-items:center;gap:7px;min-width:0}
 
+/* Mobile More sheet: explicit layout/stacking so the bottom-nav button is usable on iOS/WebKit. */
+.mobileMoreBackdrop{position:fixed;inset:0;z-index:160;display:flex;align-items:flex-end;justify-content:center;padding:12px;background:rgba(2,7,13,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);touch-action:manipulation}
+.mobileMoreSheet{position:relative;width:min(680px,100%);max-height:min(86dvh,760px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px;border:1px solid #31475f;border-radius:22px 22px 16px 16px;background:linear-gradient(180deg,#121d2a 0%,#0b131d 100%);box-shadow:0 28px 90px rgba(0,0,0,.52)}
+.mobileMoreHandle{width:42px;height:4px;margin:0 auto 14px;border-radius:999px;background:#41566d}
+.mobileMoreGroup{margin-top:16px}.mobileMoreGroup h3{margin:0 0 8px;color:#8296aa;font-size:.68rem;letter-spacing:.11em;text-transform:uppercase}
+.mobileMoreGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mobileMoreItem{display:grid;grid-template-columns:32px minmax(0,1fr);align-items:center;gap:8px;min-width:0;min-height:52px;padding:9px 10px;background:#0d1722;color:#dce8f4;border:1px solid #263b50;box-shadow:none;text-align:left}
+.mobileMoreItem>span{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#142638;color:#75c9ff}.mobileMoreItem strong{min-width:0;font-size:.76rem;line-height:1.15;overflow-wrap:anywhere}.mobileMoreItem.active{border-color:#41749c;background:#142334}
+body:has(.mobileMoreBackdrop){overflow:hidden}
+@media(max-width:560px){.mobileMoreBackdrop{padding:8px 8px max(8px,env(safe-area-inset-bottom))}.mobileMoreSheet{width:100%;max-height:88dvh;padding:15px 14px calc(18px + env(safe-area-inset-bottom))}.mobileMoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:350px){.mobileMoreGrid{grid-template-columns:1fr}}
+
 /* V8.36.2 global search rebuild */
 .globalSearchOverlay{position:fixed;inset:0;z-index:120;display:flex;align-items:flex-start;justify-content:center;padding:clamp(72px,11vh,118px) 18px 24px}
 .globalSearchBackdrop{position:absolute;inset:0;background:rgba(2,7,13,.78);backdrop-filter:blur(12px)}
