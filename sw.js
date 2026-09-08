@@ -1,5 +1,5 @@
-/* PocketNexus V8.64.2 — closed beta validation service worker */
-const VERSION='v8.64.2-card-detail-enrichment1';
+/* PocketNexus V8.65.0 — mobile display cache refresh */
+const VERSION='v8.65.0-mobile-display1';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;
