@@ -1,6 +1,6 @@
 name: Pocket Coach Verified Card Grounding QA
 
-# RC1 regression rerun after Personal Matchup Learning integration.
+# RC1 regression rerun after Verified Matchup Plan integration.
 on:
   push:
     branches: [main]
