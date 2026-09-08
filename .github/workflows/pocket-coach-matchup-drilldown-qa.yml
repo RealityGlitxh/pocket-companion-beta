@@ -57,10 +57,15 @@ jobs:
               },mock);
               if(!setup.ready||setup.clickable<2||setup.overflow>2)errors.push(`${vp.name} setup: ${JSON.stringify(setup)}`);
               await page.locator('[data-coach-matchup-key]').first().click();
-              const detail=await page.evaluate(()=>{const root=document.querySelector('.coachMatchupDetail');const text=(root?.innerText||'').toLowerCase();return {open:!!root,hasWr:text.includes('matchup wr'),hasShare:text.includes('meta share'),hasGames:text.includes('games'),hasConfidence:text.includes('confidence'),hasHelp:text.includes('cards helping / test'),hasReview:text.includes('cards to review'),hasTech:text.includes('test tech'),hasReviewCard:text.includes('test review'),hasWarning:text.includes('sample-dependent')||text.includes('preparation signal'),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};});
+              const detail=await page.evaluate(()=>{const root=document.querySelector('.coachMatchupDetail');const text=(root?.innerText||'').toLowerCase();return {open:!!root,hasWr:text.includes('matchup wr'),hasShare:text.includes('meta share'),hasGames:text.includes('games'),hasConfidence:text.includes('confidence'),hasHelp:text.includes('cards helping / test'),hasReview:text.includes('cards to review'),hasTech:text.includes('test tech'),hasReviewCard:text.includes('test review'),hasPlan:text.includes('build matchup plan'),hasWarning:text.includes('sample-dependent')||text.includes('preparation signal'),overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};});
               console.log(`DRILLDOWN_${vp.name.toUpperCase()}`,JSON.stringify(detail));
-              if(!detail.open||!detail.hasWr||!detail.hasShare||!detail.hasGames||!detail.hasConfidence||!detail.hasHelp||!detail.hasReview||!detail.hasTech||!detail.hasReviewCard||!detail.hasWarning||detail.overflow>2||detail.rootOverflow>2)errors.push(`${vp.name} detail: ${JSON.stringify(detail)}`);
-              await page.getByRole('button',{name:'Ask Pocket Coach about this matchup'}).click();
+              if(!detail.open||!detail.hasWr||!detail.hasShare||!detail.hasGames||!detail.hasConfidence||!detail.hasHelp||!detail.hasReview||!detail.hasTech||!detail.hasReviewCard||!detail.hasPlan||!detail.hasWarning||detail.overflow>2||detail.rootOverflow>2)errors.push(`${vp.name} detail: ${JSON.stringify(detail)}`);
+              await page.getByRole('button',{name:'Build Matchup Plan'}).click();
+              const planPrompt=await page.evaluate(()=>window.__qaPrompt||'');
+              const planLower=planPrompt.toLowerCase();
+              if(!planPrompt.includes('Butterfree / Mega Sceptile ex')||!planPrompt.includes('OPENING SETUP')||!planPrompt.includes('GLOBAL META')||!planPrompt.includes('YOUR RESULTS')||!planLower.includes('do not invent an optimal turn order')||!planLower.includes('opponent target priority'))errors.push(`${vp.name} plan prompt: ${planPrompt}`);
+              await page.locator('[data-coach-matchup-key]').first().click();
+              await page.getByRole('button',{name:'Ask Pocket Coach'}).click();
               const prompt=await page.evaluate(()=>window.__qaPrompt||'');
               if(!prompt.includes('Butterfree / Mega Sceptile ex')||!prompt.toLowerCase().includes('review-only'))errors.push(`${vp.name} prompt: ${prompt}`);
               await page.locator('[data-coach-matchup-key]').first().focus();await page.keyboard.press('Enter');
