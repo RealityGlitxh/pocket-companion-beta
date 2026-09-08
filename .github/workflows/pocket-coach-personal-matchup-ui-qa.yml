@@ -1,0 +1,70 @@
+name: Pocket Coach Personal Matchup UI QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/app/ai_coach.js'
+      - 'supabase/functions/pocket-coach/index.ts'
+      - 'supabase/functions/pocket-coach/personal-matchup-learning.js'
+      - '.github/workflows/pocket-coach-personal-matchup-ui-qa.yml'
+  workflow_dispatch:
+
+jobs:
+  personal-matchup-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start site
+        run: |
+          python3 -m http.server 8123 >/tmp/pn-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8123/index.html >/dev/null && break; sleep 1; done
+      - name: Verify separate Global Meta and Your Results evidence
+        run: |
+          cat > personal-matchup-ui-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const errors=[];
+            const report=[{deckId:'d1',deckName:'Mega Lucario Test',archetypeName:'Mega Lucario ex',archetypeMatchConfidence:'high',topThreats:[
+              {opponentName:'Mega Sceptile',winRate:47,opponentUsagePct:9.1,matches:120,evidence:'high',band:'slightly-unfavorable'},
+              {opponentName:'Mega Altaria ex',winRate:54,opponentUsagePct:6.4,matches:90,evidence:'high',band:'slightly-favorable'},
+              {opponentName:'Zoroark ex / Mega Absol ex',winRate:49,opponentUsagePct:4.8,matches:60,evidence:'medium',band:'roughly-even'}
+            ],personalMatchup:{source:'battle-tracker',personalSamples:2,matchedThreats:[
+              {opponentName:'Mega Sceptile',wins:7,losses:5,ties:0,matches:12,decided:12,winRate:58.3,evidence:'medium',globalWinRate:47,globalMatches:120,globalEvidence:'high',comparison:'personally-above-global',gapPoints:11.3},
+              {opponentName:'Mega Altaria ex',wins:2,losses:4,ties:0,matches:6,decided:6,winRate:33.3,evidence:'emerging',globalWinRate:54,globalMatches:90,globalEvidence:'high',comparison:'personally-below-global',gapPoints:-20.7},
+              {opponentName:'Zoroark ex / Mega Absol ex',wins:3,losses:1,ties:0,matches:4,decided:4,winRate:75,evidence:'insufficient',globalWinRate:49,globalMatches:60,globalEvidence:'medium',comparison:'insufficient-evidence',gapPoints:26}
+            ]},recommendations:[]}];
+            for(const vp of [{name:'desktop',width:1440,height:900},{name:'tablet',width:820,height:1180},{name:'mobile',width:390,height:844}]){
+              const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
+              page.on('pageerror',e=>errors.push(`${vp.name}: pageerror ${e.message}`));
+              await page.goto('http://127.0.0.1:8123/index.html',{waitUntil:'domcontentloaded'});
+              await page.waitForTimeout(900);
+              await page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop').forEach(x=>x.remove()));
+              const result=await page.evaluate((report)=>{
+                if(typeof window.coachMatchupReportHtml!=='function')return {renderer:false};
+                document.body.innerHTML='<main id="qaHost"></main>';
+                document.getElementById('qaHost').innerHTML=window.coachMatchupReportHtml(report);
+                const root=document.querySelector('.coachMatchupReport'),text=root?.innerText||'',lower=text.toLowerCase();
+                const personal=[...document.querySelectorAll('.coachPersonalResult')].map(x=>x.innerText);
+                return {renderer:true,rendered:!!root,globalLabel:text.includes('Global Meta'),personalLabel:text.includes('Your Results'),global47:text.includes('47.0%'),personal583:text.includes('58.3%'),medium:lower.includes('medium'),emerging:lower.includes('emerging'),insufficient:text.includes('Insufficient evidence — fewer than 5 decided games'),above:lower.includes('personally above global'),below:lower.includes('personally below global'),noBlend:text.includes('never blended into the Global Meta percentage'),hasCombinedScore:/combined score|personalized score|blended wr/i.test(text),personal,overflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth),rootOverflow:root?Math.max(0,root.scrollWidth-root.clientWidth):999};
+              },report);
+              console.log(`PERSONAL_MATCHUP_UI_${vp.name.toUpperCase()}`,JSON.stringify(result));
+              if(!result.renderer||!result.rendered||!result.globalLabel||!result.personalLabel||!result.global47||!result.personal583||!result.medium||!result.emerging||!result.insufficient||!result.above||!result.below||!result.noBlend||result.hasCombinedScore||result.overflow>2||result.rootOverflow>2)errors.push(`${vp.name}: ${JSON.stringify(result)}`);
+              await page.close();
+            }
+            await browser.close();
+            console.log('PERSONAL_MATCHUP_UI_ERRORS',JSON.stringify(errors,null,2));
+            if(errors.length)process.exit(1);
+            console.log('POCKET_COACH_PERSONAL_MATCHUP_UI_QA_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          node personal-matchup-ui-qa.cjs
