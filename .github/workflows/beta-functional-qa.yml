@@ -7,7 +7,11 @@ on:
     paths:
       - ".github/workflows/beta-functional-qa.yml"
       - "index.html"
-      - "js/features/rc1-route-class-cleanup-v8.65.0.js"
+      - "overlay.html"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
+      - "assets/**"
 
 permissions:
   contents: read
