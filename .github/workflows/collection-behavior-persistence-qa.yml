@@ -1,0 +1,127 @@
+name: PocketNexus Collection Behavior + Persistence QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/app/collection.js"
+      - "js/app/bootstrap.js"
+      - "js/services/storage-service.js"
+      - "js/core/**"
+      - "index.html"
+      - ".github/workflows/collection-behavior-persistence-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collection-behavior-persistence-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 8124 >/tmp/pn-collection-persistence.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8124/index.html >/dev/null && break; sleep 1; done
+      - name: Verify Collection editing filters and reload persistence
+        run: |
+          cat > collection-behavior-persistence-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e.message||e)));
+            await page.goto('http://127.0.0.1:8124/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>typeof window.goPage==='function'&&typeof window.save==='function',{timeout:20000});
+            const guest=page.getByRole('button',{name:/continue as guest/i});
+            if(await guest.count())await guest.click({timeout:3000}).catch(()=>{});
+            await page.evaluate(()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              state.collection={};
+              state.collectionPrefs={...(state.collectionPrefs||{}),quickEdit:false};
+              save();
+              document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
+            });
+
+            await page.evaluate(()=>window.goPage('collection'));
+            await page.waitForTimeout(900);
+            await page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+            const text=await page.locator('#app').innerText();
+            assert(/Collection/i.test(text),'Collection page did not render');
+            assert(/Quick Edit/i.test(text),'Quick Edit control did not render');
+
+            await page.getByRole('button',{name:/Quick Edit/i}).first().click();
+            await page.waitForTimeout(300);
+            const addOwned=page.locator('button[aria-label^="Add one owned "]').first();
+            assert(await addOwned.count(),'No quick-edit owned button found');
+            const ownedLabel=await addOwned.getAttribute('aria-label');
+            const cardName=String(ownedLabel||'').replace(/^Add one owned\s+/,'').trim();
+            assert(cardName,'Could not determine edited card name');
+            await addOwned.click();
+            await page.waitForTimeout(250);
+
+            const quickCard=page.locator('.collectionQuickCard').filter({hasText:cardName}).first();
+            assert(await quickCard.count(),`Edited card ${cardName} disappeared after owned increment`);
+            await quickCard.getByRole('button',{name:/\+ Want/}).click();
+            await page.waitForTimeout(200);
+            const refreshedCard=page.locator('.collectionQuickCard').filter({hasText:cardName}).first();
+            const addTrade=refreshedCard.getByRole('button',{name:/\+ Trade/});
+            assert(await addTrade.count(),'Trade increment button missing');
+            assert(!(await addTrade.isDisabled()),'Trade increment stayed disabled after owned quantity became 1');
+            await addTrade.click();
+            await page.waitForTimeout(300);
+
+            const edited=await page.evaluate(()=>{
+              const entries=Object.entries(state.collection||{}).filter(([,v])=>Number(v?.owned||0)||Number(v?.wanted||0)||Number(v?.tradeable||0));
+              return {entries,stats:typeof collectionStats==='function'?collectionStats():null};
+            });
+            console.log('COLLECTION_EDITED_STATE',JSON.stringify(edited,null,2));
+            assert(edited.entries.length===1,`Expected one edited collection record, got ${edited.entries.length}`);
+            const [cardId,rec]=edited.entries[0];
+            assert(Number(rec.owned)===1,'Owned quantity did not become 1');
+            assert(Number(rec.wanted)===1,'Wishlist quantity did not become 1');
+            assert(Number(rec.tradeable)===1,'Tradeable quantity did not become 1');
+            assert(edited.stats?.totalOwned===1&&edited.stats?.wanted===1&&edited.stats?.tradeable===1,'Collection totals did not update after quick edit');
+
+            for(const mode of ['Owned','Wishlist','Trade Binder']){
+              await page.getByRole('button',{name:new RegExp(`^${mode}$`,'i')}).click();
+              await page.waitForTimeout(250);
+              const modeText=await page.locator('#collectionGrid').innerText();
+              assert(modeText.includes(cardName),`${mode} filter did not contain edited card ${cardName}`);
+            }
+
+            await page.reload({waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>typeof window.goPage==='function',{timeout:20000});
+            await page.waitForTimeout(700);
+            const persisted=await page.evaluate((id)=>({record:state.collection?.[id]||null,stats:typeof collectionStats==='function'?collectionStats():null}),cardId);
+            console.log('COLLECTION_PERSISTED_STATE',JSON.stringify(persisted,null,2));
+            assert(Number(persisted.record?.owned)===1,'Owned quantity did not survive reload');
+            assert(Number(persisted.record?.wanted)===1,'Wishlist quantity did not survive reload');
+            assert(Number(persisted.record?.tradeable)===1,'Tradeable quantity did not survive reload');
+            assert(persisted.stats?.totalOwned===1&&persisted.stats?.wanted===1&&persisted.stats?.tradeable===1,'Collection totals did not survive reload');
+
+            await page.evaluate(()=>window.goPage('collection'));
+            await page.waitForTimeout(500);
+            const afterReloadText=await page.locator('#app').innerText();
+            assert(/Owned[\s\S]{0,40}\b1\b/i.test(afterReloadText),'Owned metric did not render persisted count');
+            assert(/Wishlist[\s\S]{0,40}\b1\b/i.test(afterReloadText),'Wishlist metric did not render persisted count');
+            assert(/Tradeable[\s\S]{0,40}\b1\b/i.test(afterReloadText),'Tradeable metric did not render persisted count');
+            assert(!errors.some(x=>/is not defined|TypeError|ReferenceError/i.test(x)),`Runtime errors: ${errors.join(' | ')}`);
+            await browser.close();
+            console.log('COLLECTION_BEHAVIOR_PERSISTENCE_QA_OK');
+          })().catch(e=>{console.error('COLLECTION_BEHAVIOR_PERSISTENCE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node collection-behavior-persistence-qa.cjs
