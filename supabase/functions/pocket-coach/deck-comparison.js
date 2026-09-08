@@ -1,3 +1,4 @@
+// RC1 deterministic proposal helper; changing this file retriggers the surgical comparison integration QA.
 export function buildDeckComparisonProposal({deck=null,remove=null,add=null}={}){
   const norm=v=>String(v??'').normalize('NFKC').toLowerCase().replace(/[’‘`´]/g,"'").replace(/[^a-z0-9' -]/g,' ').replace(/\s+/g,' ').trim();
   const cards=Array.isArray(deck?.cards)?deck.cards.map(c=>({...c,qty:Math.max(1,Number(c?.qty??c?.quantity??1)||1)}):[];
