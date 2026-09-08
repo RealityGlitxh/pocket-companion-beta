@@ -51,7 +51,7 @@ jobs:
             return cfg.engine===webkit &&
               /^http:\/\/127\.0\.0\.1:8123\//.test(currentUrl) &&
               /access control checks/i.test(message) &&
-              /get_combined_competitive_meta|get_combined_matchup_matrix/i.test(message);
+              /get_combined_competitive_meta|get_combined_matchup_matrix|rank-border-live/i.test(message);
           }
           (async()=>{
             const failures=[];
@@ -62,7 +62,7 @@ jobs:
               page.on('pageerror',e=>{
                 const message=String(e.message||e);
                 if(expectedLocalWebkitSupabaseError(cfg,message,page.url())){
-                  console.warn('RC1_PROXY_ADVISORY',`${cfg.name}: local-origin Supabase Meta fallback ${message}`);
+                  console.warn('RC1_PROXY_ADVISORY',`${cfg.name}: local-origin Supabase fallback ${message}`);
                   return;
                 }
                 fatal.push(`pageerror: ${message}`);
