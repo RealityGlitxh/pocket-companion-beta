@@ -1,0 +1,34 @@
+name: Apply Matchup-Aware Pocket Coach Integration
+
+on:
+  push:
+    paths:
+      - 'qa/apply-matchup-aware-integration.mjs'
+      - '.github/workflows/apply-matchup-aware-integration.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply idempotent integration patch
+        run: node qa/apply-matchup-aware-integration.mjs
+      - name: Commit integration
+        run: |
+          if git diff --quiet -- supabase/functions/pocket-coach/index.ts; then
+            echo 'No integration changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/pocket-coach/index.ts
+          git commit -m 'feat: wire matchup-aware optimization into Pocket Coach'
+          git push origin HEAD:main
