@@ -49,17 +49,26 @@ jobs:
             await control.evaluate(()=>{
               state.rank={...(state.rank||{}),tier:'Master Ball',points:1234,streak:2};
               state.decks=[{id:'obs-qa-deck',name:'OBS QA Deck',archetype:'QA Archetype',energy:'Water',cards:[]}];
-              state.streamer.controlDeckId='obs-qa-deck';state.battlePrefs=state.battlePrefs||{};state.battlePrefs.lastDeckId='obs-qa-deck';state.matches=[];save();
+              state.streamer.controlDeckId='obs-qa-deck';state.streamer.overlayMode='tournament';state.battlePrefs=state.battlePrefs||{};state.battlePrefs.lastDeckId='obs-qa-deck';state.matches=[];save();
             });
-            const created=await control.evaluate(async()=>{await PPCStreamerOBSRemote.ensureRemote();await PPCStreamerOBSRemote.publish(true);return {url:PPCStreamerOBSRemote.sourceUrl('ranked'),creds:PPCStreamerOBSRemote.readCreds(),expected:PPCStreamerOBSRemote.buildState().modes.ranked}});mark('remote-created');
+            const created=await control.evaluate(async()=>{await PPCStreamerOBSRemote.ensureRemote();await PPCStreamerOBSRemote.publish(true);return {url:PPCStreamerOBSRemote.sourceUrl('tournament'),creds:PPCStreamerOBSRemote.readCreds(),expected:PPCStreamerOBSRemote.buildState().modes.tournament,active:PPCStreamerOBSRemote.buildState().activeMode}});mark('remote-created');
             if(!created.url.includes('overlay=')||!created.creds?.overlay_id||!created.creds?.write_token)failures.push({type:'create',created});
+            if(/[?&]mode=/i.test(created.url))failures.push({type:'mode-pinned-url',url:created.url});
             if(/write_token|access_token|authorization|apikey=/i.test(created.url))failures.push({type:'secret-in-url',url:created.url});
+            if(created.active!=='tournament')failures.push({type:'initial-active-mode',active:created.active});
 
             const obsCtx=await browser.newContext({viewport:{width:1920,height:1080},serviceWorkers:'block'});const obs=await obsCtx.newPage();obs.setDefaultTimeout(15000);obs.setDefaultNavigationTimeout(15000);await obs.route('https://cdn.jsdelivr.net/**',r=>r.abort());const obsErrors=[];obs.on('pageerror',e=>obsErrors.push(String(e.message||e)));
             mark('obs-open');await obs.goto(created.url,{waitUntil:'domcontentloaded'});
-            await obs.waitForFunction(()=>typeof d!=='undefined'&&d&&d.rank&&d.rank.points===1234);mark('obs-initial');
-            const initial=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck?.name,record:d.record,hasLocal:!!localStorage.getItem('ppc_stream_overlay_v83'),body:document.body.innerText}));
-            if(initial.points!==1234||initial.deck!=='OBS QA Deck'||initial.hasLocal)failures.push({type:'initial-independent',initial});
+            await obs.waitForFunction(()=>typeof d!=='undefined'&&d&&d.config?.overlayMode==='tournament'&&d.rank&&d.rank.points===1234);mark('obs-initial');
+            const initial=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck?.name,mode:d.config?.overlayMode,record:d.record,hasLocal:!!localStorage.getItem('ppc_stream_overlay_v83'),body:document.body.innerText}));
+            if(initial.points!==1234||initial.deck!=='OBS QA Deck'||initial.mode!=='tournament'||initial.hasLocal||!/TOURNAMENT MODE/i.test(initial.body))failures.push({type:'initial-independent',initial});
+
+            await control.evaluate(()=>{state.streamer.overlayMode='ranked';save()});
+            await control.evaluate(async()=>{await PPCStreamerOBSRemote.publish(true)});mark('mode-ranked-published');
+            await obs.waitForFunction(()=>d&&d.config?.overlayMode==='ranked');
+            await obs.waitForFunction(()=>/LIVE RANK/i.test(document.body.innerText)&&!/TOURNAMENT MODE/i.test(document.body.innerText));mark('obs-followed-ranked');
+            const modeSwitch=await obs.evaluate(()=>({mode:d.config?.overlayMode,body:document.body.innerText}));
+            if(modeSwitch.mode!=='ranked'||!/LIVE RANK/i.test(modeSwitch.body)||/TOURNAMENT MODE/i.test(modeSwitch.body))failures.push({type:'mode-follow',modeSwitch});
 
             await control.evaluate(()=>{
               state.rank={...(state.rank||{}),tier:'Master Ball',points:1301,streak:3};
@@ -68,17 +77,18 @@ jobs:
             });
             const expected=await control.evaluate(async()=>{await PPCStreamerOBSRemote.publish(true);return PPCStreamerOBSRemote.buildState().modes.ranked});mark('control-updated');
             await obs.waitForFunction(e=>d&&d.rank?.points===e.points&&d.deck?.name===e.deck&&d.record?.wins===e.wins,{points:expected.rank.points,deck:expected.deck.name,wins:expected.record.wins});mark('obs-updated');
-            const updated=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck.name,wins:d.record.wins,losses:d.record.losses}));
-            if(updated.points!==expected.rank.points||updated.deck!==expected.deck.name||updated.wins!==expected.record.wins)failures.push({type:'live-update',updated,expected:{rank:expected.rank,deck:expected.deck,record:expected.record}});
+            const updated=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck.name,wins:d.record.wins,losses:d.record.losses,mode:d.config?.overlayMode}));
+            if(updated.points!==expected.rank.points||updated.deck!==expected.deck.name||updated.wins!==expected.record.wins||updated.mode!=='ranked')failures.push({type:'live-update',updated,expected:{rank:expected.rank,deck:expected.deck,record:expected.record}});
 
-            await obs.reload({waitUntil:'domcontentloaded'});await obs.waitForFunction(e=>d&&d.rank?.points===e.points&&d.deck?.name===e.deck,{points:expected.rank.points,deck:expected.deck.name});mark('obs-reload');
-            const restored=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck.name}));
-            if(restored.points!==expected.rank.points||restored.deck!==expected.deck.name)failures.push({type:'reload-restore',restored});
+            await obs.reload({waitUntil:'domcontentloaded'});await obs.waitForFunction(e=>d&&d.rank?.points===e.points&&d.deck?.name===e.deck&&d.config?.overlayMode==='ranked',{points:expected.rank.points,deck:expected.deck.name});mark('obs-reload');
+            const restored=await obs.evaluate(()=>({points:d.rank.points,deck:d.deck.name,mode:d.config?.overlayMode}));
+            if(restored.points!==expected.rank.points||restored.deck!==expected.deck.name||restored.mode!=='ranked')failures.push({type:'reload-restore',restored});
 
-            const bad=await obsCtx.newPage();bad.setDefaultNavigationTimeout(15000);await bad.route('https://cdn.jsdelivr.net/**',r=>r.abort());await bad.goto('http://127.0.0.1:8123/overlay.html?mode=ranked&overlay=00000000-0000-4000-8000-000000000001',{waitUntil:'domcontentloaded'});await bad.waitForTimeout(3500);const badText=await bad.locator('body').innerText();if(!/Overlay Not Found|Connection Issue/i.test(badText))failures.push({type:'invalid-diagnostic',badText});await bad.close();mark('invalid-safe');
+            const bad=await obsCtx.newPage();bad.setDefaultNavigationTimeout(15000);await bad.route('https://cdn.jsdelivr.net/**',r=>r.abort());await bad.goto('http://127.0.0.1:8123/overlay.html?overlay=00000000-0000-4000-8000-000000000001',{waitUntil:'domcontentloaded'});await bad.waitForTimeout(3500);const badText=await bad.locator('body').innerText();if(!/Overlay Not Found|Connection Issue/i.test(badText))failures.push({type:'invalid-diagnostic',badText});await bad.close();mark('invalid-safe');
 
-            const oldUrl=created.url;const newUrl=await control.evaluate(async()=>await PPCStreamerOBSRemote.regenerate('ranked'));mark('regenerated');
+            const oldUrl=created.url;const newUrl=await control.evaluate(async()=>await PPCStreamerOBSRemote.regenerate());mark('regenerated');
             if(!newUrl||newUrl===oldUrl)failures.push({type:'regenerate',oldUrl,newUrl});
+            if(/[?&]mode=/i.test(newUrl))failures.push({type:'regenerated-mode-pinned-url',newUrl});
             await obs.goto(oldUrl,{waitUntil:'domcontentloaded'});await obs.waitForTimeout(3500);const revokedText=await obs.locator('body').innerText();if(!/Overlay Revoked/i.test(revokedText))failures.push({type:'revocation',revokedText});mark('revoked-safe');
 
             if(controlErrors.length)failures.push({type:'control-pageerrors',controlErrors});if(obsErrors.length)failures.push({type:'obs-pageerrors',obsErrors});
