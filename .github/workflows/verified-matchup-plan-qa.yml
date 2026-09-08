@@ -1,5 +1,6 @@
 name: Pocket Coach Verified Matchup Plan QA
 
+# RC1 regression rerun after Verified Matchup Plan UI integration.
 on:
   push:
     branches: [main]
