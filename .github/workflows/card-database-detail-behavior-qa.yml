@@ -41,6 +41,7 @@ jobs:
           const {chromium}=require('playwright');
           const assert=(v,m)=>{if(!v)throw new Error(m)};
           const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
@@ -48,10 +49,13 @@ jobs:
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
             await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
-            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click();
-            await page.waitForFunction(()=>typeof loadCards==='function'&&typeof headerNavigate==='function',{timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof loadCards==='function'&&typeof headerNavigate==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save()});
+            await clearOverlays(page);
             await page.evaluate(async()=>{await loadCards(true); headerNavigate('collection')});
             await page.waitForFunction(()=>document.getElementById('collectionGrid')&&Array.isArray(window.CARDS||CARDS)&&(window.CARDS||CARDS).length>500,{timeout:60000});
+            await clearOverlays(page);
             const sample=await page.evaluate(()=>{const c=(window.CARDS||CARDS).find(x=>x&&x.id&&x.name&&x.setCode&&x.number);return c&&({id:String(c.id),name:String(c.name),setCode:String(c.setCode),number:String(c.number)})});
             assert(sample,'no usable card sample');
             await page.locator('#cq').fill(sample.name);
@@ -75,9 +79,10 @@ jobs:
             await page.locator('#cardModalBody button').filter({hasText:'Close'}).first().click();
             await page.waitForFunction(()=>document.getElementById('cardModal')?.style.display!=='flex',{timeout:10000});
             await page.reload({waitUntil:'domcontentloaded'});
-            await page.waitForFunction(()=>typeof loadCards==='function',{timeout:60000});
-            await page.evaluate(async()=>{await loadCards(true); state.page='collection'; save(); render()});
+            await page.waitForFunction(()=>typeof loadCards==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(async()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();await loadCards(true);state.page='collection';save();render()});
             await page.waitForFunction(()=>document.getElementById('collectionGrid'),{timeout:30000});
+            await clearOverlays(page);
             const recovery=await page.locator('body').innerText();
             assert(!recovery.includes('Runtime Recovery'),'Runtime Recovery appeared after reload');
             assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
