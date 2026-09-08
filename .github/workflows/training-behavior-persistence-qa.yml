@@ -1,0 +1,83 @@
+name: PocketNexus Training Behavior + Persistence QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/app/training.js"
+      - "js/features/training-*.js"
+      - "js/features/route-feature-loader-v8.64.1.js"
+      - "css/**"
+      - ".github/workflows/training-behavior-persistence-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  training-behavior-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start isolated site
+        run: |
+          python3 -m http.server 4173 >/tmp/pocketnexus-training.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/pocketnexus-training.log
+          exit 1
+      - name: Verify Training route daily card completion and reload persistence
+        run: |
+          cat > training-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const fatal=[];
+          const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=page.locator('[data-entry-action="guest"]'); if(await guest.count()) await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof headerNavigate==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();headerNavigate('training')});
+            await page.waitForFunction(()=>typeof trainingPage==='function'&&typeof wtcDailyCard==='function'&&document.body.innerText.includes('YOUR TRAINING PROGRESS'),{timeout:60000});
+            await page.waitForFunction(()=>wtcDailyCard()!=null,{timeout:60000});
+            await clearOverlays(page);
+            const answer=await page.evaluate(()=>wtcDailyCard().name);
+            assert(answer,'daily card answer unavailable');
+            await page.evaluate(name=>{const input=document.getElementById('wtcGuess');if(!input)throw new Error('wtcGuess input missing');input.value=name;wtcSubmit()},answer);
+            await page.waitForFunction(()=>wtcGame().game.completed===true&&wtcGame().game.solved===true,{timeout:15000});
+            const before=await page.evaluate(()=>({game:wtcGame().game,stats:wtcStats(),overflow:Math.max(0,document.documentElement.scrollWidth-window.innerWidth),text:document.body.innerText}));
+            assert(before.game.completed&&before.game.solved,'daily card was not completed');
+            assert((before.game.guesses||[]).some(x=>String(x).toLowerCase()===String(answer).toLowerCase()),'correct guess not recorded');
+            assert(before.stats.played>=1&&before.stats.solved>=1,'training stats did not update');
+            assert(!before.text.includes('Runtime Recovery'),'Runtime Recovery appeared in Training');
+            assert(before.overflow<=12,`mobile horizontal overflow ${before.overflow}px`);
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>typeof headerNavigate==='function'&&typeof save==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();headerNavigate('training')});
+            await page.waitForFunction(()=>typeof trainingPage==='function'&&typeof wtcGame==='function'&&document.body.innerText.includes('YOUR TRAINING PROGRESS'),{timeout:60000});
+            await clearOverlays(page);
+            const after=await page.evaluate(()=>({game:wtcGame().game,stats:wtcStats(),text:document.body.innerText,overflow:Math.max(0,document.documentElement.scrollWidth-window.innerWidth)}));
+            assert(after.game.completed&&after.game.solved,'daily card completion did not persist after reload');
+            assert(after.stats.played>=1&&after.stats.solved>=1,'training stats did not persist after reload');
+            assert(!after.text.includes('Runtime Recovery'),'Runtime Recovery appeared after Training reload');
+            assert(after.overflow<=12,`reload mobile horizontal overflow ${after.overflow}px`);
+            assert(fatal.length===0,`runtime errors: ${fatal.join(' | ')}`);
+            await browser.close();
+            console.log('TRAINING_BEHAVIOR_PERSISTENCE_QA_OK',JSON.stringify({answer,played:after.stats.played,solved:after.stats.solved,overflow:after.overflow}));
+          })().catch(e=>{console.error('TRAINING_BEHAVIOR_PERSISTENCE_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node training-qa.cjs
