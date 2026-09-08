@@ -1,0 +1,66 @@
+name: Apply Pocket Coach Matchup History Persistence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-pocket-coach-matchup-history.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Pocket Coach persistence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Backend: compute the compact report once, persist it, and return the same payload.
+          p=Path('supabase/functions/pocket-coach/index.ts')
+          s=p.read_text()
+          old="const {error:assistantSaveError}=await db.from('ai_messages').insert({conversation_id:conversationId,user_id:user.id,role:'assistant',content:answer,context_summary:{battle:{matches:context.battle.matches,winRate:context.battle.winRate},training:{attempts:training.attempts,accuracy:training.accuracy,weakest:training.weakest},freshTraining:{capturedAt:localTraining?.capturedAt||null,weakest:localTraining?.weakest||null},deckCount:context.decks.length,deckAuditCount:deckAudits.length,metaOptimizationCount:metaOptimizations.length,matchupOptimizationCount:matchupOptimizations.length,metaBenchmarkDecklists:metaDecklists.length,matchupCardEvidenceRows:matchupCardEvidence.length,collectionCount:context.collection.tracked,metaSnapshotAt:snap?.generated_at||null,knowledgeHits:knowledgeHits.length,cardFacts:cardKnowledge.cards.length,verifiedCardGameplayCount:gameplay.length,usage},source_labels:sources,model_provider:provider,model_name:model});"
+          new="const matchupReport=matchupOptimizations.filter((x:any)=>x?.status==='matched').slice(0,4).map((x:any)=>({deckId:x.deckId,deckName:x.deckName,archetypeName:x.archetypeName,archetypeMatchConfidence:x.archetypeMatchConfidence,snapshotGeneratedAt:x.snapshotGeneratedAt,topThreats:(x.topMetaThreats||[]).slice(0,5).map((p:any)=>({opponentName:p.opponentName,winRate:p.winRate,opponentUsagePct:p.opponentUsagePct,matches:p.matches,decided:p.decided,evidence:p.evidence,band:p.band})),recommendations:(x.recommendations||[]).slice(0,6).map((r:any)=>({action:r.action,cardName:r.cardName,opponentArchetype:r.opponentArchetype,confidence:r.confidence,evidence:r.evidence,guardrail:r.guardrail}))}));const {error:assistantSaveError}=await db.from('ai_messages').insert({conversation_id:conversationId,user_id:user.id,role:'assistant',content:answer,context_summary:{battle:{matches:context.battle.matches,winRate:context.battle.winRate},training:{attempts:training.attempts,accuracy:training.accuracy,weakest:training.weakest},freshTraining:{capturedAt:localTraining?.capturedAt||null,weakest:localTraining?.weakest||null},deckCount:context.decks.length,deckAuditCount:deckAudits.length,metaOptimizationCount:metaOptimizations.length,matchupOptimizationCount:matchupOptimizations.length,metaBenchmarkDecklists:metaDecklists.length,matchupCardEvidenceRows:matchupCardEvidence.length,collectionCount:context.collection.tracked,metaSnapshotAt:snap?.generated_at||null,knowledgeHits:knowledgeHits.length,cardFacts:cardKnowledge.cards.length,verifiedCardGameplayCount:gameplay.length,usage},source_labels:sources,model_provider:provider,model_name:model,matchup_report:matchupReport});"
+          if old not in s: raise SystemExit('backend save anchor not found')
+          s=s.replace(old,new,1)
+          old_return="matchupReport:matchupOptimizations.filter((x:any)=>x?.status==='matched').slice(0,4).map((x:any)=>({deckId:x.deckId,deckName:x.deckName,archetypeName:x.archetypeName,archetypeMatchConfidence:x.archetypeMatchConfidence,snapshotGeneratedAt:x.snapshotGeneratedAt,topThreats:(x.topMetaThreats||[]).slice(0,5).map((p:any)=>({opponentName:p.opponentName,winRate:p.winRate,opponentUsagePct:p.opponentUsagePct,matches:p.matches,decided:p.decided,evidence:p.evidence,band:p.band})),recommendations:(x.recommendations||[]).slice(0,6).map((r:any)=>({action:r.action,cardName:r.cardName,opponentArchetype:r.opponentArchetype,confidence:r.confidence,evidence:r.evidence,guardrail:r.guardrail}))}))"
+          if old_return not in s: raise SystemExit('backend response anchor not found')
+          s=s.replace(old_return,'matchupReport',1)
+          p.write_text(s)
+
+          # Frontend: request persisted report and hydrate it back onto assistant messages.
+          p=Path('js/app/ai_coach.js')
+          s=p.read_text()
+          old_select=".select('id,role,content,source_labels,created_at,model_provider,model_name')"
+          new_select=".select('id,role,content,source_labels,created_at,model_provider,model_name,matchup_report')"
+          if old_select not in s: raise SystemExit('frontend select anchor not found')
+          s=s.replace(old_select,new_select,1)
+          old_assign="pocketCoachState.messages=data||[];pocketCoachState.matchupReport=[];"
+          new_assign="pocketCoachState.messages=(data||[]).map(m=>({...m,matchupReport:Array.isArray(m.matchup_report)?m.matchup_report:[]}));pocketCoachState.matchupReport=[];"
+          if old_assign not in s: raise SystemExit('frontend hydrate anchor not found')
+          s=s.replace(old_assign,new_assign,1)
+          p.write_text(s)
+
+          # Migration source-of-truth.
+          Path('supabase/migrations/20260908042000_persist_pocket_coach_matchup_reports.sql').write_text("""alter table public.ai_messages\n  add column if not exists matchup_report jsonb;\n\ncomment on column public.ai_messages.matchup_report is\n  'Structured Pocket Coach matchup report payload for assistant messages; null for messages without a report.';\n""")
+
+          # Static contract checks.
+          b=Path('supabase/functions/pocket-coach/index.ts').read_text()
+          f=Path('js/app/ai_coach.js').read_text()
+          assert 'matchup_report:matchupReport' in b
+          assert 'matchupReport})' in b or 'matchupReport,' in b
+          assert 'model_name,matchup_report' in f
+          assert 'Array.isArray(m.matchup_report)?m.matchup_report:[]' in f
+          PY
+      - name: Commit persistence patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/pocket-coach/index.ts js/app/ai_coach.js supabase/migrations/20260908042000_persist_pocket_coach_matchup_reports.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: persist Pocket Coach matchup reports'
+          git push
