@@ -1,0 +1,78 @@
+name: Apply Pocket Coach Before After Comparison
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/pocket-coach/deck-comparison.js'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch structured comparison data and audit action
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('supabase/functions/pocket-coach/matchup-aware-optimizer.js')
+          s=p.read_text()
+          old="recommendations.push({action:'consider-matchup-tech',cardName:x.cardName,opponentArchetype:p.opponentName,reason:'positive-result-association-in-this-matchup'"
+          new="recommendations.push({action:'consider-matchup-tech',cardName:x.cardName,set:x.set,number:x.number,opponentArchetype:p.opponentName,reason:'positive-result-association-in-this-matchup'"
+          assert old in s
+          s=s.replace(old,new,1)
+          old="recommendations.push({action:'review-for-matchup',cardName:x.cardName,opponentArchetype:p.opponentName,reason:'negative-result-association-in-this-matchup'"
+          new="recommendations.push({action:'review-for-matchup',cardName:x.cardName,set:x.set,number:x.number,opponentArchetype:p.opponentName,reason:'negative-result-association-in-this-matchup'"
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('supabase/functions/pocket-coach/meta-aware-optimizer.js')
+          s=p.read_text()
+          old="recs.push({action:'consider-add',cardName:x.name,reason:'high-archetype-inclusion'"
+          new="recs.push({action:'consider-add',cardName:x.name,set:x.set,number:x.number,reason:'high-archetype-inclusion'"
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('supabase/functions/pocket-coach/index.ts')
+          s=p.read_text()
+          imp="import { buildMatchupAwareOptimizations } from './matchup-aware-optimizer.js';"
+          assert imp in s
+          if "deck-comparison.js" not in s:
+            s=s.replace(imp,imp+"\nimport { buildDeckComparisonProposal } from './deck-comparison.js';",1)
+
+          marker="const message=String(body?.message||'').trim().slice(0,4000),localTraining=sanitizeLocalTraining(body?.localTraining);"
+          assert marker in s
+          branch="""if(body?.action==='compare-deck-change'){const proposal=buildDeckComparisonProposal(body?.comparison||{});if(!proposal.ok)return json({error:proposal.error},400);const cardResp=await fetch(CARD_DB_URL,{headers:{'User-Agent':'PocketNexus-Knowledge/1.0'}});if(!cardResp.ok)return json({error:'Card catalog unavailable for deterministic comparison.'},503);const catalog=await cardResp.json();if(!Array.isArray(catalog))return json({error:'Card catalog unavailable for deterministic comparison.'},503);const audits=buildDeckAudits([proposal.current,proposal.proposed],catalog).map((x:any)=>{const {resolvedCards,...audit}=x;return audit});return json({comparison:true,changes:proposal.changes,current:proposal.current,proposed:proposal.proposed,currentAudit:audits[0]||null,proposedAudit:audits[1]||null,currentTotal:proposal.currentTotal,proposedTotal:proposal.proposedTotal});}\n"""
+          if "body?.action==='compare-deck-change'" not in s:
+            s=s.replace(marker,branch+marker,1)
+
+          old="matchupReport:matchupOptimizations.filter((x:any)=>x?.status==='matched').slice(0,4).map((x:any)=>({deckId:x.deckId,deckName:x.deckName,archetypeName:x.archetypeName,archetypeMatchConfidence:x.archetypeMatchConfidence,snapshotGeneratedAt:x.snapshotGeneratedAt,topThreats:"
+          new="matchupReport:matchupOptimizations.filter((x:any)=>x?.status==='matched').slice(0,4).map((x:any)=>{const deckSnapshot=decks.find((d:any)=>String(d?.id||'')===String(x?.deckId||''))||null;const metaMatch=metaOptimizations.find((m:any)=>String(m?.deckId||'')===String(x?.deckId||''))||null;return ({deckId:x.deckId,deckName:x.deckName,archetypeName:x.archetypeName,archetypeMatchConfidence:x.archetypeMatchConfidence,snapshotGeneratedAt:x.snapshotGeneratedAt,deckSnapshot,metaRecommendations:(metaMatch?.recommendations||[]).slice(0,8),metaBenchmark:metaMatch?.benchmark?{recentClassifiedDecks:metaMatch.benchmark.recentClassifiedDecks,reliable:metaMatch.benchmark.reliable,unusualReview:(metaMatch.benchmark.unusualReview||[]).slice(0,8)}:null,topThreats:"
+          assert old in s
+          s=s.replace(old,new,1)
+          old="recommendations:(x.recommendations||[]).slice(0,6).map((r:any)=>({action:r.action,cardName:r.cardName,opponentArchetype:r.opponentArchetype,confidence:r.confidence,evidence:r.evidence,guardrail:r.guardrail}))}))})"
+          new="recommendations:(x.recommendations||[]).slice(0,6).map((r:any)=>({action:r.action,cardName:r.cardName,set:r.set,number:r.number,opponentArchetype:r.opponentArchetype,confidence:r.confidence,evidence:r.evidence,guardrail:r.guardrail}))})})})"
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Verify patch shape
+        run: |
+          node -e "import('./supabase/functions/pocket-coach/deck-comparison.js').then(m=>{const d={id:'d',name:'Deck',cards:[{name:'A',setCode:'S',number:'1',qty:2},{name:'B',setCode:'S',number:'2',qty:18}]};const r=m.buildDeckComparisonProposal({deck:d,remove:{cardName:'A'},add:{cardName:'C',set:'S',number:'3'}});if(!r.ok||r.currentTotal!==20||r.proposedTotal!==20)process.exit(1);console.log('DECK_COMPARISON_PROPOSAL_OK')})"
+          grep -q "compare-deck-change" supabase/functions/pocket-coach/index.ts
+          grep -q "deckSnapshot" supabase/functions/pocket-coach/index.ts
+          grep -q "set:x.set,number:x.number" supabase/functions/pocket-coach/matchup-aware-optimizer.js
+      - name: Commit product patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/pocket-coach/index.ts supabase/functions/pocket-coach/matchup-aware-optimizer.js supabase/functions/pocket-coach/meta-aware-optimizer.js
+          git diff --cached --quiet || git commit -m 'feat: support deterministic Coach deck comparisons'
+          git push
