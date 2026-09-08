@@ -8,7 +8,9 @@ on:
       - ".github/workflows/draft-mode-restore-qa.yml"
       - "qa/draft-mode-restore-qa.cjs"
       - "index.html"
-      - "js/features/draft-mode-restore-v8.65.0.js"
+      - "js/**"
+      - "css/**"
+      - "styles/**"
 
 permissions:
   contents: read
