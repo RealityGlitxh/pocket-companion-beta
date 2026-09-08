@@ -1,0 +1,21 @@
+name: Pocket Coach Matchup-Aware Optimization QA
+
+on:
+  push:
+    paths:
+      - 'supabase/functions/pocket-coach/matchup-aware-optimizer.js'
+      - 'qa/matchup-aware-optimization-qa.mjs'
+      - '.github/workflows/matchup-aware-optimization-qa.yml'
+      - 'supabase/functions/pocket-coach/index.ts'
+  workflow_dispatch:
+
+jobs:
+  matchup-aware-optimization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic matchup-aware optimization QA
+        run: node qa/matchup-aware-optimization-qa.mjs
