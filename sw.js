@@ -1,18 +1,18 @@
-/* PocketNexus V8.65.0 — mobile display cache refresh */
-const VERSION='v8.65.0-mobile-display1';
+/* PocketNexus V8.65.1 — startup performance shell */
+const VERSION='v8.65.1-startup-perf1';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;
 const ART_CACHE=`pocket-companion-art-${VERSION}`;
 const APP_SHELL=[
- './','./index.html','./offline.html','./privacy.html','./terms.html','./support.html','./overlay.html','./overlay-ranked.html','./overlay-tournament.html','./overlay-caster.html','./manifest.webmanifest',
- './css/app.css','./css/streamer-workspaces-recovery-v8.64.2.css','./css/base.css','./css/navigation.css','./css/responsive.css','./css/responsive-v8.50.9.css','./css/styles.css','./css/tokens.css','./css/training-polish-v8.64.1.css','./css/training-uniform-v8.64.1.css','./css/training-cleanup-v8.64.1.css',
+ './','./index.html','./offline.html','./privacy.html','./terms.html','./support.html','./manifest.webmanifest',
+ './css/app.css','./css/base.css','./css/navigation.css','./css/responsive.css','./css/responsive-v8.50.9.css','./css/styles.css','./css/tokens.css','./css/header-utility-menu-v8.64.2.css',
  './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png',
  './js/services/storage-service.js','./js/services/card-service.js','./js/services/ptcgp-data-card-source-v8.64.2.js','./js/services/card-enrichment-service-v8.64.2.js','./js/services/image-service.js','./js/services/ui-service.js','./js/services/theme-service.js',
  './js/data/meta-data.js','./js/data/meta-content.js','./js/services/meta-service.js','./js/services/tournament-service.js','./js/services/meta-tournament-fallback-v8.64.2.js','./js/services/rank-border-service.js','./js/services/rank-session-service.js','./js/core/rank-runtime-core-v8.64.2.js',
- './js/features/ui-dialogs.js','./js/features/whats-new-v8.33.js','./js/features/tournament-leaderboards-v8.31.js','./js/features/training-slide-hotfix-v8.64.1.js','./js/features/training-cleanup-hotfix-v8.64.1.js','./js/features/gym-opponent-archetype-dropdown-v8.64.2.js','./js/features/rank-ended-season-hotfix-v8.64.2.js','./js/features/route-feature-loader-v8.64.1.js','./js/features/card-detail-enrichment-v8.64.2.js','./js/app/bootstrap.js','./js/core/navigation-v8.33.js',
- './js/app/home.js','./js/app/decks_meta.js','./js/app/collection.js','./js/app/performance.js','./js/app/battle_gym.js','./js/app/ai_coach.js','./js/app/profile_teamwars.js','./js/app/training.js',
- './js/services/pocket-sync-adapter-service.js','./js/services/pocket-sync-orchestrator-service.js','./js/app/pocket_sync.js','./js/features/experience-v8.36.js','./js/features/battle-streamer-v8.43.js','./js/app/account_startup.js','./js/features/expansion-v8.49.js','./js/features/stability-v8.50.js','./js/app/pwa.js'
+ './js/features/ui-dialogs.js','./js/features/whats-new-v8.33.js','./js/features/tournament-leaderboards-v8.31.js','./js/features/gym-opponent-archetype-dropdown-v8.64.2.js','./js/features/rank-ended-season-hotfix-v8.64.2.js','./js/features/route-feature-loader-v8.64.1.js','./js/features/card-detail-enrichment-v8.64.2.js','./js/app/bootstrap.js','./js/core/navigation-v8.33.js',
+ './js/app/home.js','./js/app/decks_meta.js','./js/app/collection.js','./js/app/performance.js','./js/app/battle_gym.js','./js/app/ai_coach.js',
+ './js/features/experience-v8.36.js','./js/features/battle-streamer-v8.43.js','./js/app/account_startup.js','./js/features/expansion-v8.49.js','./js/features/stability-v8.50.js','./js/app/pwa.js'
 ];
 const CARD_DATA_HOST='cdn.jsdelivr.net';
 const ART_HOSTS=new Set(['limitlesstcg.nyc3.cdn.digitaloceanspaces.com']);
