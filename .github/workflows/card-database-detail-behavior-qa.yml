@@ -37,7 +37,7 @@ jobs:
           exit 1
       - name: Verify Card Database search detail and mobile stability
         run: |
-          cat > /tmp/card-db-detail-qa.cjs <<'NODE'
+          cat > card-db-detail-qa.cjs <<'NODE'
           const {chromium}=require('playwright');
           const assert=(v,m)=>{if(!v)throw new Error(m)};
           const fatal=[];
@@ -85,4 +85,4 @@ jobs:
             console.log('CARD_DATABASE_DETAIL_BEHAVIOR_QA_OK',JSON.stringify({sample,overflow}));
           })().catch(e=>{console.error('CARD_DATABASE_DETAIL_BEHAVIOR_QA_FAILURE',e);process.exit(1)});
           NODE
-          node /tmp/card-db-detail-qa.cjs
+          node card-db-detail-qa.cjs
