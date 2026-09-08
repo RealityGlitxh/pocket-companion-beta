@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'qa/apply-personal-matchup-learning.mjs'
+      - 'qa/apply-personal-matchup-learning-v2.mjs'
       - '.github/workflows/apply-personal-matchup-learning.yml'
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '22'
       - name: Apply surgical integration
-        run: node qa/apply-personal-matchup-learning.mjs
+        run: node qa/apply-personal-matchup-learning-v2.mjs
       - name: Validate contracts
         run: |
           node --check js/app/ai_coach.js
