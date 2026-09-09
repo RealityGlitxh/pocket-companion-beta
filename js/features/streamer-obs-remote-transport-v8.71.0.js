@@ -7,7 +7,7 @@ if(window.PPCStreamerOBSRemote)return;
 
 const KEY='pn_stream_overlay_remote_v1';
 const MODES=['ranked','tournament','caster'];
-let queuedWrites=0,exclusive=false,writeChain=Promise.resolve(),lastSerialized='',lastError='',timer=null,observer=null;
+let queuedWrites=0,exclusive=false,writeChain=Promise.resolve(),createPromise=null,lastSerialized='',lastError='',timer=null,observer=null;
 
 function safe(fn,f=null){try{return fn()}catch{return f}}
 function client(){return safe(()=>window.PPCAccountCloudCore?.client?.(),null)||safe(()=>cloudClient,null)}
@@ -30,11 +30,16 @@ async function createRemote(){
   if(!data?.overlay_id||!data?.write_token)throw new Error('Overlay connection was not created.');
   const creds={overlay_id:data.overlay_id,write_token:data.write_token};saveCreds(creds);lastSerialized='';return creds;
 }
-async function ensureRemote(){return readCreds()||await createRemote()}
+async function ensureRemote(){
+  const existing=readCreds();if(existing)return existing;
+  if(createPromise)return createPromise;
+  createPromise=createRemote().finally(()=>{createPromise=null});
+  return createPromise;
+}
 async function waitForIdle(maxMs=15000){
   const started=Date.now();
-  while((queuedWrites||exclusive)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
-  if(queuedWrites||exclusive)throw new Error('Overlay publisher is still busy. Please try again.');
+  while((queuedWrites||exclusive||createPromise)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
+  if(queuedWrites||exclusive||createPromise)throw new Error('Overlay publisher is still busy. Please try again.');
 }
 async function performPublish(force=false){
   const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
@@ -42,7 +47,7 @@ async function performPublish(force=false){
   let {data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot});
   if(error)throw error;
   if(!data?.ok&&data?.status==='invalid'){
-    clearCreds();creds=await createRemote();({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));if(error)throw error;
+    clearCreds();creds=await ensureRemote();({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));if(error)throw error;
   }
   if(!data?.ok)throw new Error('Overlay publish was rejected.');
   lastSerialized=serialized;lastError='';updateUi('connected');return true;
@@ -76,7 +81,7 @@ async function regenerate(){
     await waitForIdle();exclusive=true;
     const c=client(),old=readCreds();
     if(old&&c){const {data,error}=await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});if(error)throw error;if(!data?.ok)throw new Error('Previous overlay URL could not be revoked.');}
-    clearCreds();lastSerialized='';await createRemote();exclusive=false;
+    clearCreds();lastSerialized='';await ensureRemote();exclusive=false;
     const published=await publish(true);if(!published)throw new Error(lastError||'New overlay state could not be published.');
     window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl()
   }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError);return ''}finally{exclusive=false}
