@@ -14,37 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply focused release-gate fixes
+      - name: Fix imported deck card references
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           decks = Path('js/app/decks_meta.js')
           text = decks.read_text()
           old = ''' // Use the same robust parser as Paste / Import.\n const analysis=analyzeImportedDeck(txt);\n'''
           new = ''' // Use the same robust parser as Paste / Import.\n const analysis=analyzeImportedDeck(txt);\n\n // Keep imported references anchored to the currently loaded canonical card map.\n // Name lookup helpers can outlive a background catalog refresh; reconcile every\n // resolved row before persisting so an imported deck never saves stale card IDs.\n const reconciledCards={};\n for(const row of analysis.resolved){\n   const live=cardMap.get(row.card?.id)\n     || CARDS.find(c=>String(c.id)===String(row.card?.id))\n     || CARDS.find(c=>normalizedCardName(c.name)===normalizedCardName(row.card?.name));\n   if(!live){analysis.unresolved.push(`Could not persist ${row.qty} ${row.name}. Reload/retry the Card Database.`);continue}\n   reconciledCards[live.id]=(reconciledCards[live.id]||0)+Number(row.qty||0);\n }\n analysis.cards=reconciledCards;\n'''
-          if old not in text:
+          if new in text:
+              print('Deck import fix already present')
+          elif old in text:
+              decks.write_text(text.replace(old, new, 1))
+          else:
               raise SystemExit('decks_meta import anchor not found')
-          decks.write_text(text.replace(old, new, 1))
-
-          qa = Path('.github/workflows/pocket-coach-before-after-qa.yml')
-          text = qa.read_text()
-          anchor = '''              const unsupportedCount=await page.evaluate(r=>{const x=document.createElement('div');x.innerHTML=window.coachMatchupReportHtml(r);return x.querySelectorAll('.coachPreviewChange').length},unsupported);assert.equal(unsupportedCount,0,'incomplete recommendation must not create a fake swap');\n              await page.locator('.coachPreviewChange').click();await page.locator('#coachCompareBackdrop').waitFor();\n'''
-          replacement = '''              const unsupportedCount=await page.evaluate(r=>{const x=document.createElement('div');x.innerHTML=window.coachMatchupReportHtml(r);return x.querySelectorAll('.coachPreviewChange').length},unsupported);assert.equal(unsupportedCount,0,'incomplete recommendation must not create a fake swap');\n              const openComparison=async()=>{\n                await page.waitForFunction(()=>!!document.querySelector('.coachPreviewChange'));\n                await page.evaluate(()=>document.querySelector('.coachPreviewChange')?.click());\n                await page.locator('#coachCompareBackdrop').waitFor();\n              };\n              await openComparison();\n'''
-          if anchor not in text:
-              raise SystemExit('Pocket Coach QA first click anchor not found')
-          text = text.replace(anchor, replacement, 1)
-          repeated = "await page.locator('.coachPreviewChange').click();await page.locator('#coachCompareBackdrop').waitFor();"
-          if text.count(repeated) != 2:
-              raise SystemExit(f'expected 2 remaining Pocket Coach click sequences, found {text.count(repeated)}')
-          text = text.replace(repeated, 'await openComparison();')
-          qa.write_text(text)
           PY
-      - name: Commit focused fixes and remove helper workflow
+      - name: Commit app fix
         run: |
           git config user.name 'PocketNexus QA Bot'
           git config user.email 'actions@users.noreply.github.com'
-          git rm .github/workflows/apply-beta-green-fixes.yml
-          git add js/app/decks_meta.js .github/workflows/pocket-coach-before-after-qa.yml
-          git commit -m 'fix: stabilize deck import and coach comparison QA'
+          git add js/app/decks_meta.js
+          if git diff --cached --quiet; then
+            echo 'No app changes needed'
+            exit 0
+          fi
+          git commit -m 'fix: reconcile imported deck card references'
           git push origin main
