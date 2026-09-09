@@ -1,42 +1,113 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketNexus — Streamer Overlay 3.1</title><style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,Segoe UI,Arial,sans-serif}*{box-sizing:border-box}#root{width:100%;height:100%;display:grid;place-items:end center;padding:24px}.card{width:min(920px,96vw);color:#fff;background:rgba(8,12,20,.88);border:1px solid #ffffff24;border-radius:22px;padding:22px;box-shadow:0 18px 60px #0008;animation:in .35s ease}.ey{font-size:12px;letter-spacing:.14em;opacity:.65}.big{font-size:32px;font-weight:900}.row{display:flex;gap:14px;align-items:center;justify-content:space-between}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.stat{padding:12px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff0b}.stat strong{display:block;font-size:25px}.good{color:#6fe7a9}.bad{color:#ff8e98}.tie{color:#ffd36f}.deckgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}.deckgrid div{padding:8px;border-radius:9px;background:#ffffff0d;font-size:12px}.qr{width:180px;height:180px;background:#fff;border-radius:14px;display:grid;place-items:center;color:#111;text-align:center;padding:15px;font-weight:800}.graph{width:100%;height:150px}.graph polyline{fill:none;stroke:currentColor;stroke-width:4}.hud{position:fixed;right:22px;top:22px;color:#fff;background:#080c14dd;border:1px solid #ffffff22;border-radius:999px;padding:9px 15px;font-weight:800}.light .card,.light .hud{color:#111;background:#fffffff0}.transparent .card{background:#080c1470}.muted{opacity:.7}.statusCard{width:min(560px,92vw);align-self:center;justify-self:center;text-align:center}.statusDot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffd36f;margin-right:8px;box-shadow:0 0 18px #ffd36f66}.statusBad .statusDot{background:#ff8e98;box-shadow:0 0 18px #ff8e9866}@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@media(max-width:650px){.stats{grid-template-columns:1fr}.deckgrid{grid-template-columns:repeat(4,1fr)}.big{font-size:24px}}
-.deckhero{display:flex;gap:10px;margin-top:14px;align-items:flex-end}.deckhero img{width:110px;max-height:154px;object-fit:contain;border-radius:10px}.qr canvas,.qr img{width:160px!important;height:160px!important}.qr small{display:block;padding:8px}</style></head><body><div id="root"></div><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script><script>
-const STORE="ppc_stream_overlay_v83",CHANNEL="ppc-stream-v83";
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketNexus — Streamer Overlay 3.1</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,Segoe UI,Arial,sans-serif}*{box-sizing:border-box}#root{width:100%;height:100%;display:grid;place-items:end center;padding:24px}.card{width:min(920px,96vw);color:#fff;background:rgba(8,12,20,.88);border:1px solid #ffffff24;border-radius:22px;padding:22px;box-shadow:0 18px 60px #0008;animation:in .35s ease}.ey{font-size:12px;letter-spacing:.14em;opacity:.65}.big{font-size:32px;font-weight:900}.row{display:flex;gap:14px;align-items:center;justify-content:space-between}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.stat{padding:12px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff0b}.stat strong{display:block;font-size:25px}.good{color:#6fe7a9}.bad{color:#ff8e98}.tie{color:#ffd36f}.deckgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}.deckgrid div{padding:8px;border-radius:9px;background:#ffffff0d;font-size:12px}.qr{width:180px;height:180px;background:#fff;border-radius:14px;display:grid;place-items:center;color:#111;text-align:center;padding:15px;font-weight:800}.graph{width:100%;height:150px}.graph polyline{fill:none;stroke:currentColor;stroke-width:4}.hud{position:fixed;right:22px;top:22px;color:#fff;background:#080c14dd;border:1px solid #ffffff22;border-radius:999px;padding:9px 15px;font-weight:800}.light .card,.light .hud{color:#111;background:#fffffff0}.transparent .card{background:#080c1470}.muted{opacity:.7}.statusCard{width:min(560px,92vw);align-self:center;justify-self:center;text-align:center}.statusDot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffd36f;margin-right:8px;box-shadow:0 0 18px #ffd36f66}.statusBad .statusDot{background:#ff8e98;box-shadow:0 0 18px #ff8e9866}@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@media(max-width:650px){.stats{grid-template-columns:1fr}.deckgrid{grid-template-columns:repeat(4,1fr)}.big{font-size:24px}}.deckhero{display:flex;gap:10px;margin-top:14px;align-items:flex-end}.deckhero img{width:110px;max-height:154px;object-fit:contain;border-radius:10px}.qr canvas,.qr img{width:160px!important;height:160px!important}.qr small{display:block;padding:8px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+const STORE='ppc_stream_overlay_v83',CHANNEL='ppc-stream-v83';
 const SUPA='https://cdmzrsvwztndqfwzsumo.supabase.co',PUB='sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl';
-const params=new URLSearchParams(location.search),forcedMode=params.get("mode"),remoteId=params.get('overlay');
-let d=null,ch=null,scene=0,lastSwitch=Date.now(),remoteStatus=remoteId?'connecting':'local',remoteTimer=null;
+const params=new URLSearchParams(location.search),forcedMode=params.get('mode'),remoteId=params.get('overlay');
+let d=null,ch=null,scene=0,lastSwitch=Date.now(),lastMode=null,remoteStatus=remoteId?'connecting':'local',remoteTimer=null,pullBusy=false;
 const root=document.getElementById('root');
-const esc=s=>String(s??"").replace(/[&<>\"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
-function load(){try{return JSON.parse(localStorage.getItem(STORE)||"null")}catch(e){return null}}
-function statusHtml(title,msg,bad=false){return `<div class="card statusCard ${bad?'statusBad':''}"><span class=ey>POCKETNEXUS OVERLAY</span><div class=big style="margin-top:8px"><span class=statusDot></span>${esc(title)}</div><p class=muted>${esc(msg)}</p></div>`}
-function enabled(){let s=d?.config?.scenes||{},mode=forcedMode||d?.config?.overlayMode||"ranked",a=Object.keys(s).filter(k=>s[k]!==false);if(mode==="tournament"||mode==="caster")a=a.filter(k=>k!=="rank"&&k!=="graph");return a.length?a:[mode==="ranked"?"rank":"tournament"]}
-function graph(){let p=d.rpJourney||[d.rank.points],mi=Math.min(...p),ma=Math.max(...p),dlt=Math.max(1,ma-mi),pts=p.map((v,i)=>`${i*(100/Math.max(1,p.length-1))},${90-(v-mi)/dlt*75}`).join(" ");return `<div class=card><span class=ey>LIVE RP JOURNEY</span><div class=row><span class=big>${d.rank.points} RP</span><span>${esc(d.rank.tier)}</span></div><svg class=graph viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts}"/></svg><span class=muted>Session low ${mi} • high ${ma}</span></div>`}
-function sceneHtml(k){let c=d.config||{},s=d.session,l=d.lastMatch,t=d.tournament||{},ca=d.caster||{};if(k==="graph")return graph();if(k==="deck")return `<div class=card><span class=ey>CURRENT DECK</span><div class=big>${esc(d.deck.name)}</div><p>${esc(d.deck.archetype||d.deck.energy||"Pokémon TCG Pocket")}</p>${(d.deck.cards||[]).filter(x=>x.image).slice(0,3).length?`<div class=deckhero>${(d.deck.cards||[]).filter(x=>x.image).slice(0,3).map(x=>`<img src="${esc(x.image)}" alt="${esc(x.name)}">`).join("")}</div>`:""}<div class=stats><div class=stat><span>SESSION</span><strong>${s?`${s.wins}-${s.losses}-${s.ties||0}`:"—"}</strong></div><div class=stat><span>STREAK</span><strong>${esc(d.record.streak)}</strong></div><div class=stat><span>WIN RATE</span><strong>${Number(d.record.winRate||0).toFixed(1)}%</strong></div></div></div>`;if(k==="decklist")return `<div class=card><span class=ey>20-CARD DECK LIST</span><div class=big>${esc(d.deck.name)}</div><div class=deckgrid>${(d.deck.cards||[]).map(x=>`<div><b>${esc(x.name)}</b><br>×${Number(x.qty||1)}</div>`).join("")||"<div class=muted>No saved card list</div>"}</div></div>`;if(k==="qr")return `<div class=card><div class=row><div><span class=ey>DECK QR</span><div class=big>${esc(d.deck.name)}</div><p class=muted>${d.deck.shareUrl?"Scan to open the shared deck.":"Create a private deck share link in Stream Control Center first."}</p></div><div class=qr id=deckQr>${d.deck.shareUrl?"":"QR<br>WAITING"}</div></div></div>`;if(k==="lastmatch")return `<div class=card><span class=ey>LAST MATCH</span>${l?`<div class="big ${l.result==="win"?"good":l.result==="tie"?"tie":"bad"}">${String(l.result||'').toUpperCase()}</div><h2>${esc(l.deckName)} vs ${esc(l.opponentArchetype)}</h2><p>${l.rankChange>0?"+":""}${l.rankChange} RP • ${l.rankAfter} RP total</p>`:"<p>No match recorded yet.</p>"}</div>`;if(k==="matchup")return `<div class=card><span class=ey>MATCHUP</span><div class=big>${esc(d.deck.name)} vs ${esc(d.opponent||"Opponent")}</div><p>Lifetime ${d.matchup?.lifetime?.w||0}-${d.matchup?.lifetime?.l||0}-${d.matchup?.lifetime?.t||0} • Session ${d.matchup?.session?.w||0}-${d.matchup?.session?.l||0}-${d.matchup?.session?.t||0}</p></div>`;if(k==="tournament"){if(c.overlayMode==="caster")return `<div class=card><span class=ey>CASTER MODE • ${esc(t.name)}</span><div class=row><div class=big>${esc(ca.a)}</div><div class=big>${ca.scoreA} — ${ca.scoreB}</div><div class=big>${esc(ca.b)}</div></div><p class=muted>${esc(t.round)} • ${esc(t.stage)}</p></div>`;return `<div class=card><span class=ey>TOURNAMENT MODE</span><div class=big>${esc(t.name)}</div><div class=stats><div class=stat><span>ROUND</span><strong>${esc(t.round)}</strong></div><div class=stat><span>RECORD</span><strong>${esc(t.record)}</strong></div><div class=stat><span>STAGE</span><strong>${esc(t.stage)}</strong></div></div></div>`}return `<div class=card><span class=ey>LIVE RANK</span><div class=row><div><div class=big>${esc(d.rank.tier)}</div><b>${d.rank.points} RP</b></div><div class=stats><div class=stat><span>RECORD</span><strong>${d.record.wins}-${d.record.losses}-${d.record.ties||0}</strong></div><div class=stat><span>STREAK</span><strong>${esc(d.record.streak)}</strong></div><div class=stat><span>SESSION RP</span><strong>${s?(s.rankChange>0?"+":"")+s.rankChange:"—"}</strong></div></div></div></div>`}
+const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function load(){try{return JSON.parse(localStorage.getItem(STORE)||'null')}catch{return null}}
+function statusHtml(title,msg,bad=false){return `<div class="card statusCard ${bad?'statusBad':''}"><span class="ey">POCKETNEXUS OVERLAY</span><div class="big" style="margin-top:8px"><span class="statusDot"></span>${esc(title)}</div><p class="muted">${esc(msg)}</p></div>`}
+function modeOf(state=d){return forcedMode||state?.config?.overlayMode||'ranked'}
+function enabled(state=d){
+  const s=state?.config?.scenes||{},mode=modeOf(state);
+  let a=Object.keys(s).filter(k=>s[k]!==false);
+  if(mode==='tournament'||mode==='caster')a=a.filter(k=>k!=='rank'&&k!=='graph');
+  if(!a.length)a=[mode==='ranked'?'rank':'tournament'];
+  return a;
+}
+function primarySceneIndex(list,mode){const key=mode==='ranked'?'rank':'tournament',i=list.indexOf(key);return i>=0?i:0}
+function graph(state){
+  if(!state)return '';
+  const p=state.rpJourney||[state.rank?.points||0],mi=Math.min(...p),ma=Math.max(...p),dlt=Math.max(1,ma-mi),pts=p.map((v,i)=>`${i*(100/Math.max(1,p.length-1))},${90-(v-mi)/dlt*75}`).join(' ');
+  return `<div class="card"><span class="ey">LIVE RP JOURNEY</span><div class="row"><span class="big">${state.rank?.points||0} RP</span><span>${esc(state.rank?.tier||'Ranked')}</span></div><svg class="graph" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts}"/></svg><span class="muted">Session low ${mi} • high ${ma}</span></div>`;
+}
+function sceneHtml(k,state){
+  if(!state)return '';
+  const c=state.config||{},s=state.session,l=state.lastMatch,t=state.tournament||{},ca=state.caster||{},deck=state.deck||{},record=state.record||{},rank=state.rank||{},matchup=state.matchup||{};
+  if(k==='graph')return graph(state);
+  if(k==='deck')return `<div class="card"><span class="ey">CURRENT DECK</span><div class="big">${esc(deck.name||'No deck selected')}</div><p>${esc(deck.archetype||deck.energy||'Pokémon TCG Pocket')}</p>${(deck.cards||[]).filter(x=>x.image).slice(0,3).length?`<div class="deckhero">${(deck.cards||[]).filter(x=>x.image).slice(0,3).map(x=>`<img src="${esc(x.image)}" alt="${esc(x.name)}">`).join('')}</div>`:''}<div class="stats"><div class="stat"><span>SESSION</span><strong>${s?`${s.wins||0}-${s.losses||0}-${s.ties||0}`:'—'}</strong></div><div class="stat"><span>STREAK</span><strong>${esc(record.streak??'—')}</strong></div><div class="stat"><span>WIN RATE</span><strong>${Number(record.winRate||0).toFixed(1)}%</strong></div></div></div>`;
+  if(k==='decklist')return `<div class="card"><span class="ey">20-CARD DECK LIST</span><div class="big">${esc(deck.name||'No deck selected')}</div><div class="deckgrid">${(deck.cards||[]).map(x=>`<div><b>${esc(x.name)}</b><br>×${Number(x.qty||1)}</div>`).join('')||'<div class="muted">No saved card list</div>'}</div></div>`;
+  if(k==='qr')return `<div class="card"><div class="row"><div><span class="ey">DECK QR</span><div class="big">${esc(deck.name||'No deck selected')}</div><p class="muted">${deck.shareUrl?'Scan to open the shared deck.':'Create a private deck share link in Stream Control Center first.'}</p></div><div class="qr" id="deckQr">${deck.shareUrl?'':'QR<br>WAITING'}</div></div></div>`;
+  if(k==='lastmatch')return `<div class="card"><span class="ey">LAST MATCH</span>${l?`<div class="big ${l.result==='win'?'good':l.result==='tie'?'tie':'bad'}">${String(l.result||'').toUpperCase()}</div><h2>${esc(l.deckName)} vs ${esc(l.opponentArchetype)}</h2><p>${l.rankChange>0?'+':''}${l.rankChange} RP • ${l.rankAfter} RP total</p>`:'<p>No match recorded yet.</p>'}</div>`;
+  if(k==='matchup')return `<div class="card"><span class="ey">MATCHUP</span><div class="big">${esc(deck.name||'Your deck')} vs ${esc(state.opponent||'Opponent')}</div><p>Lifetime ${matchup.lifetime?.w||0}-${matchup.lifetime?.l||0}-${matchup.lifetime?.t||0} • Session ${matchup.session?.w||0}-${matchup.session?.l||0}-${matchup.session?.t||0}</p></div>`;
+  if(k==='tournament'){
+    if(c.overlayMode==='caster')return `<div class="card"><span class="ey">CASTER MODE • ${esc(t.name||'Tournament')}</span><div class="row"><div class="big">${esc(ca.a||'Player A')}</div><div class="big">${ca.scoreA||0} — ${ca.scoreB||0}</div><div class="big">${esc(ca.b||'Player B')}</div></div><p class="muted">${esc(t.round||'Round')} • ${esc(t.stage||'Stage')}</p></div>`;
+    return `<div class="card"><span class="ey">TOURNAMENT MODE</span><div class="big">${esc(t.name||'Tournament')}</div><div class="stats"><div class="stat"><span>ROUND</span><strong>${esc(t.round||'—')}</strong></div><div class="stat"><span>RECORD</span><strong>${esc(t.record||'—')}</strong></div><div class="stat"><span>STAGE</span><strong>${esc(t.stage||'—')}</strong></div></div></div>`;
+  }
+  return `<div class="card"><span class="ey">LIVE RANK</span><div class="row"><div><div class="big">${esc(rank.tier||'Ranked')}</div><b>${rank.points||0} RP</b></div><div class="stats"><div class="stat"><span>RECORD</span><strong>${record.wins||0}-${record.losses||0}-${record.ties||0}</strong></div><div class="stat"><span>STREAK</span><strong>${esc(record.streak??'—')}</strong></div><div class="stat"><span>SESSION RP</span><strong>${s?(s.rankChange>0?'+':'')+(s.rankChange||0):'—'}</strong></div></div></div></div>`;
+}
 function render(){
-  if(!d){
-    if(remoteId){if(remoteStatus==='revoked')root.innerHTML=statusHtml('Overlay Revoked','Generate a new OBS Overlay URL in Stream Control Center.',true);else if(remoteStatus==='invalid')root.innerHTML=statusHtml('Overlay Not Found','Copy a fresh OBS Overlay URL from Stream Control Center.',true);else if(remoteStatus==='error')root.innerHTML=statusHtml('Connection Issue','PocketNexus will keep trying to reconnect.',true);else root.innerHTML=statusHtml('Connecting…','Waiting for Stream Control Center…');}
-    else root.innerHTML=statusHtml('Waiting for Stream Control Center…','Open Streamer in PocketNexus and send an overlay update.');
+  const state=d;
+  if(!state){
+    if(remoteId){
+      if(remoteStatus==='revoked')root.innerHTML=statusHtml('Overlay Revoked','Generate a new OBS Overlay URL in Stream Control Center.',true);
+      else if(remoteStatus==='invalid')root.innerHTML=statusHtml('Overlay Not Found','Copy a fresh OBS Overlay URL from Stream Control Center.',true);
+      else if(remoteStatus==='error')root.innerHTML=statusHtml('Connection Issue','PocketNexus will keep trying to reconnect.',true);
+      else root.innerHTML=statusHtml('Connecting…','Waiting for Stream Control Center…');
+    }else root.innerHTML=statusHtml('Waiting for Stream Control Center…','Open Streamer in PocketNexus and send an overlay update.');
     return;
   }
-  if(forcedMode){d.config=d.config||{};d.config.overlayMode=forcedMode}document.body.className=d.config?.theme||"dark";let a=enabled();scene=Math.min(scene,a.length-1);root.style.opacity=String(Math.max(.1,Math.min(1,Number(d.config?.opacity||85)/100)));root.style.fontSize=`${Math.max(70,Math.min(150,Number(d.config?.fontScale||d.config?.scale||100)))}%`;root.innerHTML=`${d.config?.persistentHud!==false&&d.config?.overlayMode==="ranked"?`<div class=hud>${esc(d.rank.tier)} • ${d.rank.points} RP • ${d.record.streak}</div>`:""}${sceneHtml(a[scene])}`;if(a[scene]==="qr"&&d.deck?.shareUrl){const el=document.getElementById("deckQr");if(el&&typeof QRCode==="function"){el.innerHTML="";new QRCode(el,{text:d.deck.shareUrl,width:160,height:160,correctLevel:QRCode.CorrectLevel.M})}else if(el){el.innerHTML="<small>QR library unavailable</small>"}}
+  if(forcedMode){state.config=state.config||{};state.config.overlayMode=forcedMode}
+  const c=state.config||{},a=enabled(state);scene=Math.max(0,Math.min(scene,a.length-1));
+  document.body.className=c.theme||'dark';
+  root.style.opacity=String(Math.max(.1,Math.min(1,Number(c.opacity||85)/100)));
+  root.style.fontSize=`${Math.max(70,Math.min(150,Number(c.fontScale||c.scale||100)))}%`;
+  const hud=c.persistentHud!==false&&modeOf(state)==='ranked'?`<div class="hud">${esc(state.rank?.tier||'Ranked')} • ${state.rank?.points||0} RP • ${esc(state.record?.streak??'—')}</div>`:'';
+  root.innerHTML=hud+sceneHtml(a[scene],state);
+  if(a[scene]==='qr'&&state.deck?.shareUrl){const el=document.getElementById('deckQr');if(el&&typeof QRCode==='function'){el.innerHTML='';new QRCode(el,{text:state.deck.shareUrl,width:160,height:160,correctLevel:QRCode.CorrectLevel.M})}else if(el)el.innerHTML='<small>QR library unavailable</small>'}
 }
-function step(){if(!d)return;let a=enabled();scene=(scene+1)%a.length;lastSwitch=Date.now();render()}
+function applyState(next,mode,{remote=false}={}){
+  if(!next)return;
+  d=next;
+  const activeMode=mode||modeOf(next),a=enabled(next);
+  if(remote&&(lastMode===null||lastMode!==activeMode)){
+    scene=primarySceneIndex(a,activeMode);
+    lastSwitch=Date.now();
+  }else if(!remote){
+    const requested=Number(next?.config?.sceneIndex);
+    scene=Number.isFinite(requested)?Math.max(0,requested)%Math.max(1,a.length):Math.min(scene,a.length-1);
+  }else scene=Math.min(scene,a.length-1);
+  lastMode=activeMode;
+  render();
+}
+function step(){const state=d;if(!state)return;const a=enabled(state);scene=(scene+1)%a.length;lastSwitch=Date.now();render()}
 async function pullRemote(){
-  if(!remoteId)return;
+  if(!remoteId||pullBusy)return;
+  pullBusy=true;
   try{
     const r=await fetch(SUPA+'/rest/v1/rpc/read_stream_overlay',{method:'POST',headers:{apikey:PUB,'Content-Type':'application/json'},body:JSON.stringify({p_overlay_id:remoteId}),cache:'no-store'});
-    if(!r.ok)throw new Error('HTTP '+r.status);const out=await r.json();remoteStatus=out?.status||'error';
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const out=await r.json();remoteStatus=out?.status||'error';
     if(remoteStatus==='ok'){
       const envelope=out.state||{},m=forcedMode||envelope.activeMode||'ranked',next=envelope.modes?.[m];
-      if(next){d=next;scene=Number(d.config?.sceneIndex||scene)%Math.max(1,enabled().length);render();return}
+      if(next){applyState(next,m,{remote:true});return}
       remoteStatus='error';d=null;
     }else d=null;
   }catch(e){remoteStatus='error';d=null}
+  finally{pullBusy=false}
   render();
 }
-if(remoteId){d=null;render();pullRemote();remoteTimer=setInterval(pullRemote,2000)}else{
-  try{if(typeof BroadcastChannel==="function"){ch=new BroadcastChannel(CHANNEL);ch.onmessage=e=>{let m=e.data||{};if(m.type==="state"&&m.data){d=m.data;scene=Number(d.config?.sceneIndex||scene)%enabled().length;render()}else if(m.type==="ping")ch.postMessage({type:"pong",from:"overlay",at:Date.now()})};ch.postMessage({type:"overlay-ready",at:Date.now()})}}catch(e){}
-  window.addEventListener("storage",e=>{if(e.key===STORE){d=load();render()}});d=load();render();
+if(remoteId){
+  d=null;render();pullRemote();remoteTimer=setInterval(pullRemote,2000);
+}else{
+  try{if(typeof BroadcastChannel==='function'){ch=new BroadcastChannel(CHANNEL);ch.onmessage=e=>{const m=e.data||{};if(m.type==='state'&&m.data)applyState(m.data,modeOf(m.data));else if(m.type==='ping')ch.postMessage({type:'pong',from:'overlay',at:Date.now()})};ch.postMessage({type:'overlay-ready',at:Date.now()})}}catch(e){}
+  window.addEventListener('storage',e=>{if(e.key===STORE){const next=load();if(next)applyState(next,modeOf(next));else{d=null;render()}}});
+  const initial=load();if(initial)applyState(initial,modeOf(initial));else render();
 }
-setInterval(()=>{if(d?.config?.sceneRotation!==false&&Date.now()-lastSwitch>=Number(d.config?.sceneSeconds||10)*1000)step();if(ch)try{ch.postMessage({type:"overlay-heartbeat",at:Date.now()})}catch(e){}},1000);
-</script></body></html>
+setInterval(()=>{const state=d;if(state?.config?.sceneRotation!==false&&Date.now()-lastSwitch>=Number(state?.config?.sceneSeconds||10)*1000)step();if(ch)try{ch.postMessage({type:'overlay-heartbeat',at:Date.now()})}catch(e){}},1000);
+</script>
+</body>
+</html>
