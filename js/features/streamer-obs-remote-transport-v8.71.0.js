@@ -7,7 +7,7 @@ if(window.PPCStreamerOBSRemote)return;
 
 const KEY='pn_stream_overlay_remote_v1';
 const MODES=['ranked','tournament','caster'];
-let busy=false,lastSerialized='',lastError='',timer=null,observer=null;
+let activeWrites=0,exclusive=false,lastSerialized='',lastError='',timer=null,observer=null;
 
 function safe(fn,f=null){try{return fn()}catch{return f}}
 function client(){return safe(()=>window.PPCAccountCloudCore?.client?.(),null)||safe(()=>cloudClient,null)}
@@ -31,18 +31,18 @@ async function createRemote(){
   const creds={overlay_id:data.overlay_id,write_token:data.write_token};saveCreds(creds);lastSerialized='';return creds;
 }
 async function ensureRemote(){return readCreds()||await createRemote()}
-async function waitForIdle(maxMs=3000){
+async function waitForIdle(maxMs=15000){
   const started=Date.now();
-  while(busy&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
-  if(busy)throw new Error('Overlay publisher is still busy. Please try again.');
+  while((activeWrites||exclusive)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
+  if(activeWrites||exclusive)throw new Error('Overlay publisher is still busy. Please try again.');
 }
 async function publish(force=false){
-  // Background interval publishes are best-effort, but explicit/forced publishes
-  // (workspace changes, tests, copy/open actions) must never be dropped just
-  // because a previous RPC is still finishing. Wait for that writer, then send
-  // the newest snapshot so a live OBS source follows the active workspace.
-  if(busy){if(!force)return false;try{await waitForIdle()}catch(e){lastError=e?.message||String(e);updateUi('error');return false}}
-  busy=true;
+  // Background writes are best-effort. Explicit writes are never dropped: they
+  // may run beside a slow background RPC, and the 1.5s publisher will reconcile
+  // any out-of-order completion using lastSerialized.
+  if(exclusive)return false;
+  if(activeWrites&&!force)return false;
+  activeWrites++;
   try{
     const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
     if(!force&&serialized===lastSerialized)return true;
@@ -53,7 +53,7 @@ async function publish(force=false){
     }
     if(!data?.ok)throw new Error('Overlay publish was rejected.');
     lastSerialized=serialized;lastError='';updateUi('connected');return true;
-  }catch(e){lastError=e?.message||String(e);updateUi('error');return false}finally{busy=false}
+  }catch(e){lastError=e?.message||String(e);updateUi('error');return false}finally{activeWrites=Math.max(0,activeWrites-1)}
 }
 function sourceUrl(){
   const creds=readCreds();const u=new URL('overlay.html',location.href);
@@ -69,13 +69,13 @@ async function copySource(){
 async function openTest(){try{await ensureRemote();await publish(true);window.open(sourceUrl(),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
 async function regenerate(){
   try{
-    await waitForIdle();busy=true;
+    await waitForIdle();exclusive=true;
     const c=client(),old=readCreds();
     if(old&&c){const {data,error}=await c.rpc('revoke_stream_overlay',{p_overlay_id:old.overlay_id,p_write_token:old.write_token});if(error)throw error;if(!data?.ok)throw new Error('Previous overlay URL could not be revoked.');}
-    clearCreds();lastSerialized='';await createRemote();busy=false;
+    clearCreds();lastSerialized='';await createRemote();exclusive=false;
     const published=await publish(true);if(!published)throw new Error(lastError||'New overlay state could not be published.');
     window.ppcNotice?.('OBS overlay URL regenerated. The previous URL has been revoked.');inject();return sourceUrl()
-  }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError);return ''}finally{busy=false}
+  }catch(e){lastError=e?.message||String(e);window.ppcNotice?.('Could not regenerate the overlay URL: '+lastError);return ''}finally{exclusive=false}
 }
 function statusText(kind){if(kind==='connected')return 'Remote OBS: Ready';if(kind==='error')return 'Remote OBS: Connection issue';return 'Remote OBS: Connecting…'}
 function updateUi(kind='connecting'){
