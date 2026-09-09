@@ -60,19 +60,21 @@ jobs:
             await page.goto(root,{waitUntil:'domcontentloaded',timeout:60000});
             const guest=page.getByRole('button',{name:/continue as guest/i});
             if(await guest.count())await guest.click({timeout:5000}).catch(()=>{});
-            await page.waitForFunction(()=>typeof newDeck==='function'&&typeof validationDetails==='function'&&Array.isArray(CARDS)&&CARDS.length>=20,{timeout:30000});
+            await page.waitForFunction(()=>typeof newDeck==='function'&&typeof validationDetails==='function'&&typeof ensureCardDatabaseReady==='function'&&Array.isArray(CARDS)&&CARDS.length>=20,{timeout:30000});
             await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();window.PPCWhatsNew?.close?.(true);document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove())});
             const ids=await page.evaluate(async()=>{
+              const ready=await ensureCardDatabaseReady();if(!ready)throw Error(`full Card Database unavailable: ${window.cardLoadError||'unknown error'}`);
               state.page='decks';render();newDeck();const id=state.selected,d=state.decks.find(x=>x.id===id);assertDeck=!!d;if(!d)throw Error('newDeck failed');
               d.name='QA Beta Deck';save();
-              const basic=CARDS.find(c=>cardKind(c)==='Pokémon'&&/basic/i.test(String(c.stage||'')));if(!basic)throw Error('no Basic Pokemon in catalog');
-              const chosen=[basic],seen=new Set([String(basic.name).toLowerCase()]);for(const c of CARDS){const k=String(c.name||'').toLowerCase();if(!k||seen.has(k))continue;seen.add(k);chosen.push(c);if(chosen.length===10)break}
-              if(chosen.length<10)throw Error(`only ${chosen.length} unique cards available`);
+              const resolvable=CARDS.filter(c=>getCardByName(c.name)?.id===c.id);
+              const basic=resolvable.find(c=>cardKind(c)==='Pokémon'&&/basic/i.test(String(c.stage||'')));if(!basic)throw Error('no uniquely resolvable Basic Pokemon in catalog');
+              const chosen=[basic],seen=new Set([String(basic.name).toLowerCase()]);for(const c of resolvable){const k=String(c.name||'').toLowerCase();if(!k||seen.has(k))continue;seen.add(k);chosen.push(c);if(chosen.length===10)break}
+              if(chosen.length<10)throw Error(`only ${chosen.length} uniquely resolvable cards available`);
               d.cards=Object.fromEntries(chosen.map(c=>[c.id,2]));save();
               if(deckCount(d)!==20||!isDeckLegal(d))throw Error(`20-card legality failed: ${validationDetails(d).join(' | ')}`);
               d.cards[chosen[0].id]=3;if(isDeckLegal(d)||!validationDetails(d).some(x=>/maximum is 2|copies/i.test(x)))throw Error('three-copy rule failed');
               d.cards[chosen[0].id]=1;if(!validationDetails(d).some(x=>/Add 1 more card/i.test(x)))throw Error('19-card rule failed');d.cards[chosen[0].id]=2;save();
-              state.page='decks';render();const before=state.decks.length,box=document.getElementById('imp');if(!box||typeof importDeck!=='function')throw Error('import unavailable');box.value=chosen.map(c=>`2 ${c.name}`).join('\n');importDeck();await new Promise(r=>setTimeout(r,250));
+              state.page='decks';render();const before=state.decks.length,box=document.getElementById('imp');if(!box||typeof importDeck!=='function')throw Error('import unavailable');box.value=chosen.map(c=>`2 ${c.name}`).join('\n');await importDeck();
               const imported=state.decks[state.decks.length-1];if(state.decks.length!==before+1||deckCount(imported)!==20||!isDeckLegal(imported))throw Error(`import failed: ${validationDetails(imported).join(' | ')}`);save();return{id,importedId:imported.id};
             });
             await page.reload({waitUntil:'domcontentloaded',timeout:60000});await page.waitForFunction(()=>Array.isArray(state?.decks));
