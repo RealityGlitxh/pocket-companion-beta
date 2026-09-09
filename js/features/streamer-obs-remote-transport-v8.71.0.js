@@ -31,8 +31,18 @@ async function createRemote(){
   const creds={overlay_id:data.overlay_id,write_token:data.write_token};saveCreds(creds);lastSerialized='';return creds;
 }
 async function ensureRemote(){return readCreds()||await createRemote()}
+async function waitForIdle(maxMs=3000){
+  const started=Date.now();
+  while(busy&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
+  if(busy)throw new Error('Overlay publisher is still busy. Please try again.');
+}
 async function publish(force=false){
-  if(busy)return false;busy=true;
+  // Background interval publishes are best-effort, but explicit/forced publishes
+  // (workspace changes, tests, copy/open actions) must never be dropped just
+  // because a previous RPC is still finishing. Wait for that writer, then send
+  // the newest snapshot so a live OBS source follows the active workspace.
+  if(busy){if(!force)return false;try{await waitForIdle()}catch(e){lastError=e?.message||String(e);updateUi('error');return false}}
+  busy=true;
   try{
     const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
     if(!force&&serialized===lastSerialized)return true;
@@ -57,11 +67,6 @@ async function copySource(){
   try{await ensureRemote();await publish(true);const u=sourceUrl();if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
 }
 async function openTest(){try{await ensureRemote();await publish(true);window.open(sourceUrl(),'_blank')}catch(e){window.ppcNotice?.('Could not open the remote overlay: '+(e?.message||e))}}
-async function waitForIdle(maxMs=3000){
-  const started=Date.now();
-  while(busy&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
-  if(busy)throw new Error('Overlay publisher is still busy. Please try again.');
-}
 async function regenerate(){
   try{
     await waitForIdle();busy=true;
