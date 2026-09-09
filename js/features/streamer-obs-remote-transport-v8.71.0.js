@@ -7,7 +7,7 @@ if(window.PPCStreamerOBSRemote)return;
 
 const KEY='pn_stream_overlay_remote_v1';
 const MODES=['ranked','tournament','caster'];
-let activeWrites=0,exclusive=false,lastSerialized='',lastError='',timer=null,observer=null;
+let queuedWrites=0,exclusive=false,writeChain=Promise.resolve(),lastSerialized='',lastError='',timer=null,observer=null;
 
 function safe(fn,f=null){try{return fn()}catch{return f}}
 function client(){return safe(()=>window.PPCAccountCloudCore?.client?.(),null)||safe(()=>cloudClient,null)}
@@ -33,27 +33,31 @@ async function createRemote(){
 async function ensureRemote(){return readCreds()||await createRemote()}
 async function waitForIdle(maxMs=15000){
   const started=Date.now();
-  while((activeWrites||exclusive)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
-  if(activeWrites||exclusive)throw new Error('Overlay publisher is still busy. Please try again.');
+  while((queuedWrites||exclusive)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
+  if(queuedWrites||exclusive)throw new Error('Overlay publisher is still busy. Please try again.');
 }
-async function publish(force=false){
-  // Background writes are best-effort. Explicit writes are never dropped: they
-  // may run beside a slow background RPC, and the 1.5s publisher will reconcile
-  // any out-of-order completion using lastSerialized.
-  if(exclusive)return false;
-  if(activeWrites&&!force)return false;
-  activeWrites++;
-  try{
-    const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
-    if(!force&&serialized===lastSerialized)return true;
-    let {data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot});
-    if(error)throw error;
-    if(!data?.ok&&data?.status==='invalid'){
-      clearCreds();creds=await createRemote();({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));if(error)throw error;
-    }
-    if(!data?.ok)throw new Error('Overlay publish was rejected.');
-    lastSerialized=serialized;lastError='';updateUi('connected');return true;
-  }catch(e){lastError=e?.message||String(e);updateUi('error');return false}finally{activeWrites=Math.max(0,activeWrites-1)}
+async function performPublish(force=false){
+  const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
+  if(!force&&serialized===lastSerialized)return true;
+  let {data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot});
+  if(error)throw error;
+  if(!data?.ok&&data?.status==='invalid'){
+    clearCreds();creds=await createRemote();({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));if(error)throw error;
+  }
+  if(!data?.ok)throw new Error('Overlay publish was rejected.');
+  lastSerialized=serialized;lastError='';updateUi('connected');return true;
+}
+function publish(force=false){
+  if(exclusive)return Promise.resolve(false);
+  // Skip duplicate background ticks while a write is already queued, but never
+  // drop an explicit publish. Every forced snapshot is captured only when its
+  // turn starts, so a newer workspace state cannot be overwritten afterward by
+  // an older in-flight request.
+  if(!force&&queuedWrites)return Promise.resolve(false);
+  queuedWrites++;
+  const task=writeChain.catch(()=>{}).then(()=>performPublish(force)).catch(e=>{lastError=e?.message||String(e);updateUi('error');return false});
+  writeChain=task.finally(()=>{queuedWrites=Math.max(0,queuedWrites-1)});
+  return task;
 }
 function sourceUrl(){
   const creds=readCreds();const u=new URL('overlay.html',location.href);
