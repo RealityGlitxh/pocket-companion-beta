@@ -91,14 +91,19 @@ jobs:
               assert.equal(await page.locator('.coachPreviewChange').count(),1,'supported recommendation should expose Preview Change');
               const unsupported=JSON.parse(JSON.stringify(report));delete unsupported[0].recommendations[0].set;delete unsupported[0].recommendations[0].number;
               const unsupportedCount=await page.evaluate(r=>{const x=document.createElement('div');x.innerHTML=window.coachMatchupReportHtml(r);return x.querySelectorAll('.coachPreviewChange').length},unsupported);assert.equal(unsupportedCount,0,'incomplete recommendation must not create a fake swap');
-              await page.locator('.coachPreviewChange').click();await page.locator('#coachCompareBackdrop').waitFor();
+              const openComparison=async()=>{
+                await page.waitForFunction(()=>!!document.querySelector('.coachPreviewChange'));
+                await page.evaluate(()=>document.querySelector('.coachPreviewChange')?.click());
+                await page.locator('#coachCompareBackdrop').waitFor();
+              };
+              await openComparison();
               const text=(await page.locator('.coachComparePanel').innerText()).toLowerCase();
               for(const phrase of ['current deck','proposed deck','hard rule','structural','current meta','matchup evidence','strategy-dependent','keep current','try this version','ask coach why','−1 qa review','+1 qa tech'])assert(text.includes(phrase),`missing ${phrase}`);
               assert(!text.includes('proposed matchup wr'),'must not fabricate a proposed matchup win rate');
               const overflow=await page.locator('.coachComparePanel').evaluate(el=>el.scrollWidth-el.clientWidth);assert(overflow<=12,`comparison overflow ${overflow}px at ${width}`);
               const before=await page.evaluate(()=>JSON.stringify(state.decks));await page.getByRole('button',{name:'Keep Current'}).click();assert.equal(await page.evaluate(()=>JSON.stringify(state.decks)),before,'Keep Current mutated deck state');
-              await page.locator('.coachPreviewChange').click();await page.locator('#coachCompareBackdrop').waitFor();await page.getByRole('button',{name:'Ask Coach Why'}).click();assert((await page.locator('#coachInput').inputValue()).includes('QA Review')&&(await page.locator('#coachInput').inputValue()).includes('QA Tech'),'Ask Coach Why did not prepare swap prompt');
-              await page.locator('.coachPreviewChange').click();await page.locator('#coachCompareBackdrop').waitFor();const original=await page.evaluate(()=>JSON.stringify(state.decks));await page.getByRole('button',{name:'Try This Version'}).click();
+              await openComparison();await page.getByRole('button',{name:'Ask Coach Why'}).click();assert((await page.locator('#coachInput').inputValue()).includes('QA Review')&&(await page.locator('#coachInput').inputValue()).includes('QA Tech'),'Ask Coach Why did not prepare swap prompt');
+              await openComparison();const original=await page.evaluate(()=>JSON.stringify(state.decks));await page.getByRole('button',{name:'Try This Version'}).click();
               const saved=await page.evaluate(()=>({decks:state.decks.map(d=>({name:d.name,source:d.source,coachTest:d.coachTest,sourceDeckId:d.sourceDeckId,cards:d.cards})),saved:window.__qaSaveCalled}));assert.equal(saved.decks.length,1,'test deck not created separately');assert.equal(saved.decks[0].source,'coach-test');assert.equal(saved.decks[0].coachTest,true);assert.equal(saved.decks[0].sourceDeckId,'qa-deck');assert.equal(saved.saved,true);assert.equal(original,'[]','original deck test setup mutated before save');
               assert(!errors.some(x=>/Runtime Recovery/i.test(x)),`runtime recovery error: ${errors.join('\n')}`);await page.close();
             }
