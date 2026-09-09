@@ -451,6 +451,19 @@ async function importDeck(){
  // Use the same robust parser as Paste / Import.
  const analysis=analyzeImportedDeck(txt);
 
+ // Keep imported references anchored to the currently loaded canonical card map.
+ // Name lookup helpers can outlive a background catalog refresh; reconcile every
+ // resolved row before persisting so an imported deck never saves stale card IDs.
+ const reconciledCards={};
+ for(const row of analysis.resolved){
+   const live=cardMap.get(row.card?.id)
+     || CARDS.find(c=>String(c.id)===String(row.card?.id))
+     || CARDS.find(c=>normalizedCardName(c.name)===normalizedCardName(row.card?.name));
+   if(!live){analysis.unresolved.push(`Could not persist ${row.qty} ${row.name}. Reload/retry the Card Database.`);continue}
+   reconciledCards[live.id]=(reconciledCards[live.id]||0)+Number(row.qty||0);
+ }
+ analysis.cards=reconciledCards;
+
  if(analysis.unresolved.length || analysis.copyViolations.length || analysis.total!==20){
    let parts=[];
    if(analysis.total!==20)parts.push(`Resolved ${analysis.total}/20 cards.`);
