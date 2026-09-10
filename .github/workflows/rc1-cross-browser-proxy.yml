@@ -8,6 +8,7 @@ on:
       - ".github/workflows/rc1-cross-browser-proxy.yml"
       - "index.html"
       - "js/features/rc1-route-class-cleanup-v8.65.0.js"
+      - "css/training-cleanup-v8.64.1.css"
 
 permissions:
   contents: read
