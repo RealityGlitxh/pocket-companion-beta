@@ -43,7 +43,21 @@ jobs:
             -H "apikey: $PUBLISHABLE_KEY" \
             --data "{\"scope\":\"lookup\",\"tournamentId\":\"$TOURNAMENT_ID\"}")
           cat /tmp/limitless-live.json
-          test "$http_code" = "200"
+          if [ "$http_code" != "200" ]; then
+            echo '--- LIVE PAGE DIAGNOSTIC ---'
+            page_code=$(curl --silent --show-error --location --max-time 25 \
+              --output /tmp/limitless-page.html --write-out '%{http_code}' \
+              "https://play.limitlesstcg.com/tournament/$TOURNAMENT_ID/pairings")
+            echo "page_status=$page_code bytes=$(wc -c </tmp/limitless-page.html)"
+            echo 'script_sources:'
+            grep -oE '<script[^>]+src="[^"]+' /tmp/limitless-page.html | head -30 || true
+            echo 'data_markers:'
+            grep -oE '(__NEXT_DATA__|__data|pairings|standings|tournament|api/[A-Za-z0-9_/?=&.-]+)' /tmp/limitless-page.html | sort -u | head -80 || true
+            echo 'page_excerpt:'
+            head -c 5000 /tmp/limitless-page.html || true
+            echo
+            exit 1
+          fi
           python3 - <<'PY'
           import json
           from pathlib import Path
