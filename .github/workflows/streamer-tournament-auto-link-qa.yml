@@ -9,6 +9,7 @@ on:
       - 'js/services/limitless-live-table-service-v8.68.1.js'
       - 'js/features/streamer-limitless-live-table-v8.68.3.js'
       - 'js/app/streamer_tools-v8.64.1.js'
+      - 'supabase/functions/limitless-refresh/index.ts'
       - 'qa/streamer-tournament-auto-link-qa.mjs'
       - '.github/workflows/streamer-tournament-auto-link-qa.yml'
       - 'index.html'
@@ -28,3 +29,32 @@ jobs:
           node-version: '22'
       - name: Verify automatic tournament overlay link
         run: node qa/streamer-tournament-auto-link-qa.mjs
+      - name: Verify deployed Limitless live lookup
+        env:
+          LOOKUP_URL: https://cdmzrsvwztndqfwzsumo.supabase.co/functions/v1/limitless-refresh
+          PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
+          TOURNAMENT_ID: 6aa22425a4272c53be64ca36
+        run: |
+          http_code=$(curl --silent --show-error --max-time 25 \
+            --output /tmp/limitless-live.json \
+            --write-out '%{http_code}' \
+            -X POST "$LOOKUP_URL" \
+            -H 'Content-Type: application/json' \
+            -H "apikey: $PUBLISHABLE_KEY" \
+            --data "{\"scope\":\"lookup\",\"tournamentId\":\"$TOURNAMENT_ID\"}")
+          cat /tmp/limitless-live.json
+          test "$http_code" = "200"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          body=json.loads(Path('/tmp/limitless-live.json').read_text())
+          assert body.get('ok') is True, body
+          assert body.get('tournamentId') == '6aa22425a4272c53be64ca36', body
+          usable=bool(body.get('details')) or bool(body.get('standings')) or bool(body.get('pairings'))
+          assert usable, 'lookup returned no usable tournament data'
+          print('DEPLOYED_LIMITLESS_LOOKUP_GREEN', {
+              'details': bool(body.get('details')),
+              'standings': len(body.get('standings') or []),
+              'pairings': len(body.get('pairings') or []),
+          })
+          PY
