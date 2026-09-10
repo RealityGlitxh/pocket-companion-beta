@@ -1,10 +1,10 @@
-/* PocketNexus V8.72.2 — Public Limitless player/table service
+/* PocketNexus V8.73.3 — Public Limitless player/table service
    Public tournament data only. Builds player choices from standings + live pairings so Tournament Follow works even when standings are not populated. */
 (function(){
 'use strict';
 if(window.PPCLimitlessLiveTable)return;
 const API='https://play.limitlesstcg.com/api';
-const CACHE_PREFIX='ppc_limitless_live_table_v8722_';
+const CACHE_PREFIX='ppc_limitless_live_table_v8733_';
 const TTL=20000;
 const mem=new Map();
 const safeText=v=>String(v??'').trim();
@@ -19,6 +19,13 @@ async function getJson(path){
   if(!r.ok){const e=new Error(`Limitless request failed (${r.status})`);e.status=r.status;throw e}
   return await r.json();
  }finally{clearTimeout(timer)}
+}
+async function getTournamentDetails(id){
+ const enc=encodeURIComponent(id);
+ // Official Limitless API route is /tournaments/{id}/details. Keep the older
+ // route as a compatibility fallback, but never let it block live events.
+ try{return await getJson(`/tournaments/${enc}/details`)}catch{}
+ try{return await getJson(`/tournaments/${enc}`)}catch{return null}
 }
 function readCache(id){
  const x=mem.get(id);if(x&&Date.now()-x.at<TTL)return x.data;
@@ -78,11 +85,12 @@ function mergePlayers(...groups){
 async function fetchTournament(input,{force=false}={}){
  const id=tournamentId(input);if(!id)throw new Error('Enter a Limitless tournament URL or ID.');
  if(!force){const cached=readCache(id);if(cached)return cached}
+ const enc=encodeURIComponent(id);
  const [details,standings,pairings,decklists]=await Promise.all([
-  getJson(`/tournaments/${encodeURIComponent(id)}`).catch(()=>null),
-  getJson(`/tournaments/${encodeURIComponent(id)}/standings`).catch(()=>[]),
-  getJson(`/tournaments/${encodeURIComponent(id)}/pairings`).catch(()=>[]),
-  getJson(`/tournaments/${encodeURIComponent(id)}/decklists`).catch(()=>[])
+  getTournamentDetails(id),
+  getJson(`/tournaments/${enc}/standings`).catch(()=>[]),
+  getJson(`/tournaments/${enc}/pairings`).catch(()=>[]),
+  getJson(`/tournaments/${enc}/decklists`).catch(()=>[])
  ]);
  const pairs=list(pairings).map(normalizePairing);
  const pairingPlayers=[];for(const p of pairs){if(p.playerA)pairingPlayers.push(p.playerA);if(p.playerB)pairingPlayers.push(p.playerB)}
@@ -101,5 +109,5 @@ function resolveTable(data,round,table){
  const B=byId.get(String(p.playerBId))||p.playerB||{id:p.playerBId,name:'Unknown Player'};
  return {tournamentId:data.id,tournamentName:data.details?.name||data.details?.title||'Limitless Tournament',round:p.round,table:p.table,score:p.score,playerA:{...A,decklist:data.deckByPlayer?.[String(A.id)]||null},playerB:{...B,decklist:data.deckByPlayer?.[String(B.id)]||null},fetchedAt:data.fetchedAt};
 }
-window.PPCLimitlessLiveTable={version:'8.72.2',tournamentId,fetchTournament,rounds,tables,resolveTable,refresh:id=>fetchTournament(id,{force:true}),cacheMs:TTL,publicOnly:true};
+window.PPCLimitlessLiveTable={version:'8.73.3',tournamentId,fetchTournament,rounds,tables,resolveTable,refresh:id=>fetchTournament(id,{force:true}),cacheMs:TTL,publicOnly:true};
 })();
