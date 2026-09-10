@@ -1,10 +1,12 @@
-/* PocketNexus V8.73.3 — Public Limitless player/table service
-   Public tournament data only. Builds player choices from standings + live pairings so Tournament Follow works even when standings are not populated. */
+/* PocketNexus V8.73.4 — Public Limitless player/table service
+   Public tournament data only. Uses the existing Supabase limitless-refresh Edge Function for browser-safe live reads. */
 (function(){
 'use strict';
 if(window.PPCLimitlessLiveTable)return;
 const API='https://play.limitlesstcg.com/api';
-const CACHE_PREFIX='ppc_limitless_live_table_v8733_';
+const PROXY='https://cdmzrsvwztndqfwzsumo.supabase.co/functions/v1/limitless-refresh';
+const PUBLISHABLE_KEY='sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl';
+const CACHE_PREFIX='ppc_limitless_live_table_v8734_';
 const TTL=20000;
 const mem=new Map();
 const safeText=v=>String(v??'').trim();
@@ -20,10 +22,17 @@ async function getJson(path){
   return await r.json();
  }finally{clearTimeout(timer)}
 }
+async function proxyTournament(id){
+ const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),18000);
+ try{
+  const r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json','apikey':PUBLISHABLE_KEY,Accept:'application/json'},body:JSON.stringify({scope:'lookup',tournamentId:id}),cache:'no-store',signal:ctl.signal});
+  let body=null;try{body=await r.json()}catch{}
+  if(!r.ok||!body?.ok){const e=new Error(body?.error||`Tournament lookup failed (${r.status})`);e.status=r.status;throw e}
+  return body;
+ }finally{clearTimeout(timer)}
+}
 async function getTournamentDetails(id){
  const enc=encodeURIComponent(id);
- // Official Limitless API route is /tournaments/{id}/details. Keep the older
- // route as a compatibility fallback, but never let it block live events.
  try{return await getJson(`/tournaments/${enc}/details`)}catch{}
  try{return await getJson(`/tournaments/${enc}`)}catch{return null}
 }
@@ -63,7 +72,7 @@ function pairingSides(v){
 function normalizePairing(v){
  const {a,b}=pairingSides(v);
  const ap=normalizePlayer(a),bp=normalizePlayer(b);
- return {round:v?.round??v?.roundNumber??v?.stageRound??null,table:v?.table??v?.tableNumber??v?.number??v?.tableNo??null,playerAId:ap.id||safeText(v?.player1Id??v?.playerAId??v?.player1),playerBId:bp.id||safeText(v?.player2Id??v?.playerBId??v?.player2),playerA:ap,playerB:bp,score:v?.score??v?.result??null,raw:v};
+ return {round:v?.round??v?.roundNumber??v?.stageRound??null,phase:v?.phase??v?.phaseNumber??null,match:v?.match??v?.matchLabel??null,table:v?.table??v?.tableNumber??v?.number??v?.tableNo??null,playerAId:ap.id||safeText(v?.player1Id??v?.playerAId??v?.player1),playerBId:bp.id||safeText(v?.player2Id??v?.playerBId??v?.player2),playerA:ap,playerB:bp,score:v?.score??v?.result??null,winner:safeText(v?.winner),raw:v};
 }
 function publicDeck(v){
  if(!v)return null;
@@ -82,22 +91,28 @@ function mergePlayers(...groups){
  }
  return [...byId.values(),...byName.values()];
 }
-async function fetchTournament(input,{force=false}={}){
- const id=tournamentId(input);if(!id)throw new Error('Enter a Limitless tournament URL or ID.');
- if(!force){const cached=readCache(id);if(cached)return cached}
- const enc=encodeURIComponent(id);
- const [details,standings,pairings,decklists]=await Promise.all([
-  getTournamentDetails(id),
-  getJson(`/tournaments/${enc}/standings`).catch(()=>[]),
-  getJson(`/tournaments/${enc}/pairings`).catch(()=>[]),
-  getJson(`/tournaments/${enc}/decklists`).catch(()=>[])
- ]);
+function buildData(id,details,standings,pairings,source,fetchedAt){
  const pairs=list(pairings).map(normalizePairing);
  const pairingPlayers=[];for(const p of pairs){if(p.playerA)pairingPlayers.push(p.playerA);if(p.playerB)pairingPlayers.push(p.playerB)}
  const players=mergePlayers(list(standings).map(normalizePlayer),list(details?.players).map(normalizePlayer),pairingPlayers);
- const decks=list(decklists),deckByPlayer=new Map();
- for(const d of decks){const pid=playerId(d);const pub=publicDeck(d);if(pid&&pub)deckByPlayer.set(String(pid),pub)}
- const data={id,details,players,pairings:pairs,deckByPlayer:Object.fromEntries(deckByPlayer),fetchedAt:new Date().toISOString(),source:'Limitless public API'};
+ const deckByPlayer=new Map();
+ for(const p of list(standings)){const pid=playerId(p),pub=publicDeck(p);if(pid&&pub)deckByPlayer.set(String(pid),pub)}
+ return {id,details,players,pairings:pairs,deckByPlayer:Object.fromEntries(deckByPlayer),fetchedAt:fetchedAt||new Date().toISOString(),source};
+}
+async function fetchTournament(input,{force=false}={}){
+ const id=tournamentId(input);if(!id)throw new Error('Enter a Limitless tournament URL or ID.');
+ if(!force){const cached=readCache(id);if(cached)return cached}
+ let proxied=null,proxyError=null;
+ try{proxied=await proxyTournament(id)}catch(e){proxyError=e}
+ if(proxied){const data=buildData(id,proxied.details,proxied.standings,proxied.pairings,'PocketNexus Limitless proxy',proxied.fetchedAt);if(data.details||data.players.length||data.pairings.length)return writeCache(id,data)}
+ const enc=encodeURIComponent(id);
+ const [details,standings,pairings]=await Promise.all([
+  getTournamentDetails(id),
+  getJson(`/tournaments/${enc}/standings`).catch(()=>[]),
+  getJson(`/tournaments/${enc}/pairings`).catch(()=>[])
+ ]);
+ const data=buildData(id,details,standings,pairings,'Limitless public API');
+ if(!data.details&&!data.players.length&&!data.pairings.length)throw proxyError||new Error("Couldn't find this tournament. Check the Limitless link and try again.");
  return writeCache(id,data);
 }
 function rounds(data){return [...new Set((data?.pairings||[]).map(x=>x.round).filter(x=>x!==null&&x!==undefined))].sort((a,b)=>Number(a)-Number(b))}
@@ -109,5 +124,5 @@ function resolveTable(data,round,table){
  const B=byId.get(String(p.playerBId))||p.playerB||{id:p.playerBId,name:'Unknown Player'};
  return {tournamentId:data.id,tournamentName:data.details?.name||data.details?.title||'Limitless Tournament',round:p.round,table:p.table,score:p.score,playerA:{...A,decklist:data.deckByPlayer?.[String(A.id)]||null},playerB:{...B,decklist:data.deckByPlayer?.[String(B.id)]||null},fetchedAt:data.fetchedAt};
 }
-window.PPCLimitlessLiveTable={version:'8.73.3',tournamentId,fetchTournament,rounds,tables,resolveTable,refresh:id=>fetchTournament(id,{force:true}),cacheMs:TTL,publicOnly:true};
+window.PPCLimitlessLiveTable={version:'8.73.4',tournamentId,fetchTournament,rounds,tables,resolveTable,refresh:id=>fetchTournament(id,{force:true}),cacheMs:TTL,publicOnly:true,proxy:true};
 })();
