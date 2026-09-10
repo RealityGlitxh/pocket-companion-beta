@@ -4,16 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/beta-decks-auth-release-qa.yml"
-      - "index.html"
-      - "sw.js"
-      - "privacy.html"
-      - "terms.html"
-      - "support.html"
-      - "js/app/decks_meta.js"
-      - "js/core/account-cloud-runtime-v8.64.1.js"
-      - "js/core/account-cloud-core-v8.64.1.js"
 
 permissions:
   contents: read
