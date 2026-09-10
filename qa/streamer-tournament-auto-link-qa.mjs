@@ -30,6 +30,15 @@ const document={
   head:{appendChild(){}},
 };
 class MutationObserver{observe(){} disconnect(){}}
+const limitlessStub={
+  tournamentId(input){
+    const raw=String(input??'').trim();
+    const m=raw.match(/(?:tournament\/|tournaments\/)([a-zA-Z0-9_-]+)/i);
+    return m?m[1]:raw.replace(/^\/+|\/+$/g,'').split('/')[0];
+  },
+  rounds(){return []},
+  async fetchTournament(){return {id:'stub',details:{},players:[],pairings:[]}},
+};
 const context={
   console,
   URL,
@@ -42,6 +51,7 @@ const context={
   clearInterval(){},
   setTimeout,
   clearTimeout,
+  PPCLimitlessLiveTable:limitlessStub,
 };
 context.window=context;
 vm.createContext(context);
