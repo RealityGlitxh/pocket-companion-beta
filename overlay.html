@@ -19,7 +19,21 @@ var d=null;
 let ch=null,scene=0,lastSwitch=Date.now(),lastMode=null,remoteStatus=remoteId?'connecting':'local',remoteTimer=null,pullBusy=false;
 const root=document.getElementById('root');
 const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-function load(){try{return JSON.parse(localStorage.getItem(STORE)||'null')}catch{return null}}
+function recordText(v){
+  if(v&&typeof v==='object'){
+    const w=Number(v.wins??v.w??v.win),l=Number(v.losses??v.l??v.loss),t=Number(v.ties??v.draws??v.t??v.d??0);
+    if(Number.isFinite(w)&&Number.isFinite(l))return `${w}-${l}${Number.isFinite(t)&&t>0?`-${t}`:''}`;
+  }
+  const s=String(v??'').trim();return !s||s==='[object Object]'?'—':s;
+}
+function roundText(v,stage=''){
+  if(v&&typeof v==='object')v=v.round??v.number??v.roundNumber??v.name??v.label??'';
+  const s=String(v??'').trim();if(!s)return '—';
+  if(/^\d+$/.test(s))return `Round ${s}`;
+  if(/^round\s+\d+$/i.test(s)||/^(swiss|top\s*\d+|quarterfinals?|semifinals?|finals?|registration)$/i.test(s))return s;
+  if(/^round\s+\D/i.test(s))return '—';
+  return s;
+}
 function statusHtml(title,msg,bad=false){return `<div class="card statusCard ${bad?'statusBad':''}"><span class="ey">POCKETNEXUS OVERLAY</span><div class="big" style="margin-top:8px"><span class="statusDot"></span>${esc(title)}</div><p class="muted">${esc(msg)}</p></div>`}
 function modeOf(state=d){return forcedMode||state?.config?.overlayMode||'ranked'}
 function enabled(state=d){
@@ -45,8 +59,8 @@ function sceneHtml(k,state){
   if(k==='lastmatch')return `<div class="card"><span class="ey">LAST MATCH</span>${l?`<div class="big ${l.result==='win'?'good':l.result==='tie'?'tie':'bad'}">${String(l.result||'').toUpperCase()}</div><h2>${esc(l.deckName)} vs ${esc(l.opponentArchetype)}</h2><p>${l.rankChange>0?'+':''}${l.rankChange} RP • ${l.rankAfter} RP total</p>`:'<p>No match recorded yet.</p>'}</div>`;
   if(k==='matchup')return `<div class="card"><span class="ey">MATCHUP</span><div class="big">${esc(deck.name||'Your deck')} vs ${esc(state.opponent||'Opponent')}</div><p>Lifetime ${matchup.lifetime?.w||0}-${matchup.lifetime?.l||0}-${matchup.lifetime?.t||0} • Session ${matchup.session?.w||0}-${matchup.session?.l||0}-${matchup.session?.t||0}</p></div>`;
   if(k==='tournament'){
-    if(c.overlayMode==='caster')return `<div class="card"><span class="ey">CASTER MODE • ${esc(t.name||'Tournament')}</span><div class="row"><div class="big">${esc(ca.a||'Player A')}</div><div class="big">${ca.scoreA||0} — ${ca.scoreB||0}</div><div class="big">${esc(ca.b||'Player B')}</div></div><p class="muted">${esc(t.round||'Round')} • ${esc(t.stage||'Stage')}</p></div>`;
-    return `<div class="card"><span class="ey">TOURNAMENT MODE</span><div class="big">${esc(t.name||'Tournament')}</div><div class="stats"><div class="stat"><span>ROUND</span><strong>${esc(t.round||'—')}</strong></div><div class="stat"><span>RECORD</span><strong>${esc(t.record||'—')}</strong></div><div class="stat"><span>STAGE</span><strong>${esc(t.stage||'—')}</strong></div></div></div>`;
+    if(c.overlayMode==='caster')return `<div class="card"><span class="ey">CASTER MODE • ${esc(t.name||'Tournament')}</span><div class="row"><div class="big">${esc(ca.a||'Player A')}</div><div class="big">${ca.scoreA||0} — ${ca.scoreB||0}</div><div class="big">${esc(ca.b||'Player B')}</div></div><p class="muted">${esc(roundText(t.round,t.stage))} • ${esc(t.stage||'Stage')}</p></div>`;
+    return `<div class="card"><span class="ey">TOURNAMENT MODE</span><div class="big">${esc(t.name||'Tournament')}</div><div class="stats"><div class="stat"><span>ROUND</span><strong>${esc(roundText(t.round,t.stage))}</strong></div><div class="stat"><span>RECORD</span><strong>${esc(recordText(t.record))}</strong></div><div class="stat"><span>STAGE</span><strong>${esc(t.stage||'—')}</strong></div></div></div>`;
   }
   return `<div class="card"><span class="ey">LIVE RANK</span><div class="row"><div><div class="big">${esc(rank.tier||'Ranked')}</div><b>${rank.points||0} RP</b></div><div class="stats"><div class="stat"><span>RECORD</span><strong>${record.wins||0}-${record.losses||0}-${record.ties||0}</strong></div><div class="stat"><span>STREAK</span><strong>${esc(record.streak??'—')}</strong></div><div class="stat"><span>SESSION RP</span><strong>${s?(s.rankChange>0?'+':'')+(s.rankChange||0):'—'}</strong></div></div></div></div>`;
 }
