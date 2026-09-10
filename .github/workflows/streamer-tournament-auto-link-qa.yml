@@ -45,17 +45,35 @@ jobs:
           cat /tmp/limitless-live.json
           if [ "$http_code" != "200" ]; then
             echo '--- LIVE PAGE DIAGNOSTIC ---'
-            page_code=$(curl --silent --show-error --location --max-time 25 \
-              --output /tmp/limitless-page.html --write-out '%{http_code}' \
-              "https://play.limitlesstcg.com/tournament/$TOURNAMENT_ID/pairings")
-            echo "page_status=$page_code bytes=$(wc -c </tmp/limitless-page.html)"
-            echo 'script_sources:'
-            grep -oE '<script[^>]+src="[^"]+' /tmp/limitless-page.html | head -30 || true
-            echo 'data_markers:'
-            grep -oE '(__NEXT_DATA__|__data|pairings|standings|tournament|api/[A-Za-z0-9_/?=&.-]+)' /tmp/limitless-page.html | sort -u | head -80 || true
-            echo 'page_excerpt:'
-            head -c 5000 /tmp/limitless-page.html || true
-            echo
+            for section in pairings standings details; do
+              page="/tmp/limitless-$section.html"
+              page_code=$(curl --silent --show-error --location --max-time 25 \
+                --output "$page" --write-out '%{http_code}' \
+                "https://play.limitlesstcg.com/tournament/$TOURNAMENT_ID/$section")
+              echo "section=$section status=$page_code bytes=$(wc -c <\"$page\")"
+            done
+            python3 - <<'PY'
+          import re, html
+          from pathlib import Path
+          for section in ('pairings','standings','details'):
+              p=Path(f'/tmp/limitless-{section}.html')
+              text=p.read_text(errors='replace')
+              print(f'--- {section.upper()} TITLE ---')
+              m=re.search(r'<title>(.*?)</title>', text, re.I|re.S)
+              print(html.unescape(re.sub(r'<[^>]+>',' ',m.group(1))).strip() if m else 'NO TITLE')
+              print(f'--- {section.upper()} MAIN HTML ---')
+              body=re.search(r'<main\b.*?</main>', text, re.I|re.S)
+              if body:
+                  print(body.group(0)[:18000])
+              else:
+                  # Keep the useful latter half, which contains server-rendered tournament content.
+                  print(text[max(0,len(text)-18000):])
+              print(f'--- {section.upper()} TEXT ---')
+              clean=re.sub(r'<script\b.*?</script>|<style\b.*?</style>', ' ', text, flags=re.I|re.S)
+              clean=re.sub(r'<[^>]+>', '\n', clean)
+              lines=[html.unescape(x).strip() for x in clean.splitlines() if html.unescape(x).strip()]
+              print('\n'.join(lines[-250:]))
+          PY
             exit 1
           fi
           python3 - <<'PY'
