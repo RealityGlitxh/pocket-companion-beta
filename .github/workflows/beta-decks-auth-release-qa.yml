@@ -34,9 +34,21 @@ jobs:
         run: |
           set -euo pipefail
           for f in index.html sw.js privacy.html terms.html support.html; do
-            curl -fsS --retry 3 --retry-delay 2 "https://beta.pocketnexus.app/$f?qa=${GITHUB_SHA}" -o "/tmp/$f"
-            cmp "$f" "/tmp/$f" || { echo "::error::$f on beta.pocketnexus.app does not match checked-out release source"; exit 1; }
-            echo "HOSTED_FILE_OK $f"
+            matched=0
+            for attempt in $(seq 1 36); do
+              if curl -fsS --retry 2 --retry-delay 2 "https://beta.pocketnexus.app/$f?qa=${GITHUB_SHA}&attempt=${attempt}" -o "/tmp/$f" && cmp -s "$f" "/tmp/$f"; then
+                echo "HOSTED_FILE_OK $f attempt=$attempt"
+                matched=1
+                break
+              fi
+              echo "Hosted $f has not reached ${GITHUB_SHA} yet (attempt $attempt/36)"
+              sleep 5
+            done
+            if [ "$matched" -ne 1 ]; then
+              cmp "$f" "/tmp/$f" || true
+              echo "::error::$f on beta.pocketnexus.app did not match checked-out release source after bounded deployment polling"
+              exit 1
+            fi
           done
       - name: Verify QA secrets are configured
         run: |
