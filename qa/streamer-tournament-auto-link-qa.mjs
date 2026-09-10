@@ -1,0 +1,71 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const featurePath='js/features/streamer-tournament-auto-link-v8.73.1.js';
+const loaderPath='js/features/route-feature-loader-v8.64.1.js';
+const indexPath='index.html';
+const src=fs.readFileSync(featurePath,'utf8');
+const loader=fs.readFileSync(loaderPath,'utf8');
+const index=fs.readFileSync(indexPath,'utf8');
+
+function assert(ok,msg){if(!ok)throw new Error(msg)}
+
+assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873101'),'Streamer route does not load tournament auto-link feature');
+assert(loader.includes('PPCStreamerTournamentAutoLink'),'Streamer ready gate does not require tournament auto-link feature');
+assert(index.includes('route-feature-loader-v8.64.1.js?v=873101'),'index.html did not bust the route-loader cache');
+assert(src.includes('playerByTournament'),'Per-tournament player association is missing');
+assert(src.includes('PPCTournamentService'),'Existing PocketNexus tournament service is not reused');
+assert(src.includes('PPCLimitlessLiveTable.fetchTournament'),'Existing Limitless fetch service is not reused');
+assert(src.includes('publishStreamerOverlayState'),'OBS/local overlay publication bridge is not updated');
+assert(src.includes('Change Tournament')&&src.includes('Refresh'),'Connected tournament controls are missing');
+assert(src.includes('Tournament Link')&&src.includes('Load Tournament'),'Initial one-link setup controls are missing');
+assert(src.includes('Tournament found. Select your player to finish setup.'),'Player-selection fallback messaging is missing');
+
+const document={
+  documentElement:{},
+  getElementById(){return null},
+  querySelector(){return null},
+  querySelectorAll(){return []},
+  createElement(){return {id:'',textContent:''}},
+  head:{appendChild(){}},
+};
+class MutationObserver{observe(){} disconnect(){}}
+const context={
+  console,
+  URL,
+  window:{},
+  document,
+  state:{page:'dashboard',streamer:{}},
+  MutationObserver,
+  requestAnimationFrame(fn){fn()},
+  setInterval(){return 1},
+  clearInterval(){},
+  setTimeout,
+  clearTimeout,
+};
+context.window=context;
+vm.createContext(context);
+vm.runInContext(src,context,{filename:featurePath});
+const test=context.PPCStreamerTournamentAutoLink?._test;
+assert(test,'Feature did not expose test helpers');
+
+const valid=test.validInput('https://play.limitlesstcg.com/tournament/abc_123/standings');
+assert(valid.ok&&valid.id==='abc_123','Standard Limitless standings URL was not accepted');
+assert(test.validInput('https://play.limitlesstcg.com/tournament/abc_123/pairings').ok,'Pairings URL was not accepted');
+assert(test.validInput('https://play.limitlesstcg.com/tournament/abc_123/decklists').ok,'Decklists URL was not accepted');
+assert(!test.validInput('https://example.com/tournament/abc_123').ok,'Non-Limitless URL should be rejected');
+
+assert(test.formatRecord('4-0')==='4-0','4-0 record formatting failed');
+assert(test.formatRecord('3-1-0')==='3-1','Zero ties should be omitted');
+assert(test.formatRecord('3-1-1')==='3-1-1','Nonzero ties should be preserved');
+assert(test.formatRecord({wins:5,losses:2,ties:0})==='5-2','Object record formatting failed');
+
+assert(test.inferStage({status:'completed'},4)==='Completed','Completed stage mapping failed');
+assert(test.inferStage({phase:'Swiss'},4)==='Swiss','Swiss stage mapping failed');
+assert(test.inferStage({stage:'Top 8'},'Top 8')==='Top 8','Top 8 stage mapping failed');
+assert(test.inferStage({phase:'Semifinals'},'Semifinals')==='Top 4','Semifinal stage mapping failed');
+assert(test.inferStage({status:'registration'},'')==='Registration','Registration stage mapping failed');
+assert(test.formatRound(4,'Swiss')==='Round 4','Numeric round formatting failed');
+assert(test.formatRound('Semifinals','Top 4')==='Semifinals','Semifinal round formatting failed');
+
+console.log('TOURNAMENT_AUTO_LINK_QA_GREEN');
