@@ -32,9 +32,9 @@ function inferStage(details,round){
  const x=norm(statusText(details));
  if(/complete|finished|ended|concluded/.test(x))return 'Completed';
  if(/registration|register|upcoming|scheduled|not.?started/.test(x))return 'Registration';
- if(/final/.test(x))return 'Finals';
  if(/semi|top\s*4/.test(x))return 'Top 4';
  if(/quarter|top\s*8/.test(x))return 'Top 8';
+ if(/final/.test(x))return 'Finals';
  if(/top.?cut|playoff|elimination/.test(x))return 'Top Cut';
  if(/swiss|round/.test(x)||String(round??'').trim())return 'Swiss';
  return 'Registration';
