@@ -3,19 +3,24 @@ import vm from 'node:vm';
 
 const featurePath='js/features/streamer-tournament-auto-link-v8.73.1.js';
 const renderHotfixPath='js/features/streamer-tournament-auto-link-render-hotfix-v8.73.2.js';
+const servicePath='js/services/limitless-live-table-service-v8.68.1.js';
 const loaderPath='js/features/route-feature-loader-v8.64.1.js';
 const indexPath='index.html';
 const src=fs.readFileSync(featurePath,'utf8');
 const renderHotfix=fs.readFileSync(renderHotfixPath,'utf8');
+const service=fs.readFileSync(servicePath,'utf8');
 const loader=fs.readFileSync(loaderPath,'utf8');
 const index=fs.readFileSync(indexPath,'utf8');
 
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 
+assert(loader.includes('limitless-live-table-service-v8.68.1.js?v=873300'),'Streamer route did not bust the live Limitless service cache');
 assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873200'),'Streamer route does not load tournament auto-link feature');
 assert(loader.includes('streamer-tournament-auto-link-render-hotfix-v8.73.2.js?v=873200'),'Streamer route does not load tournament render hotfix');
 assert(loader.includes('PPCStreamerTournamentAutoLinkRenderHotfix'),'Streamer ready gate does not require tournament render hotfix');
-assert(index.includes('route-feature-loader-v8.64.1.js?v=873200'),'index.html did not bust the route-loader cache');
+assert(index.includes('route-feature-loader-v8.64.1.js?v=873300'),'index.html did not bust the route-loader cache for the live tournament fix');
+assert(service.includes("/tournaments/${enc}/details"),'Limitless service is not using the official tournament details endpoint');
+assert(service.includes("version:'8.73.3'"),'Limitless live service version was not advanced for the live tournament fix');
 assert(renderHotfix.includes('wrappedStreamerPage'),'Tournament render hotfix does not wrap streamerPage');
 assert(renderHotfix.includes('PPCStreamerTournamentAutoLink.patch'),'Tournament render hotfix does not force the auto-link patch');
 assert(src.includes('playerByTournament'),'Per-tournament player association is missing');
@@ -42,7 +47,7 @@ const limitlessStub={
     return m?m[1]:raw.replace(/^\/+|\/+$/g,'').split('/')[0];
   },
   rounds(){return []},
-  async fetchTournament(){return {id:'stub',details:{},players:[],pairings:[]}},
+  async fetchTournament(){return {id:'stub',details:{name:'Live Tournament',status:'ongoing'},players:[],pairings:[]}},
 };
 const context={
   console,
