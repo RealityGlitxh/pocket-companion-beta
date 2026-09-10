@@ -1,0 +1,30 @@
+name: PocketNexus Streamer Tournament Auto Link QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/features/streamer-tournament-auto-link-v8.73.1.js'
+      - 'js/features/route-feature-loader-v8.64.1.js'
+      - 'js/services/limitless-live-table-service-v8.68.1.js'
+      - 'js/features/streamer-limitless-live-table-v8.68.3.js'
+      - 'js/app/streamer_tools-v8.64.1.js'
+      - 'qa/streamer-tournament-auto-link-qa.mjs'
+      - '.github/workflows/streamer-tournament-auto-link-qa.yml'
+      - 'index.html'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tournament-auto-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify automatic tournament overlay link
+        run: node qa/streamer-tournament-auto-link-qa.mjs
