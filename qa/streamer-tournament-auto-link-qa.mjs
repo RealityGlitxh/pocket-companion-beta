@@ -2,20 +2,22 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const featurePath='js/features/streamer-tournament-auto-link-v8.73.1.js';
-const hotfixPath='js/features/streamer-tournament-stage-hotfix-v8.73.2.js';
+const renderHotfixPath='js/features/streamer-tournament-auto-link-render-hotfix-v8.73.2.js';
 const loaderPath='js/features/route-feature-loader-v8.64.1.js';
 const indexPath='index.html';
 const src=fs.readFileSync(featurePath,'utf8');
-const hotfix=fs.readFileSync(hotfixPath,'utf8');
+const renderHotfix=fs.readFileSync(renderHotfixPath,'utf8');
 const loader=fs.readFileSync(loaderPath,'utf8');
 const index=fs.readFileSync(indexPath,'utf8');
 
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 
-assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873101'),'Streamer route does not load tournament auto-link feature');
-assert(loader.includes('PPCStreamerTournamentAutoLink'),'Streamer ready gate does not require tournament auto-link feature');
-assert(index.includes('route-feature-loader-v8.64.1.js?v=873101'),'index.html did not bust the route-loader cache');
-assert(index.includes('streamer-tournament-stage-hotfix-v8.73.2.js?v=873200'),'Tournament stage hotfix is not loaded');
+assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873200'),'Streamer route does not load tournament auto-link feature');
+assert(loader.includes('streamer-tournament-auto-link-render-hotfix-v8.73.2.js?v=873200'),'Streamer route does not load tournament render hotfix');
+assert(loader.includes('PPCStreamerTournamentAutoLinkRenderHotfix'),'Streamer ready gate does not require tournament render hotfix');
+assert(index.includes('route-feature-loader-v8.64.1.js?v=873200'),'index.html did not bust the route-loader cache');
+assert(renderHotfix.includes('wrappedStreamerPage'),'Tournament render hotfix does not wrap streamerPage');
+assert(renderHotfix.includes('PPCStreamerTournamentAutoLink.patch'),'Tournament render hotfix does not force the auto-link patch');
 assert(src.includes('playerByTournament'),'Per-tournament player association is missing');
 assert(src.includes('PPCTournamentService'),'Existing PocketNexus tournament service is not reused');
 assert(src.includes('PPCLimitlessLiveTable.fetchTournament'),'Existing Limitless fetch service is not reused');
@@ -59,8 +61,6 @@ const context={
 context.window=context;
 vm.createContext(context);
 vm.runInContext(src,context,{filename:featurePath});
-vm.runInContext(hotfix,context,{filename:hotfixPath});
-context.PPCStreamerTournamentStageHotfix?.install?.();
 const test=context.PPCStreamerTournamentAutoLink?._test;
 assert(test,'Feature did not expose test helpers');
 
