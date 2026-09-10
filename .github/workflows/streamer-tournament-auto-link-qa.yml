@@ -29,13 +29,13 @@ jobs:
           node-version: '22'
       - name: Verify automatic tournament overlay link
         run: node qa/streamer-tournament-auto-link-qa.mjs
-      - name: Verify deployed Limitless live lookup
+      - name: Verify deployed live tournament lookup
         env:
           LOOKUP_URL: https://cdmzrsvwztndqfwzsumo.supabase.co/functions/v1/limitless-refresh
           PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
           TOURNAMENT_ID: 6aa22425a4272c53be64ca36
         run: |
-          http_code=$(curl --silent --show-error --max-time 25 \
+          http_code=$(curl --silent --show-error --max-time 30 \
             --output /tmp/limitless-live.json \
             --write-out '%{http_code}' \
             -X POST "$LOOKUP_URL" \
@@ -43,50 +43,27 @@ jobs:
             -H "apikey: $PUBLISHABLE_KEY" \
             --data "{\"scope\":\"lookup\",\"tournamentId\":\"$TOURNAMENT_ID\"}")
           cat /tmp/limitless-live.json
-          if [ "$http_code" != "200" ]; then
-            echo '--- LIVE PAGE DIAGNOSTIC ---'
-            for section in pairings standings details; do
-              page="/tmp/limitless-$section.html"
-              page_code=$(curl --silent --show-error --location --max-time 25 \
-                --output "$page" --write-out '%{http_code}' \
-                "https://play.limitlesstcg.com/tournament/$TOURNAMENT_ID/$section")
-              echo "section=$section status=$page_code bytes=$(wc -c <\"$page\")"
-            done
-            python3 - <<'PY'
-          import re, html
-          from pathlib import Path
-          for section in ('pairings','standings','details'):
-              p=Path(f'/tmp/limitless-{section}.html')
-              text=p.read_text(errors='replace')
-              print(f'--- {section.upper()} TITLE ---')
-              m=re.search(r'<title>(.*?)</title>', text, re.I|re.S)
-              print(html.unescape(re.sub(r'<[^>]+>',' ',m.group(1))).strip() if m else 'NO TITLE')
-              print(f'--- {section.upper()} MAIN HTML ---')
-              body=re.search(r'<main\b.*?</main>', text, re.I|re.S)
-              if body:
-                  print(body.group(0)[:18000])
-              else:
-                  # Keep the useful latter half, which contains server-rendered tournament content.
-                  print(text[max(0,len(text)-18000):])
-              print(f'--- {section.upper()} TEXT ---')
-              clean=re.sub(r'<script\b.*?</script>|<style\b.*?</style>', ' ', text, flags=re.I|re.S)
-              clean=re.sub(r'<[^>]+>', '\n', clean)
-              lines=[html.unescape(x).strip() for x in clean.splitlines() if html.unescape(x).strip()]
-              print('\n'.join(lines[-250:]))
-          PY
-            exit 1
-          fi
+          test "$http_code" = "200"
           python3 - <<'PY'
           import json
           from pathlib import Path
           body=json.loads(Path('/tmp/limitless-live.json').read_text())
           assert body.get('ok') is True, body
           assert body.get('tournamentId') == '6aa22425a4272c53be64ca36', body
-          usable=bool(body.get('details')) or bool(body.get('standings')) or bool(body.get('pairings'))
-          assert usable, 'lookup returned no usable tournament data'
-          print('DEPLOYED_LIMITLESS_LOOKUP_GREEN', {
-              'details': bool(body.get('details')),
-              'standings': len(body.get('standings') or []),
-              'pairings': len(body.get('pairings') or []),
+          details=body.get('details') or {}
+          standings=body.get('standings') or []
+          pairings=body.get('pairings') or []
+          assert 'Breakfast Club' in str(details.get('name','')), details
+          assert len(standings) >= 30, f'expected live standings, got {len(standings)}'
+          assert pairings, 'expected current round/bracket data'
+          names={str(p.get('name','')) for p in standings}
+          assert any('Reality' in n for n in names), 'known live player missing from parsed standings'
+          assert details.get('stage') in {'Swiss','Top Cut','Top 8','Top 4','Finals'}, details
+          print('DEPLOYED_LIVE_TOURNAMENT_LOOKUP_GREEN', {
+              'name': details.get('name'),
+              'stage': details.get('stage'),
+              'standings': len(standings),
+              'pairings': len(pairings),
+              'source': body.get('source'),
           })
           PY
