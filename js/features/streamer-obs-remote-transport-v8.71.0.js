@@ -41,13 +41,22 @@ async function waitForIdle(maxMs=15000){
   while((queuedWrites||exclusive||createPromise)&&Date.now()-started<maxMs)await new Promise(resolve=>setTimeout(resolve,40));
   if(queuedWrites||exclusive||createPromise)throw new Error('Overlay publisher is still busy. Please try again.');
 }
+async function publishRpc(c,creds,snapshot){
+  let data=null,error=null;
+  for(let attempt=0;attempt<3;attempt++){
+    ({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));
+    if(!error)return {data,error:null};
+    if(attempt<2)await new Promise(resolve=>setTimeout(resolve,attempt===0?250:650));
+  }
+  return {data,error};
+}
 async function performPublish(force=false){
   const c=client();if(!c)return false;let creds=await ensureRemote();const snapshot=buildState(),serialized=JSON.stringify(snapshot);
   if(!force&&serialized===lastSerialized)return true;
-  let {data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot});
+  let {data,error}=await publishRpc(c,creds,snapshot);
   if(error)throw error;
   if(!data?.ok&&data?.status==='invalid'){
-    clearCreds();creds=await ensureRemote();({data,error}=await c.rpc('publish_stream_overlay',{p_overlay_id:creds.overlay_id,p_write_token:creds.write_token,p_state:snapshot}));if(error)throw error;
+    clearCreds();creds=await ensureRemote();({data,error}=await publishRpc(c,creds,snapshot));if(error)throw error;
   }
   if(!data?.ok)throw new Error('Overlay publish was rejected.');
   lastSerialized=serialized;lastError='';updateUi('connected');return true;
