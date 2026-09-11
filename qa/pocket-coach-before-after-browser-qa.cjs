@@ -25,20 +25,24 @@ const report=[{deckId:'qa-deck',deckName:'QA Deck',archetypeName:'QA Archetype',
       CARDS.push(...cards);state.decks=[];state.selected=null;window.__qaSaveCalled=false;window.__qaOpened=null;window.__qaReport=report;
       window.save=()=>{window.__qaSaveCalled=true};window.openDeck=id=>{window.__qaOpened=id};
       window.getPPCCloudClient=()=>({functions:{invoke:async()=>({data:{comparison:true,changes:{removed:{cardName:'QA Review',qty:1},added:{cardName:'QA Tech',set:'QA',number:'10',qty:1}},current:report[0].deckSnapshot,proposed,currentAudit:{deckId:'qa-deck',deckName:'QA Deck',totalCards:20,counts:{basics:5,pokemon:10,trainers:10},legality:{status:'passes-known-rules',hardFailures:[]},evolutionIssues:[],consistencySignals:[]},proposedAudit:{deckId:'qa-deck-coach-preview',deckName:'QA Deck — Coach Preview',totalCards:20,counts:{basics:5,pokemon:10,trainers:10},legality:{status:'passes-known-rules',hardFailures:[]},evolutionIssues:[],consistencySignals:[]},currentTotal:20,proposedTotal:20},error:null})}});
-      window.__qaRenderReport=()=>{document.getElementById('app').innerHTML='<div id="qaReport">'+window.coachMatchupReportHtml(window.__qaReport)+'</div><textarea id="coachInput"></textarea>'};
+      window.__qaRenderReport=()=>{
+        let root=document.getElementById('qaCoachFixture');
+        if(!root){root=document.createElement('div');root.id='qaCoachFixture';root.style.cssText='position:relative;z-index:3';document.body.appendChild(root)}
+        root.innerHTML='<div id="qaReport">'+window.coachMatchupReportHtml(window.__qaReport)+'</div><textarea id="coachInput"></textarea>';
+      };
       window.__qaRenderReport();
     },{cards,report,proposed});
 
-    assert.equal(await page.locator('.coachPreviewChange').count(),1,'supported recommendation should expose Preview Change');
+    assert.equal(await page.locator('#qaCoachFixture .coachPreviewChange').count(),1,'supported recommendation should expose Preview Change');
     const unsupported=JSON.parse(JSON.stringify(report));delete unsupported[0].recommendations[0].set;delete unsupported[0].recommendations[0].number;
     const unsupportedCount=await page.evaluate(r=>{const x=document.createElement('div');x.innerHTML=window.coachMatchupReportHtml(r);return x.querySelectorAll('.coachPreviewChange').length},unsupported);
     assert.equal(unsupportedCount,0,'incomplete recommendation must not create a fake swap');
 
     const openComparison=async()=>{
-      // Some actions intentionally replace the Coach surface. Rebuild only the deterministic
-      // QA fixture when needed; never wait on stale DOM from a prior modal action.
-      await page.evaluate(()=>{if(!document.querySelector('.coachPreviewChange'))window.__qaRenderReport?.()});
-      const trigger=page.locator('.coachPreviewChange').first();
+      // Keep the deterministic Coach fixture outside #app so unrelated startup/cloud route
+      // paints cannot detach the control while Playwright is clicking it.
+      await page.evaluate(()=>{if(!document.querySelector('#qaCoachFixture .coachPreviewChange'))window.__qaRenderReport?.()});
+      const trigger=page.locator('#qaCoachFixture .coachPreviewChange').first();
       await trigger.waitFor({state:'visible',timeout:5000});
       await trigger.click();
       await page.locator('#coachCompareBackdrop').waitFor({state:'visible',timeout:5000});
