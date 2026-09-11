@@ -16,7 +16,7 @@ const STORE='ppc_stream_overlay_v83',CHANNEL='ppc-stream-v83';
 const SUPA='https://cdmzrsvwztndqfwzsumo.supabase.co',PUB='sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl';
 const params=new URLSearchParams(location.search),forcedMode=params.get('mode'),remoteId=params.get('overlay');
 var d=null;
-let ch=null,scene=0,lastSwitch=Date.now(),lastMode=null,remoteStatus=remoteId?'connecting':'local',remoteTimer=null,pullBusy=false;
+let ch=null,scene=0,lastSwitch=Date.now(),lastMode=null,remoteStatus=remoteId?'connecting':'local',remoteTimer=null,pullBusy=false,remoteFailures=0;
 const root=document.getElementById('root');
 const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 function load(){try{return JSON.parse(localStorage.getItem(STORE)||'null')}catch{return null}}
@@ -30,6 +30,19 @@ function enabled(state=d){
   return a;
 }
 function primarySceneIndex(list,mode){const key=mode==='ranked'?'rank':'tournament',i=list.indexOf(key);return i>=0?i:0}
+function formatTournamentRecord(v){
+  if(v&&typeof v==='object'){
+    const w=Number(v.wins??v.w),l=Number(v.losses??v.l),t=Number(v.ties??v.draws??v.t??0);
+    if(Number.isFinite(w)&&Number.isFinite(l))return `${w}-${l}${Number.isFinite(t)&&t>0?`-${t}`:''}`;
+  }
+  const s=String(v??'').trim();return s&&s!=='[object Object]'?s:'—';
+}
+function formatTournamentRound(v){
+  const s=String(v??'').trim();if(!s)return '—';
+  if(/^(?:round\s*)?\d+$/i.test(s)){const n=s.match(/\d+/)?.[0];return `Round ${n}`}
+  if(/^(?:top\s*\d+|quarterfinals?|semifinals?|finals?)$/i.test(s))return s;
+  return '—';
+}
 function graph(state){
   if(!state)return '';
   const p=state.rpJourney||[state.rank?.points||0],mi=Math.min(...p),ma=Math.max(...p),dlt=Math.max(1,ma-mi),pts=p.map((v,i)=>`${i*(100/Math.max(1,p.length-1))},${90-(v-mi)/dlt*75}`).join(' ');
@@ -45,8 +58,8 @@ function sceneHtml(k,state){
   if(k==='lastmatch')return `<div class="card"><span class="ey">LAST MATCH</span>${l?`<div class="big ${l.result==='win'?'good':l.result==='tie'?'tie':'bad'}">${String(l.result||'').toUpperCase()}</div><h2>${esc(l.deckName)} vs ${esc(l.opponentArchetype)}</h2><p>${l.rankChange>0?'+':''}${l.rankChange} RP • ${l.rankAfter} RP total</p>`:'<p>No match recorded yet.</p>'}</div>`;
   if(k==='matchup')return `<div class="card"><span class="ey">MATCHUP</span><div class="big">${esc(deck.name||'Your deck')} vs ${esc(state.opponent||'Opponent')}</div><p>Lifetime ${matchup.lifetime?.w||0}-${matchup.lifetime?.l||0}-${matchup.lifetime?.t||0} • Session ${matchup.session?.w||0}-${matchup.session?.l||0}-${matchup.session?.t||0}</p></div>`;
   if(k==='tournament'){
-    if(c.overlayMode==='caster')return `<div class="card"><span class="ey">CASTER MODE • ${esc(t.name||'Tournament')}</span><div class="row"><div class="big">${esc(ca.a||'Player A')}</div><div class="big">${ca.scoreA||0} — ${ca.scoreB||0}</div><div class="big">${esc(ca.b||'Player B')}</div></div><p class="muted">${esc(t.round||'Round')} • ${esc(t.stage||'Stage')}</p></div>`;
-    return `<div class="card"><span class="ey">TOURNAMENT MODE</span><div class="big">${esc(t.name||'Tournament')}</div><div class="stats"><div class="stat"><span>ROUND</span><strong>${esc(t.round||'—')}</strong></div><div class="stat"><span>RECORD</span><strong>${esc(t.record||'—')}</strong></div><div class="stat"><span>STAGE</span><strong>${esc(t.stage||'—')}</strong></div></div></div>`;
+    if(c.overlayMode==='caster')return `<div class="card"><span class="ey">CASTER MODE • ${esc(t.name||'Tournament')}</span><div class="row"><div class="big">${esc(ca.a||'Player A')}</div><div class="big">${ca.scoreA||0} — ${ca.scoreB||0}</div><div class="big">${esc(ca.b||'Player B')}</div></div><p class="muted">${esc(formatTournamentRound(t.round))} • ${esc(t.stage||'Stage')}</p></div>`;
+    return `<div class="card"><span class="ey">TOURNAMENT MODE</span><div class="big">${esc(t.name||'Tournament')}</div><div class="stats"><div class="stat"><span>ROUND</span><strong>${esc(formatTournamentRound(t.round))}</strong></div><div class="stat"><span>RECORD</span><strong>${esc(formatTournamentRecord(t.record))}</strong></div><div class="stat"><span>STAGE</span><strong>${esc(t.stage||'—')}</strong></div></div></div>`;
   }
   return `<div class="card"><span class="ey">LIVE RANK</span><div class="row"><div><div class="big">${esc(rank.tier||'Ranked')}</div><b>${rank.points||0} RP</b></div><div class="stats"><div class="stat"><span>RECORD</span><strong>${record.wins||0}-${record.losses||0}-${record.ties||0}</strong></div><div class="stat"><span>STREAK</span><strong>${esc(record.streak??'—')}</strong></div><div class="stat"><span>SESSION RP</span><strong>${s?(s.rankChange>0?'+':'')+(s.rankChange||0):'—'}</strong></div></div></div></div>`;
 }
@@ -88,21 +101,24 @@ function step(){const state=d;if(!state)return;const a=enabled(state);scene=(sce
 async function pullRemote(){
   if(!remoteId||pullBusy)return;
   pullBusy=true;
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),5000);
   try{
-    const r=await fetch(SUPA+'/rest/v1/rpc/read_stream_overlay',{method:'POST',headers:{apikey:PUB,'Content-Type':'application/json'},body:JSON.stringify({p_overlay_id:remoteId}),cache:'no-store'});
+    const r=await fetch(SUPA+'/rest/v1/rpc/read_stream_overlay?ts='+Date.now(),{method:'POST',headers:{apikey:PUB,'Content-Type':'application/json'},body:JSON.stringify({p_overlay_id:remoteId}),cache:'no-store',signal:ctl.signal});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const out=await r.json();remoteStatus=out?.status||'error';
     if(remoteStatus==='ok'){
       const envelope=out.state||{},m=forcedMode||envelope.activeMode||'ranked',next=envelope.modes?.[m];
-      if(next){applyState(next,m,{remote:true});return}
-      remoteStatus='error';d=null;
-    }else d=null;
-  }catch(e){remoteStatus='error';d=null}
-  finally{pullBusy=false}
-  render();
+      if(next){remoteFailures=0;applyState(next,m,{remote:true});return}
+      remoteStatus='error';
+    }
+    d=null;render();
+  }catch(e){
+    remoteFailures++;
+    if(remoteFailures>=2){remoteStatus='error';d=null;render()}
+  }finally{clearTimeout(timer);pullBusy=false}
 }
 if(remoteId){
-  d=null;render();pullRemote();remoteTimer=setInterval(pullRemote,2000);
+  d=null;render();pullRemote();remoteTimer=setInterval(pullRemote,1000);
 }else{
   try{if(typeof BroadcastChannel==='function'){ch=new BroadcastChannel(CHANNEL);ch.onmessage=e=>{const m=e.data||{};if(m.type==='state'&&m.data)applyState(m.data,modeOf(m.data));else if(m.type==='ping')ch.postMessage({type:'pong',from:'overlay',at:Date.now()})};ch.postMessage({type:'overlay-ready',at:Date.now()})}}catch(e){}
   window.addEventListener('storage',e=>{if(e.key===STORE){const next=load();if(next)applyState(next,modeOf(next));else{d=null;render()}}});
