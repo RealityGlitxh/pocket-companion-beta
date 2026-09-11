@@ -63,10 +63,6 @@ async function performPublish(force=false){
 }
 function publish(force=false){
   if(exclusive)return Promise.resolve(false);
-  // Skip duplicate background ticks while a write is already queued, but never
-  // drop an explicit publish. Every forced snapshot is captured only when its
-  // turn starts, so a newer workspace state cannot be overwritten afterward by
-  // an older in-flight request.
   if(!force&&queuedWrites)return Promise.resolve(false);
   queuedWrites++;
   const task=writeChain.catch(()=>{}).then(()=>performPublish(force)).catch(e=>{lastError=e?.message||String(e);updateUi('error');return false});
@@ -74,12 +70,9 @@ function publish(force=false){
   return task;
 }
 function sourceUrl(){
-  const creds=readCreds();const u=new URL('overlay.html',location.href);
+  const creds=readCreds();const u=new URL('overlay-remote.html',location.href);
   if(creds?.overlay_id)u.searchParams.set('overlay',creds.overlay_id);
-  // Remote OBS sources intentionally do not pin ?mode=. The backend snapshot's
-  // activeMode is authoritative so an already-added OBS source follows the
-  // Stream Control Center when the player switches Ranked/Tournament/Caster.
-  u.searchParams.set('v','871001');return u.href;
+  u.searchParams.set('v','873501');return u.href;
 }
 async function copySource(){
   try{await ensureRemote();await publish(true);const u=sourceUrl();if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
