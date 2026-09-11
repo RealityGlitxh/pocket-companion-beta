@@ -17,10 +17,10 @@ const proxy=fs.readFileSync(proxyPath,'utf8');
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 
 assert(loader.includes('limitless-live-table-service-v8.68.1.js?v=873400'),'Streamer route did not bust the live Limitless service cache');
-assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873200'),'Streamer route does not load tournament auto-link feature');
-assert(loader.includes('streamer-tournament-auto-link-render-hotfix-v8.73.2.js?v=873200'),'Streamer route does not load tournament render hotfix');
+assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873600'),'Streamer route does not load the current tournament auto-link feature');
+assert(loader.includes('streamer-tournament-auto-link-render-hotfix-v8.73.2.js?v=873600'),'Streamer route does not load the current tournament render hotfix');
 assert(loader.includes('PPCStreamerTournamentAutoLinkRenderHotfix'),'Streamer ready gate does not require tournament render hotfix');
-assert(index.includes('route-feature-loader-v8.64.1.js?v=873400'),'index.html did not bust the route-loader cache for the live tournament proxy fix');
+assert(index.includes('route-feature-loader-v8.64.1.js?v=873600'),'index.html did not bust the route-loader cache for the current Streamer bundle');
 assert(service.includes("version:'8.73.4'"),'Limitless live service version was not advanced for the proxy fix');
 assert(service.includes("functions/v1/limitless-refresh"),'Limitless service is not using the PocketNexus Supabase proxy');
 assert(service.includes("scope:'lookup'"),'Limitless service is not requesting lookup mode from the proxy');
