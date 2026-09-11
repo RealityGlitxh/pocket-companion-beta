@@ -70,9 +70,9 @@ function publish(force=false){
   return task;
 }
 function sourceUrl(){
-  const creds=readCreds();const u=new URL('overlay-remote.html',location.href);
+  const creds=readCreds();const u=new URL('overlay.html',location.href);
   if(creds?.overlay_id)u.searchParams.set('overlay',creds.overlay_id);
-  u.searchParams.set('v','873600');return u.href;
+  u.searchParams.set('v','873601');return u.href;
 }
 async function copySource(){
   try{await ensureRemote();await publish(true);const u=sourceUrl();if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(u);else window.copyFallbackDialog?.(u,'OBS Browser Source');window.ppcNotice?.('OBS overlay URL copied. Use 1920 × 1080 in OBS.');return u}catch(e){window.ppcNotice?.('Could not create the OBS overlay URL: '+(e?.message||e));return ''}
