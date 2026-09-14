@@ -20,7 +20,11 @@ const seed={user:'Navigation QA',page:'meta',decks:[],matches:[],sessions:[],ran
   if(width<=430&&stateResult.headerHeight>70)failures.push({name,type:'mobile-header-too-tall',stateResult});
   if(width<=900&&!stateResult.mobileNavVisible)failures.push({name,type:'mobile-navigation-hidden',stateResult});
   if(name==='desktop-1440'){
-   const popovers=await page.evaluate(()=>{const play=document.querySelector('.navCategory[data-category="Play"]'),settings=document.querySelector('.headerUtilityMenu');play.open=true;settings.open=true;return {play:play.open,settings:settings.open,settingsExpanded:settings.querySelector('summary')?.getAttribute('aria-expanded')}});
+   await page.locator('.navCategory[data-category="Play"] > summary').click();
+   await page.waitForTimeout(40);
+   await page.locator('.headerUtilityButton').click();
+   await page.waitForTimeout(40);
+   const popovers=await page.evaluate(()=>{const play=document.querySelector('.navCategory[data-category="Play"]'),settings=document.querySelector('.headerUtilityMenu');return {play:play.open,settings:settings.open,settingsExpanded:settings.querySelector('summary')?.getAttribute('aria-expanded')}});
    if(popovers.play||!popovers.settings||popovers.settingsExpanded!=='true')failures.push({name,type:'single-popover',popovers});
    await page.keyboard.press('Escape');const escaped=await page.evaluate(()=>({open:document.querySelectorAll('.navCategory[open]').length}));if(escaped.open)failures.push({name,type:'escape-menu-close',escaped});
    await page.keyboard.press('Control+K');await page.waitForTimeout(150);const searchOpen=await page.evaluate(()=>({input:!!document.getElementById('globalSearchInput'),focused:document.activeElement?.id==='globalSearchInput'}));if(!searchOpen.input)failures.push({name,type:'ctrl-k-search',searchOpen});
