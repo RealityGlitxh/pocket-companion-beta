@@ -1,5 +1,5 @@
-/* PocketNexus V8.72.3 — manual Tournament Player Follow fallback.
-   Allows an exact player name/username to be followed even when Limitless does not expose a clean standings/player list. */
+/* PocketNexus V8.78.1 — manual Tournament Player Follow fallback.
+   Keeps the Tournament Player Source and every OBS transport on the same fetched event. */
 (function(){
 'use strict';
 if(window.PPCStreamerManualPlayerFollow)return;
@@ -10,6 +10,20 @@ function cfg(){state.streamer=state.streamer||{};state.streamer.limitlessLive=st
 function mode(){return state?.streamer?.overlayMode||'ranked'}
 function objectName(o){if(!o||typeof o!=='object')return '';return String(o.name??o.username??o.displayName??o.playerName??o.handle??'').trim()}
 function objectId(o){if(!o||typeof o!=='object')return '';const nested=o.player&&typeof o.player==='object'?o.player:null;return String(o.playerId??o.id??o.userId??nested?.id??nested?.playerId??'').trim()}
+function textValue(v,fallback=''){
+ if(typeof v==='string')return v.trim()||fallback;
+ if(v===null||v===undefined)return fallback;
+ if(typeof v==='object'){
+  const x=v.name??v.title??v.label??v.archetype??v.text??v.value;
+  if(x!==undefined&&x!==null&&x!==v)return String(x).trim()||fallback;
+  const wins=Number(v.wins??v.w),losses=Number(v.losses??v.l),ties=Number(v.ties??v.draws??v.t??0);
+  if(Number.isFinite(wins)&&Number.isFinite(losses))return `${wins}-${losses}${Number.isFinite(ties)&&ties>0?`-${ties}`:''}`;
+  return fallback;
+ }
+ return String(v).trim()||fallback;
+}
+function tournamentName(source,match){return textValue(source?.details?.name??source?.details?.title??source?.name??match?.tournamentName,'Limitless Tournament')}
+function tournamentStage(source,match){return textValue(source?.details?.stage??source?.details?.currentStage??source?.details?.phase??source?.details?.currentPhase??match?.stage,'Tournament')}
 function findNamedObject(root,wanted,seen=new Set()){
  if(!root||typeof root!=='object'||seen.has(root))return null;seen.add(root);
  if(norm(objectName(root))===wanted)return root;
@@ -49,19 +63,25 @@ function orient(match,pair,me,name){
  if(rawContainsExactName(rawB,wanted)&&!rawContainsExactName(rawA,wanted))return {...match,playerA:{...match.playerB,name:me.name},playerB:match.playerA};
  return {...match,playerA:{...match.playerA,name:me.name}};
 }
-function publish(match,name){
+function publish(match,name,sourceData){
  if(!match)return;const s=state.streamer,c=cfg();
  const me=match.playerA||{},opp=match.playerB||{};
- c.followPlayerName=me.name||name;c.followPlayerId=me.id||c.followPlayerId||'';c.round=match.round;c.table=match.table;c.followTable='';
- s.tournamentName=match.tournamentName||s.tournamentName||'Limitless Tournament';
+ c.followPlayerName=textValue(me.name,name);c.followPlayerId=me.id||c.followPlayerId||'';c.round=match.round;c.table=match.table;c.followTable='';
+ // The newly fetched tournament is authoritative. Never carry the previous event into OBS.
+ s.tournamentName=tournamentName(sourceData,match);
  s.tournamentRound=`Round ${match.round??''}`.trim();
- s.tournamentRecord=me.record||s.tournamentRecord||'';
- s.tournamentPlayerName=me.name||name;
- s.tournamentOpponentName=opp.name||'';
- s.controlOpponent=opp.decklist?.archetype||opp.deck||opp.name||'';
+ s.tournamentRecord=textValue(me.record,'—');
+ s.tournamentStage=tournamentStage(sourceData,match);
+ s.tournamentPlayerName=textValue(me.name,name);
+ s.tournamentOpponentName=textValue(opp.name,'');
+ s.controlOpponent=textValue(opp.decklist?.archetype??opp.deck??opp.name,'');
  s.tournamentPublicDeck=me.decklist||null;
- s.liveTable={...match,publicOnly:true,source:'Limitless public API',syncedAt:Date.now()};
- try{save()}catch{}try{PPCStreamerOBS2?.publishAll?.()}catch{}try{publishStreamerOverlayState?.()}catch{}
+ s.liveTable={...match,tournamentName:s.tournamentName,publicOnly:true,source:'Limitless public API',syncedAt:Date.now()};
+ try{save()}catch{}
+ try{PPCStreamerOBS2?.publishAll?.()}catch{}
+ try{publishStreamerOverlayState?.()}catch{}
+ try{PPCStreamerOBSRemote?.publish?.(true)}catch{}
+ try{PPCStreamerOBS2?.refreshPreview?.('tournament')}catch{}
 }
 function status(text,bad=false){let el=document.getElementById('pnManualPlayerStatus');if(!el)return;el.textContent=text;el.className='pnLiveStatus '+(bad?'bad':'good')}
 async function follow(force=true,quiet=false){
@@ -76,9 +96,8 @@ async function follow(force=true,quiet=false){
    if(!pair){status(`Player "${name}" was not found in the public pairings for this tournament. Check the spelling and try again.`,true);return}
    let match=PPCLimitlessLiveTable.resolveTable(data,pair.round,pair.table);
    if(!match){status(`Found ${name}, but the current public pairing could not be resolved.`,true);return}
-   const me=playerFromData(data,name,pair);match=orient(match,pair,me,name);publish(match,name);
+   const me=playerFromData(data,name,pair);match=orient(match,pair,me,name);publish(match,name,data);
    status(`Following ${match.playerA?.name||name} • Round ${match.round??'—'}${match.table!==null&&match.table!==undefined?` • Table ${match.table}`:''}`);
-   try{PPCStreamerOBS2?.refreshPreview?.('tournament')}catch{}
  }catch(e){if(!quiet)status(e?.name==='AbortError'?'Limitless took too long to respond. Try again.':(e?.message||'Could not follow that player.'),true)}finally{busy=false}
 }
 function patch(){
@@ -92,5 +111,5 @@ function patch(){
 function schedule(){clearTimeout(timer);if(state?.page!=='streamer'||mode()!=='tournament'||cfg().autoRefresh===false||!cfg().manualPlayerName)return;timer=setTimeout(async()=>{await follow(true,true);schedule()},Math.max(15,Number(cfg().refreshSeconds||25))*1000)}
 function watch(){observer?.disconnect();observer=new MutationObserver(()=>{patch();schedule()});observer.observe(document.documentElement,{childList:true,subtree:true});patch();schedule()}
 requestAnimationFrame(()=>requestAnimationFrame(watch));
-window.PPCStreamerManualPlayerFollow={version:'8.72.3',follow,patch,schedule,pairingForName};
+window.PPCStreamerManualPlayerFollow={version:'8.78.1',follow,patch,schedule,pairingForName,_test:{textValue,tournamentName,tournamentStage}};
 })();
