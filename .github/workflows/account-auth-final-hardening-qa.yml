@@ -1,0 +1,70 @@
+name: PocketNexus Account Auth Final Hardening QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/core/account-cloud-core-v8.64.1.js"
+      - "js/core/account-cloud-runtime-v8.64.1.js"
+      - "js/app/account_startup.js"
+      - ".github/workflows/account-auth-final-hardening-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  auth-hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      POCKETNEXUS_QA_EMAIL: ${{ secrets.POCKETNEXUS_QA_EMAIL }}
+      POCKETNEXUS_QA_PASSWORD: ${{ secrets.POCKETNEXUS_QA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Static auth safety baseline
+        run: |
+          set -euo pipefail
+          grep -q "persistSession:true" js/core/account-cloud-core-v8.64.1.js
+          grep -q "autoRefreshToken:true" js/core/account-cloud-core-v8.64.1.js
+          grep -q "authSubscriptionBound" js/core/account-cloud-core-v8.64.1.js
+          grep -q "sessionRequestStarted" js/core/account-cloud-core-v8.64.1.js
+          ! grep -R -E "service_role|SUPABASE_SERVICE_ROLE|password.*console\.log|access_token.*console\.log" index.html js --exclude='*.map'
+      - name: Verify QA account
+        run: |
+          test -n "$POCKETNEXUS_QA_EMAIL" && test -n "$POCKETNEXUS_QA_PASSWORD" || { echo "::error::QA auth secrets required"; exit 1; }
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: RED GREEN hosted authentication matrix
+        run: |
+          cat > auth-final-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const root='https://beta.pocketnexus.app/';
+          const email=process.env.POCKETNEXUS_QA_EMAIL,password=process.env.POCKETNEXUS_QA_PASSWORD;
+          async function ready(p){await p.goto(`${root}?authqa=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>window.getPPCCloudClient?.()?.auth&&typeof state==='object',{timeout:30000})}
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'}),p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+            await ready(p);
+            const wrong=await p.evaluate(async({email})=>{const {data,error}=await getPPCCloudClient().auth.signInWithPassword({email,password:'DefinitelyWrong-QA-Password'});return{session:!!data?.session,error:error?.message||''}},{email});
+            assert(!wrong.session&&wrong.error,'incorrect password was not rejected');
+            const login=await p.evaluate(async({email,password})=>{const {data,error}=await getPPCCloudClient().auth.signInWithPassword({email,password});return{ok:!!data?.session,error:error?.message||''}},{email,password});assert(login.ok,`sign-in failed: ${login.error}`);
+            await p.waitForFunction(()=>getPPCCloudSession?.()?.user?.id&&state.sessionMode==='cloud',{timeout:30000});const uid=await p.evaluate(()=>getPPCCloudSession().user.id);
+            await p.reload({waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>getPPCCloudSession?.()?.user?.id&&state.sessionMode==='cloud',{timeout:30000});assert(await p.evaluate(uid=>getPPCCloudSession().user.id===uid,uid),'session did not restore after refresh');
+            const p2=await ctx.newPage();await ready(p2);await p2.waitForFunction(()=>getPPCCloudSession?.()?.user?.id,{timeout:30000});assert(await p2.evaluate(uid=>getPPCCloudSession().user.id===uid,uid),'session did not restore in second tab');
+            await p.evaluate(()=>cloudSignOut());await p.waitForFunction(()=>!getPPCCloudSession?.()?.user?.id&&!state.sessionMode,{timeout:30000});await p2.waitForFunction(()=>!getPPCCloudSession?.()?.user?.id,{timeout:30000});
+            await p.reload({waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>typeof state==='object');assert(await p.evaluate(()=>!getPPCCloudSession?.()?.user?.id&&!state.sessionMode),'sign-out did not persist');
+            assert(!errs.length,`runtime errors: ${errs.join(' | ')}`);await ctx.close();
+            for(const width of [768,430,390]){const m=await browser.newContext({viewport:{width,height:844},serviceWorkers:'block'}),mp=await m.newPage();await ready(mp);const guest=mp.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});await mp.evaluate(()=>{state.page='account';render()});await mp.waitForTimeout(500);const metrics=await mp.evaluate(()=>({overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,email:!!document.querySelector('input[type=email]'),password:!!document.querySelector('input[type=password]')}));assert(metrics.overflow<=12,`${width}px auth overflow ${metrics.overflow}`);assert(metrics.email&&metrics.password,`${width}px auth fields unavailable`);await m.close()}
+            await browser.close();console.log('ACCOUNT_AUTH_FINAL_HARDENING_QA_OK');
+          })().catch(e=>{console.error('ACCOUNT_AUTH_FINAL_HARDENING_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node auth-final-qa.cjs
