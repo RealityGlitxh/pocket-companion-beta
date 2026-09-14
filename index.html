@@ -9,9 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PocketNexus">
-<link rel="manifest" href="manifest.webmanifest?v=874300">
-<link rel="icon" type="image/svg+xml" href="assets/brand/pocketnexus-favicon.svg?v=874300" data-pocketnexus-brand="true">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=86418">
+<link rel="manifest" href="manifest.webmanifest?v=874401">
+<link rel="icon" type="image/svg+xml" href="assets/brand/pocketnexus-logo.svg?v=874401" data-pocketnexus-brand="true">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=874401">
 <title>PocketNexus — Pokémon TCG Pocket Tools</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" crossorigin>
@@ -24,10 +24,11 @@
 <link rel="stylesheet" href="css/profile-media-upload-v8.64.2.css?v=864215">
 <link rel="stylesheet" href="css/profile-polish-v8.64.2.css?v=864216">
 <link rel="stylesheet" href="css/competitive-hub-v8.74.0.css?v=874300">
+<style>.appBrand:before{display:none!important}.appBrandLogo{width:36px;height:36px;display:block;object-fit:contain;flex:0 0 auto}</style>
 </head>
 <body>
 <header class="appHeader"><div class="appHeaderBar">
-  <button class="appBrand brandHome" type="button" onclick="if(state?.user||cloudSession?.user){headerNavigate('dashboard')}" aria-label="Go to Home"><strong>PocketNexus</strong></button>
+  <button class="appBrand brandHome" type="button" onclick="if(state?.user||cloudSession?.user){headerNavigate('dashboard')}" aria-label="Go to Home"><img class="appBrandLogo" src="assets/brand/pocketnexus-logo.svg?v=874401" width="36" height="36" alt="PocketNexus"><strong>PocketNexus</strong></button>
   <div id="nav" class="headerNav" aria-label="Primary navigation"></div>
   <div class="row headerTools">
     <button id="globalSearchButton" class="globalSearchButton" type="button" onclick="openGlobalSearch()" aria-label="Search"><span>⌕</span><span class="globalSearchButtonText">Search PocketNexus</span><kbd>Ctrl K</kbd></button>
