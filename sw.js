@@ -1,5 +1,5 @@
 /* PocketNexus V8.65.1 — startup performance shell */
-const VERSION='v8.65.1-startup-perf1';
+const VERSION='v8.65.1-branding-hotfix2';
 const SHELL_CACHE=`pocket-companion-shell-${VERSION}`;
 const RUNTIME_CACHE=`pocket-companion-runtime-${VERSION}`;
 const DATA_CACHE=`pocket-companion-data-${VERSION}`;
