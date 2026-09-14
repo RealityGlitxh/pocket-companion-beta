@@ -35,7 +35,8 @@ jobs:
           const { chromium, request } = require('playwright');
           const assert=(v,m)=>{if(!v)throw new Error(m)};
           const base=process.env.BETA_URL;
-          const expected='8.75.0';
+          const expectedRuntime='8.75.0';
+          const expectedCss='8.75.2';
           const fatal=[];
           (async()=>{
             const api=await request.newContext({extraHTTPHeaders:{'cache-control':'no-cache','pragma':'no-cache'}});
@@ -44,12 +45,12 @@ jobs:
             const html=await indexRes.text();
             assert(html.includes('css/home-command-center-v8.75.0.css?v=875000'),'live index missing Home v8.75 CSS');
             assert(html.includes('js/features/home-command-center-v8.75.0.js?v=875000'),'live index missing Home v8.75 JS');
-            for(const asset of ['css/home-command-center-v8.75.0.css','js/features/home-command-center-v8.75.0.js']){
-              const res=await api.get(`${base}${asset}?verify=${Date.now()}`);
-              assert(res.ok(),`${asset} HTTP ${res.status()}`);
-              const text=await res.text();
-              assert(text.includes('8.75.0'),`${asset} is not the expected release`);
-            }
+            const cssRes=await api.get(`${base}css/home-command-center-v8.75.0.css?verify=${Date.now()}`);
+            assert(cssRes.ok(),`Home CSS HTTP ${cssRes.status()}`);
+            assert((await cssRes.text()).includes(expectedCss),`Home CSS is not v${expectedCss}`);
+            const jsRes=await api.get(`${base}js/features/home-command-center-v8.75.0.js?verify=${Date.now()}`);
+            assert(jsRes.ok(),`Home JS HTTP ${jsRes.status()}`);
+            assert((await jsRes.text()).includes(expectedRuntime),`Home JS is not v${expectedRuntime}`);
             await api.dispose();
 
             for(const viewport of [{name:'desktop',width:1440,height:1000},{name:'mobile',width:390,height:844}]){
@@ -59,23 +60,12 @@ jobs:
               page.on('pageerror',e=>fatal.push(`${viewport.name} pageerror: ${e.message}`));
               page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED|net::ERR_/i.test(m.text()))fatal.push(`${viewport.name} console: ${m.text()}`)});
               await page.goto(`${base}?home875=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-              const guest=page.locator('[data-entry-action="guest"]');
-              if(await guest.count())await guest.click().catch(()=>{});
+              const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
               await page.waitForFunction(()=>typeof goPage==='function'&&typeof dashboard==='function',{timeout:60000});
-              await page.evaluate(()=>{
-                try{window.PPCWhatsNew?.close?.(true)}catch{}
-                document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());
-                goPage('dashboard');
-              });
+              await page.evaluate(()=>{try{window.PPCWhatsNew?.close?.(true)}catch{};document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove());goPage('dashboard')});
               await page.waitForFunction(()=>document.querySelector('.pnHomeCommandCenter')?.dataset.homeVersion==='8.75.0',{timeout:30000});
-              const result=await page.evaluate(()=>({
-                version:document.querySelector('.pnHomeCommandCenter')?.dataset.homeVersion||'',
-                hero:document.querySelector('.pnHomeHero h1')?.textContent?.trim()||'',
-                meta:!!document.querySelector('.pnHomeMeta'),
-                quick:document.querySelectorAll('.pnHomeQuickGrid button').length,
-                overflow:Math.max(0,Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth)
-              }));
-              assert(result.version===expected,`${viewport.name} wrong Home version ${result.version}`);
+              const result=await page.evaluate(()=>({version:document.querySelector('.pnHomeCommandCenter')?.dataset.homeVersion||'',hero:document.querySelector('.pnHomeHero h1')?.textContent?.trim()||'',meta:!!document.querySelector('.pnHomeMeta'),quick:document.querySelectorAll('.pnHomeQuickGrid button').length,overflow:Math.max(0,Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth)}));
+              assert(result.version===expectedRuntime,`${viewport.name} wrong Home version ${result.version}`);
               assert(result.hero==='Competitive Command Center',`${viewport.name} command-center hero missing`);
               assert(result.meta,`${viewport.name} Meta Read missing`);
               assert(result.quick>=4&&result.quick<=6,`${viewport.name} quick actions density ${result.quick}`);
@@ -83,7 +73,7 @@ jobs:
               await browser.close();
             }
             assert(fatal.length===0,`hosted Home runtime errors: ${fatal.join(' | ')}`);
-            console.log('HOME_HOSTED_VALIDATION_OK',JSON.stringify({version:expected,desktop:true,mobile:true}));
+            console.log('HOME_HOSTED_VALIDATION_OK',JSON.stringify({runtime:expectedRuntime,css:expectedCss,desktop:true,mobile:true}));
           })().catch(e=>{console.error('HOME_HOSTED_VALIDATION_FAILURE',e);process.exit(1)});
           NODE
           node hosted-home-qa.cjs
