@@ -34,6 +34,13 @@ jobs:
           const base=process.env.BETA_URL;
           const fatal=[];
           const clearOverlays=page=>page.evaluate(()=>document.querySelectorAll('.ppcUpdateBackdrop,.onboardingBackdrop,#ppcWhatsNewBackdrop,.mobileMoreBackdrop').forEach(x=>x.remove()));
+          const enterGuest=async page=>{
+            const guest=page.locator('[data-entry-action="guest"]');
+            if(await guest.count())await guest.click().catch(()=>{});
+            await page.waitForFunction(()=>typeof save==='function'&&typeof goPage==='function',{timeout:60000});
+            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();window.PPCWhatsNew?.close?.(true)});
+            await clearOverlays(page);
+          };
           (async()=>{
             const api=await request.newContext({extraHTTPHeaders:{'cache-control':'no-cache','pragma':'no-cache'}});
             const backupRes=await api.get(`${base}js/features/local-backup-restore-v8.70.0.js?launch=${Date.now()}`);
@@ -45,18 +52,75 @@ jobs:
             assert(loaderRes.ok(),`hosted route loader HTTP ${loaderRes.status()}`);
             const loaderJs=await loaderRes.text();
             assert(loaderJs.includes('pocket-sync-simple-v8.70.0.js'),'hosted route loader is missing player-first Pocket Sync');
+            const navRes=await api.get(`${base}js/core/navigation-v8.33.js?launch=${Date.now()}`);
+            assert(navRes.ok(),`hosted navigation asset HTTP ${navRes.status()}`);
+            const navJs=await navRes.text();
+            assert(navJs.includes('v8.76.0 navigation/header final polish'),'hosted beta is missing navigation/header v8.76.0 behavior');
+            const headerCssRes=await api.get(`${base}css/header-utility-menu-v8.64.2.css?launch=${Date.now()}`);
+            assert(headerCssRes.ok(),`hosted header stylesheet HTTP ${headerCssRes.status()}`);
+            const headerCss=await headerCssRes.text();
+            assert(headerCss.includes('v8.76.0 final header polish'),'hosted beta is missing navigation/header v8.76.0 styles');
             await api.dispose();
 
             const browser=await chromium.launch({headless:true});
+
+            const desktopContext=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000}});
+            const desktop=await desktopContext.newPage();
+            desktop.on('pageerror',e=>fatal.push(`desktop pageerror: ${e.message}`));
+            desktop.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED|net::ERR_/i.test(m.text()))fatal.push(`desktop console: ${m.text()}`)});
+            await desktop.goto(`${base}?nav=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+            await enterGuest(desktop);
+            await desktop.evaluate(()=>goPage('meta'));
+            await desktop.waitForTimeout(800);
+            await clearOverlays(desktop);
+            const desktopNav=await desktop.evaluate(()=>{
+              const header=document.querySelector('.appHeader');
+              const search=document.getElementById('globalSearchButton');
+              const logo=document.querySelector('.appBrandLogo');
+              const active=document.querySelector('.navCategory.active>summary')?.textContent||document.querySelector('.navPrimaryBtn.active')?.textContent||'';
+              return {
+                version:header?.dataset.navVersion||'',
+                logo:logo?.getAttribute('src')||'',
+                searchVisible:!!search&&getComputedStyle(search).display!=='none',
+                profiles:!!document.querySelector('.userChip'),
+                settings:!!document.querySelector('.headerUtilityButton'),
+                active:active.trim(),
+                overflow:Math.max(0,Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth)
+              };
+            });
+            assert(desktopNav.version==='8.76.0','hosted desktop header is not v8.76.0');
+            assert(desktopNav.logo.includes('icons/icon-192.png'),'hosted desktop logo is not the local PocketNexus asset');
+            assert(desktopNav.searchVisible,'hosted desktop Search is hidden');
+            assert(desktopNav.profiles,'hosted desktop Profiles control missing');
+            assert(desktopNav.settings,'hosted desktop Settings control missing');
+            assert(/Compete|Meta/.test(desktopNav.active),'hosted desktop Meta active state missing');
+            assert(desktopNav.overflow<=4,`hosted desktop header overflow ${desktopNav.overflow}px`);
+            await desktop.locator('.navCategory[data-category="Play"] > summary').click();
+            await desktop.waitForTimeout(50);
+            await desktop.locator('.headerUtilityButton').click();
+            await desktop.waitForTimeout(50);
+            const popovers=await desktop.evaluate(()=>({open:[...document.querySelectorAll('.navCategory[open]')].map(x=>x.dataset.category||'utility'),groups:[...document.querySelectorAll('.headerUtilityGroupLabel')].map(x=>x.textContent.trim())}));
+            assert(popovers.open.length===1&&popovers.open[0]==='Utilities','hosted desktop allows multiple major header popovers');
+            assert(['ACCOUNT','TOOLS','APPLICATION','INFORMATION'].every(x=>popovers.groups.includes(x)),'hosted Settings grouping incomplete');
+            await desktop.keyboard.press('Escape');
+            assert(await desktop.locator('.navCategory[open]').count()===0,'Escape did not close hosted header menu');
+            await desktop.keyboard.press('Control+K');
+            await desktop.waitForTimeout(150);
+            assert(await desktop.locator('#globalSearchInput').count()===1,'Ctrl+K did not open hosted Search');
+            await desktop.keyboard.press('Escape');
+            await desktopContext.close();
+
             const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});
             const page=await context.newPage();
             page.on('pageerror',e=>fatal.push(`pageerror: ${e.message}`));
             page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource|ERR_FAILED|net::ERR_/i.test(m.text()))fatal.push(`console: ${m.text()}`)});
             await page.goto(`${base}?launch=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-            const guest=page.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
-            await page.waitForFunction(()=>typeof save==='function'&&typeof goPage==='function',{timeout:60000});
-            await page.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};save();window.PPCWhatsNew?.close?.(true)});
-            await clearOverlays(page);
+            await enterGuest(page);
+            const mobileHeader=await page.evaluate(()=>{const h=document.querySelector('.appHeader'),s=document.getElementById('globalSearchButton');return {height:h?.getBoundingClientRect().height||0,searchVisible:!!s&&getComputedStyle(s).display!=='none',mobileNav:!!document.getElementById('mobileNav')&&getComputedStyle(document.getElementById('mobileNav')).display!=='none',overflow:Math.max(0,Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth)}});
+            assert(mobileHeader.height<=70,`hosted mobile header too tall ${mobileHeader.height}px`);
+            assert(mobileHeader.searchVisible,'hosted mobile Search is hidden');
+            assert(mobileHeader.mobileNav,'hosted mobile navigation is hidden');
+            assert(mobileHeader.overflow<=4,`hosted mobile header overflow ${mobileHeader.overflow}px`);
 
             const routes=['dashboard','collection','decks','matches','stats','rank','meta','training','profile','sync','account','about'];
             const routeResults=[];
@@ -100,7 +164,7 @@ jobs:
             assert(persisted,'hosted restored state did not survive reload');
             assert(fatal.length===0,`hosted runtime errors: ${fatal.join(' | ')}`);
             await browser.close();
-            console.log('FINAL_HOSTED_BETA_VALIDATION_OK',JSON.stringify({routes:routeResults.length,sync:'player-first',backupRestore:'persisted'}));
+            console.log('FINAL_HOSTED_BETA_VALIDATION_OK',JSON.stringify({routes:routeResults.length,navigation:'v8.76.0',desktopHeader:'green',mobileHeader:'green',sync:'player-first',backupRestore:'persisted'}));
           })().catch(e=>{console.error('FINAL_HOSTED_BETA_VALIDATION_FAILURE',e);process.exit(1)});
           NODE
           node hosted-beta-qa.cjs
