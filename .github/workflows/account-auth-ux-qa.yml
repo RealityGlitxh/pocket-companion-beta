@@ -1,0 +1,71 @@
+name: PocketNexus Account Auth UX QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "js/core/account-cloud-runtime-v8.64.1.js"
+      - "js/app/account_startup.js"
+      - ".github/workflows/account-auth-ux-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  auth-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Hosted sign-in UX contract
+        run: |
+          cat > auth-ux-qa.cjs <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const root='https://beta.pocketnexus.app/';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+            const p=await ctx.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto(`${root}?authux=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+            const guest=p.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
+            await p.waitForFunction(()=>typeof state==='object'&&typeof render==='function'&&window.getPPCCloudClient?.()?.auth,{timeout:30000});
+            await p.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};state.page='account';state.user=null;state.sessionMode=null;render();});
+            await p.waitForSelector('#authEmail',{timeout:10000});
+            const email=p.locator('#authEmail'),password=p.locator('#authPassword'),toggle=p.locator('#authPasswordToggle'),submit=p.locator('#accountEmailSignInBtn');
+            assert(await email.getAttribute('autocomplete')==='email','email autocomplete missing');
+            assert(await password.getAttribute('autocomplete')==='current-password','password autocomplete missing');
+            assert(await toggle.count()===1,'password visibility toggle missing');
+            assert((await toggle.getAttribute('aria-label')||'').toLowerCase().includes('password'),'password toggle accessible name missing');
+            assert(await password.getAttribute('type')==='password','password starts visible unexpectedly');
+            await toggle.click();assert(await password.getAttribute('type')==='text','password visibility toggle did not reveal password');
+            await toggle.click();assert(await password.getAttribute('type')==='password','password visibility toggle did not hide password');
+            assert(await submit.count()===1,'stable sign-in button id missing');
+            await email.fill('qa@example.com');await password.fill('wrong-password');
+            await p.evaluate(()=>{const c=getPPCCloudClient();window.__authQaCalls=0;c.auth.signInWithPassword=async()=>{window.__authQaCalls++;await new Promise(r=>setTimeout(r,350));return{data:{session:null},error:{message:'Invalid login credentials'}}};});
+            await submit.click();await p.waitForTimeout(60);
+            assert(await submit.isDisabled(),'sign-in button not disabled while request is pending');
+            assert(/signing in/i.test(await submit.innerText()),'sign-in button does not communicate loading');
+            await p.waitForFunction(()=>/email or password is incorrect/i.test(document.getElementById('authMessage')?.innerText||''),{timeout:5000});
+            assert(await p.evaluate(()=>window.__authQaCalls)===1,'single click submitted auth more than once');
+            assert(!(await submit.isDisabled()),'sign-in button remained disabled after failure');
+            await p.evaluate(()=>{window.__authQaCalls=0});
+            await password.press('Enter');
+            await p.waitForFunction(()=>window.__authQaCalls===1,{timeout:3000});
+            await p.waitForTimeout(450);assert(await p.evaluate(()=>window.__authQaCalls)===1,'Enter submitted auth more than once');
+            const overflow=await p.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth);assert(overflow<=12,`390px auth overflow ${overflow}`);
+            assert(!errors.length,`runtime errors: ${errors.join(' | ')}`);
+            await browser.close();console.log('ACCOUNT_AUTH_UX_QA_OK');
+          })().catch(e=>{console.error('ACCOUNT_AUTH_UX_QA_FAILURE',e);process.exit(1)});
+          NODE
+          node auth-ux-qa.cjs
