@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "js/core/account-cloud-runtime-v8.64.1.js"
       - "js/app/account_startup.js"
+      - "js/features/auth-ux-hardening-v8.77.0.js"
       - ".github/workflows/account-auth-ux-qa.yml"
 
 permissions:
