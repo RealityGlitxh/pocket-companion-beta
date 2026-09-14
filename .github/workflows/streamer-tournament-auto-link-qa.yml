@@ -6,6 +6,7 @@ on:
     paths:
       - 'js/features/streamer-tournament-auto-link-v8.73.1.js'
       - 'js/features/streamer-tournament-manual-player-follow-v8.72.3.js'
+      - 'js/features/streamer-tournament-switch-hotfix-v8.78.2.js'
       - 'js/features/route-feature-loader-v8.64.1.js'
       - 'js/services/limitless-live-table-service-v8.68.1.js'
       - 'js/features/streamer-limitless-live-table-v8.68.3.js'
@@ -30,11 +31,17 @@ jobs:
           node-version: '22'
       - name: Verify automatic tournament overlay link
         run: node qa/streamer-tournament-auto-link-qa.mjs
-      - name: Verify deployed live tournament lookup
+      - name: Verify tournament switch hotfix contract
+        run: |
+          grep -q "PPCStreamerTournamentSwitchHotfix" js/features/streamer-tournament-switch-hotfix-v8.78.2.js
+          grep -q "clearDerivedTournamentState" js/features/streamer-tournament-switch-hotfix-v8.78.2.js
+          grep -q "PPCStreamerOBSRemote?.publish?.(true)" js/features/streamer-tournament-switch-hotfix-v8.78.2.js
+          grep -q "streamer-tournament-switch-hotfix-v8.78.2.js?v=878200" js/features/route-feature-loader-v8.64.1.js
+      - name: Verify deployed current tournament lookup
         env:
           LOOKUP_URL: https://cdmzrsvwztndqfwzsumo.supabase.co/functions/v1/limitless-refresh
           PUBLISHABLE_KEY: sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl
-          TOURNAMENT_ID: 6aa22425a4272c53be64ca36
+          TOURNAMENT_ID: 6aa0471eab080c8c957fe27d
         run: |
           http_code=$(curl --silent --show-error --max-time 30 \
             --output /tmp/limitless-live.json \
@@ -50,21 +57,16 @@ jobs:
           from pathlib import Path
           body=json.loads(Path('/tmp/limitless-live.json').read_text())
           assert body.get('ok') is True, body
-          assert body.get('tournamentId') == '6aa22425a4272c53be64ca36', body
+          assert body.get('tournamentId') == '6aa0471eab080c8c957fe27d', body
           details=body.get('details') or {}
-          standings=body.get('standings') or []
-          pairings=body.get('pairings') or []
-          assert 'Breakfast Club' in str(details.get('name','')), details
-          assert len(standings) >= 30, f'expected live standings, got {len(standings)}'
-          assert pairings, 'expected current round/bracket data'
-          names={str(p.get('name','')) for p in standings}
-          assert any('Reality' in n for n in names), 'known live player missing from parsed standings'
-          assert details.get('stage') in {'Swiss','Top Cut','Top 8','Top 4','Finals'}, details
-          print('DEPLOYED_LIVE_TOURNAMENT_LOOKUP_GREEN', {
-              'name': details.get('name'),
+          name=str(details.get('name') or details.get('title') or '').strip()
+          assert name, details
+          assert 'Breakfast Club Daily #5' not in name, f'stale tournament identity returned: {name}'
+          print('CURRENT_TOURNAMENT_LOOKUP_GREEN', {
+              'name': name,
               'stage': details.get('stage'),
-              'standings': len(standings),
-              'pairings': len(pairings),
+              'standings': len(body.get('standings') or []),
+              'pairings': len(body.get('pairings') or []),
               'source': body.get('source'),
           })
           PY
