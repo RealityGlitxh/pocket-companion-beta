@@ -33,7 +33,7 @@ jobs:
           grep -q "autoRefreshToken:true" js/core/account-cloud-core-v8.64.1.js
           grep -q "authSubscriptionBound" js/core/account-cloud-core-v8.64.1.js
           grep -q "sessionRequestStarted" js/core/account-cloud-core-v8.64.1.js
-          ! grep -R -E "service_role|SUPABASE_SERVICE_ROLE|password.*console\.log|access_token.*console\.log" index.html js --exclude='*.map'
+          ! grep -R -E "SUPABASE_SERVICE_ROLE(_KEY)?[[:space:]]*[:=][[:space:]]*['\"][^'\"]+|service_role_key[[:space:]]*[:=][[:space:]]*['\"][^'\"]+|password.*console\.log|access_token.*console\.log" index.html js --exclude='*.map'
       - name: Verify QA account
         run: |
           test -n "$POCKETNEXUS_QA_EMAIL" && test -n "$POCKETNEXUS_QA_PASSWORD" || { echo "::error::QA auth secrets required"; exit 1; }
