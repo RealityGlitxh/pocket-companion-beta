@@ -110,3 +110,35 @@ if(!window.__ppcHeaderMenuHandlers){
  document.addEventListener('click',e=>{if(!e.target.closest?.('.navCategory'))closeHeaderMenus()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeHeaderMenus();closeMobileMoreSheet()}});
 }
+
+/* v8.76.0 navigation/header final polish — presentation and interaction hardening only. */
+(function(){
+ if(window.__PPC_NAV_HEADER_FINAL_8760)return;
+ window.__PPC_NAV_HEADER_FINAL_8760=true;
+ const VERSION='8.76.0';
+ const originalNav=window.nav;
+ const originalOpenSearch=window.openGlobalSearch;
+ const signedIn=()=>!!(window.state?.user||window.cloudSession?.user);
+ const editable=t=>!!t?.closest?.('input,textarea,select,[contenteditable="true"]');
+ const closeSearch=()=>{try{window.closeGlobalSearch?.()}catch{}};
+ function home(){if(signedIn()){try{headerNavigate('dashboard')}catch{try{goPage('dashboard')}catch{}};return}document.getElementById('staticEntry')?.scrollIntoView?.({block:'start',behavior:'smooth'});setTimeout(()=>document.getElementById('entryEmail')?.focus?.(),120)}
+ function polish(){
+  const header=document.querySelector('.appHeader');if(header)header.dataset.navVersion=VERSION;
+  const brand=document.querySelector('.appBrand'),img=brand?.querySelector('.appBrandLogo');
+  if(brand&&img){if(!brand.querySelector('.appBrandFallback'))img.insertAdjacentHTML('afterend','<span class="appBrandFallback" aria-hidden="true">PN</span>');if(!img.dataset.fallbackBound){img.dataset.fallbackBound='1';img.addEventListener('error',()=>brand.classList.add('logoFailed'),{once:true});img.addEventListener('load',()=>brand.classList.remove('logoFailed'))}brand.onclick=home;brand.setAttribute('aria-label','PocketNexus Home')}
+  const sb=document.getElementById('globalSearchButton');if(sb){const txt=sb.querySelector('.globalSearchButtonText'),kbd=sb.querySelector('kbd');if(txt)txt.textContent='Search';if(kbd)kbd.textContent=/Mac|iPhone|iPad/i.test(navigator.platform||navigator.userAgent||'')?'⌘ K':'Ctrl K';sb.setAttribute('aria-label','Search PocketNexus');sb.setAttribute('title','Search PocketNexus')}
+  const user=document.getElementById('user');if(user&&!signedIn()&&!user.querySelector('.headerSignIn')){user.innerHTML='<button class="headerSignIn" type="button" aria-label="Sign in to PocketNexus">Sign In</button>';user.querySelector('.headerSignIn').addEventListener('click',home)}
+  const chip=document.querySelector('.userChip');if(chip){chip.setAttribute('aria-label','Open public Profiles');chip.setAttribute('title','Profiles')}
+  const cog=document.querySelector('.headerUtilityButton');if(cog){cog.setAttribute('aria-label','Open Settings and account tools');cog.setAttribute('title','Settings and account tools')}
+  const menu=document.querySelector('.headerUtilityDropdown');if(menu&&menu.dataset.grouped8760!=='1'){
+   const buttons=[...menu.querySelectorAll(':scope>.navCategoryItem')],map=new Map(buttons.map(b=>[b.querySelector('strong')?.textContent?.trim()||'',b])),groups=[['ACCOUNT',['Account & Cloud']],['TOOLS',['Pocket Sync','Search','Trade','Streamer']],['APPLICATION',['Settings']],['INFORMATION',['About & Privacy']]],used=new Set,frag=document.createDocumentFragment();
+   groups.forEach(([label,titles])=>{const matches=titles.map(t=>map.get(t)).filter(Boolean);if(!matches.length)return;const h=document.createElement('div');h.className='headerUtilityGroupLabel';h.textContent=label;h.setAttribute('role','presentation');frag.appendChild(h);matches.forEach(b=>{used.add(b);frag.appendChild(b)})});buttons.filter(b=>!used.has(b)).forEach(b=>frag.appendChild(b));menu.replaceChildren(frag);menu.dataset.grouped8760='1';
+  }
+  document.querySelectorAll('.navPrimaryBtn,.mobileBottomNav button').forEach(b=>{if(b.classList.contains('active'))b.setAttribute('aria-current','page');else if(b.getAttribute('aria-current')==='page')b.removeAttribute('aria-current')});
+  document.querySelectorAll('.navCategory').forEach(d=>{const s=d.querySelector(':scope>summary');if(s)s.setAttribute('aria-expanded',d.open?'true':'false');if(!d.dataset.safety8760){d.dataset.safety8760='1';d.addEventListener('toggle',()=>{const sm=d.querySelector(':scope>summary');sm?.setAttribute('aria-expanded',d.open?'true':'false');if(d.open){closeSearch();closeHeaderMenus(d)}})}});
+ }
+ window.nav=function(){const out=originalNav.apply(this,arguments);polish();return out};
+ if(typeof originalOpenSearch==='function')window.openGlobalSearch=function(prefill=''){closeHeaderMenus();const out=originalOpenSearch.call(this,prefill);setTimeout(()=>{const input=document.getElementById('globalSearchInput');if(input){input.placeholder='Search';input.setAttribute('aria-label','Search PocketNexus')}document.getElementById('globalSearchResults')?.setAttribute('aria-live','polite')},0);return out};
+ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'&&!e.altKey&&!editable(e.target)){e.preventDefault();closeHeaderMenus();try{window.openGlobalSearch?.()}catch{};setTimeout(()=>document.getElementById('globalSearchInput')?.focus?.(),0);return}if(e.key==='Escape'){closeHeaderMenus();try{closeMobileMoreSheet()}catch{};if(document.getElementById('globalSearchInput'))closeSearch()}});
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',polish,{once:true});else polish();
+})();
