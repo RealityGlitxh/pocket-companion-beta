@@ -45,10 +45,13 @@ jobs:
               state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
               cloudSession=null;cloudProfile=null;state.page='account';state.user=null;state.sessionMode=null;
               document.getElementById('onboardingBackdrop')?.remove();
+              document.getElementById('ppcWhatsNewBackdrop')?.remove();
               accountPage();
               document.getElementById('onboardingBackdrop')?.remove();
+              document.getElementById('ppcWhatsNewBackdrop')?.remove();
             });
             await p.waitForSelector('#authEmail',{timeout:10000});
+            await p.evaluate(()=>{document.getElementById('onboardingBackdrop')?.remove();document.getElementById('ppcWhatsNewBackdrop')?.remove();});
             const email=p.locator('#authEmail'),password=p.locator('#authPassword'),toggle=p.locator('#authPasswordToggle'),submit=p.locator('#accountEmailSignInBtn');
             assert(await email.getAttribute('autocomplete')==='email','email autocomplete missing');
             assert(await password.getAttribute('autocomplete')==='current-password','password autocomplete missing');
