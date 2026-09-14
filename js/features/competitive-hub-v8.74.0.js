@@ -1,6 +1,6 @@
-/* PocketNexus V8.74.0 Competitive Hub — lightweight UI layer over existing routes. */
+/* PocketNexus V8.74.1 Competitive Hub — lightweight UI layer over existing routes. */
 (()=>{
- const VERSION='8.74.0', ROOT='pnCompetitiveHub';
+ const VERSION='8.74.1', ROOT='pnCompetitiveHub';
  const tools=[
   ['meta','◆','Meta','meta'],['tournaments','♜','Tournaments','tournaments'],['battle','◉','Battle','matches'],
   ['decks','▣','Decks','decks'],['compare','⇆','Compare','optimizer'],['leaderboard','↗','Leaderboard','profile'],
@@ -35,10 +35,17 @@
  }
  function close(){document.getElementById(ROOT)?.remove()}
  function render(){
-  const nav=document.getElementById('nav');if(!nav||!signedIn()){document.getElementById('pnCompetitiveBar')?.remove();return}
+  const header=document.querySelector('.appHeader');
+  if(!header||!signedIn()){document.getElementById('pnCompetitiveBar')?.remove();return}
   let bar=document.getElementById('pnCompetitiveBar');
-  if(!bar){bar=document.createElement('div');bar.id='pnCompetitiveBar';bar.className='pnCompetitiveBar';bar.setAttribute('aria-label','Competitive Hub');nav.insertAdjacentElement('afterend',bar)}
-  bar.innerHTML=tools.map(([k,i,l])=>`<button type="button" class="pnHubTool" data-hub-tool="${k}" title="${l}"><span>${i}</span><small>${l}</small></button>`).join('');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='pnCompetitiveBar';
+    bar.className='pnCompetitiveBar';
+    bar.setAttribute('aria-label','Competitive Hub');
+    header.appendChild(bar);
+  }
+  bar.innerHTML=`<span class="pnCompetitiveLabel">COMPETITIVE HUB</span><div class="pnCompetitiveTools">${tools.map(([k,i,l])=>`<button type="button" class="pnHubTool" data-hub-tool="${k}" title="${l}"><span>${i}</span><small>${l}</small></button>`).join('')}</div>`;
   bar.onclick=e=>{const b=e.target.closest('[data-hub-tool]');if(b)open(b.dataset.hubTool)};
  }
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
