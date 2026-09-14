@@ -41,7 +41,13 @@ jobs:
             await p.goto(`${root}?authux=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
             const guest=p.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
             await p.waitForFunction(()=>typeof state==='object'&&typeof accountPage==='function'&&window.getPPCCloudClient?.()?.auth,{timeout:30000});
-            await p.evaluate(()=>{state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};cloudSession=null;cloudProfile=null;state.page='account';state.user=null;state.sessionMode=null;accountPage();});
+            await p.evaluate(()=>{
+              state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
+              cloudSession=null;cloudProfile=null;state.page='account';state.user=null;state.sessionMode=null;
+              document.getElementById('onboardingBackdrop')?.remove();
+              accountPage();
+              document.getElementById('onboardingBackdrop')?.remove();
+            });
             await p.waitForSelector('#authEmail',{timeout:10000});
             const email=p.locator('#authEmail'),password=p.locator('#authPassword'),toggle=p.locator('#authPasswordToggle'),submit=p.locator('#accountEmailSignInBtn');
             assert(await email.getAttribute('autocomplete')==='email','email autocomplete missing');
