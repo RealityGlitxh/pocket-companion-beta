@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const featurePath='js/features/streamer-tournament-auto-link-v8.73.1.js';
+const manualFollowPath='js/features/streamer-tournament-manual-player-follow-v8.72.3.js';
 const renderHotfixPath='js/features/streamer-tournament-auto-link-render-hotfix-v8.73.2.js';
 const servicePath='js/services/limitless-live-table-service-v8.68.1.js';
 const loaderPath='js/features/route-feature-loader-v8.64.1.js';
 const indexPath='index.html';
 const proxyPath='supabase/functions/limitless-refresh/index.ts';
 const src=fs.readFileSync(featurePath,'utf8');
+const manualFollow=fs.readFileSync(manualFollowPath,'utf8');
 const renderHotfix=fs.readFileSync(renderHotfixPath,'utf8');
 const service=fs.readFileSync(servicePath,'utf8');
 const loader=fs.readFileSync(loaderPath,'utf8');
@@ -17,10 +19,11 @@ const proxy=fs.readFileSync(proxyPath,'utf8');
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 
 assert(loader.includes('limitless-live-table-service-v8.68.1.js?v=873400'),'Streamer route did not bust the live Limitless service cache');
+assert(loader.includes('streamer-tournament-manual-player-follow-v8.72.3.js?v=878100'),'Streamer route did not bust the tournament player-follow cache');
 assert(loader.includes('streamer-tournament-auto-link-v8.73.1.js?v=873600'),'Streamer route does not load the current tournament auto-link feature');
 assert(loader.includes('streamer-tournament-auto-link-render-hotfix-v8.73.2.js?v=873600'),'Streamer route does not load the current tournament render hotfix');
 assert(loader.includes('PPCStreamerTournamentAutoLinkRenderHotfix'),'Streamer ready gate does not require tournament render hotfix');
-assert(index.includes('route-feature-loader-v8.64.1.js?v=873600'),'index.html did not bust the route-loader cache for the current Streamer bundle');
+assert(index.includes('route-feature-loader-v8.64.1.js?v=878100'),'index.html did not bust the route-loader cache for tournament overlay sync');
 assert(service.includes("version:'8.73.4'"),'Limitless live service version was not advanced for the proxy fix');
 assert(service.includes("functions/v1/limitless-refresh"),'Limitless service is not using the PocketNexus Supabase proxy');
 assert(service.includes("scope:'lookup'"),'Limitless service is not requesting lookup mode from the proxy');
@@ -37,6 +40,14 @@ assert(src.includes('publishStreamerOverlayState'),'OBS/local overlay publicatio
 assert(src.includes('Change Tournament')&&src.includes('Refresh'),'Connected tournament controls are missing');
 assert(src.includes('Tournament Link')&&src.includes('Load Tournament'),'Initial one-link setup controls are missing');
 assert(src.includes('Tournament found. Select your player to finish setup.'),'Player-selection fallback messaging is missing');
+
+assert(manualFollow.includes("version:'8.78.1'"),'Manual player-follow overlay sync hotfix is not current');
+assert(manualFollow.includes('source?.details?.name')&&manualFollow.includes('source?.details?.title'),'Manual follow does not use the newly fetched tournament name');
+assert(!manualFollow.includes("match.tournamentName||s.tournamentName||'Limitless Tournament'"),'Manual follow can still leak the previous tournament name into OBS');
+assert(manualFollow.includes("s.tournamentName=tournamentName(sourceData,match)"),'Fetched event is not authoritative for tournament overlay name');
+assert(manualFollow.includes("s.tournamentRecord=textValue(me.record,'—')"),'Tournament record is not normalized before overlay publication');
+assert(manualFollow.includes('PPCStreamerOBSRemote?.publish?.(true)'),'Tournament change is not force-published to remote OBS');
+assert(manualFollow.includes("PPCStreamerOBS2?.refreshPreview?.('tournament')"),'Tournament change does not immediately refresh the embedded preview');
 
 const document={documentElement:{},getElementById(){return null},querySelector(){return null},querySelectorAll(){return []},createElement(){return {id:'',textContent:''}},head:{appendChild(){}}};
 class MutationObserver{observe(){} disconnect(){}}
