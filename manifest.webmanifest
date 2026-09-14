@@ -20,6 +20,12 @@
   ],
   "icons": [
     {
+      "src": "assets/brand/pocketnexus-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
@@ -39,8 +45,9 @@
       "url": "./?page=decks&source=pwa-shortcut",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
+          "src": "assets/brand/pocketnexus-app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -50,8 +57,9 @@
       "url": "./?page=training&source=pwa-shortcut",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
+          "src": "assets/brand/pocketnexus-app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -61,8 +69,9 @@
       "url": "./?page=matches&source=pwa-shortcut",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192"
+          "src": "assets/brand/pocketnexus-app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     }
