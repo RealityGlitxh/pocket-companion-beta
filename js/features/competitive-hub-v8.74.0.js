@@ -1,6 +1,6 @@
-/* PocketNexus V8.74.1 Competitive Hub — lightweight UI layer over existing routes. */
+/* PocketNexus V8.74.3 Competitive Hub — lightweight UI layer over existing routes. */
 (()=>{
- const VERSION='8.74.1', ROOT='pnCompetitiveHub';
+ const VERSION='8.74.3', ROOT='pnCompetitiveHub';
  const tools=[
   ['meta','◆','Meta','meta'],['tournaments','♜','Tournaments','tournaments'],['battle','◉','Battle','matches'],
   ['decks','▣','Decks','decks'],['compare','⇆','Compare','optimizer'],['leaderboard','↗','Leaderboard','profile'],
@@ -28,6 +28,24 @@
   if(key==='coach')return `<p>Pocket Coach opens with your current PocketNexus data. Competitive Hub context: <strong>${esc(c.route||'Home')}</strong>${d?` · <strong>${esc(d.name||d.title||'Selected deck')}</strong>`:''}.</p>${open('Open Pocket Coach','coach')}`;
   return `<p>View your public competitive identity, rank, achievements, sessions, and deck showcase.</p>${open('Open Profiles','profile')}<button class="pnHubAction" data-hub-search>Search players</button>`;
  }
+ function applyBranding(){
+  const brand=document.querySelector('.appBrand');
+  if(brand&&!brand.querySelector('.appBrandLogo')){
+    const img=document.createElement('img');
+    img.className='appBrandLogo';
+    img.src='assets/brand/pocketnexus-logo.svg?v=874300';
+    img.alt='';
+    img.setAttribute('aria-hidden','true');
+    brand.prepend(img);
+  }
+  let icon=document.querySelector('link[rel="icon"][data-pocketnexus-brand]');
+  if(!icon){
+    icon=document.createElement('link');icon.rel='icon';icon.type='image/svg+xml';icon.dataset.pocketnexusBrand='true';document.head.appendChild(icon);
+  }
+  icon.href='assets/brand/pocketnexus-favicon.svg?v=874300';
+  const manifest=document.querySelector('link[rel="manifest"]');
+  if(manifest)manifest.href='manifest.webmanifest?v=874300';
+ }
  function open(key){
   const item=tools.find(x=>x[0]===key)||tools[0]; close();
   document.body.insertAdjacentHTML('beforeend',`<div class="pnHubBackdrop" id="${ROOT}"><section class="pnHubPanel" role="dialog" aria-modal="true" aria-labelledby="pnHubTitle"><div class="pnHubPanelHead"><div><span class="pnHubEyebrow">COMPETITIVE HUB</span><h2 id="pnHubTitle">${item[1]} ${esc(item[2])}</h2></div><button class="pnHubClose" type="button" aria-label="Close Competitive Hub">×</button></div><div class="pnHubPanelBody">${body(key)}</div></section></div>`);
@@ -49,8 +67,8 @@
   bar.onclick=e=>{const b=e.target.closest('[data-hub-tool]');if(b)open(b.dataset.hubTool)};
  }
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
- const obs=new MutationObserver(()=>{if(!document.getElementById('pnCompetitiveBar'))render()});
- function boot(){render();const h=document.querySelector('.appHeaderBar');if(h)obs.observe(h,{childList:true,subtree:true})}
+ const obs=new MutationObserver(()=>{applyBranding();if(!document.getElementById('pnCompetitiveBar'))render()});
+ function boot(){applyBranding();render();const h=document.querySelector('.appHeaderBar');if(h)obs.observe(h,{childList:true,subtree:true})}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
- window.PocketNexusCompetitiveHub={version:VERSION,open,close,render,context};
+ window.PocketNexusCompetitiveHub={version:VERSION,open,close,render,context,applyBranding};
 })();
