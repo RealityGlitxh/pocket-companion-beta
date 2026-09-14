@@ -12,6 +12,7 @@ on:
       - "js/features/streamer-obs-embed-style-v8.67.6.js"
       - "js/features/streamer-obs-system-v8.68.0.js"
       - "js/features/streamer-obs-connection-v8.68.0.js"
+      - "js/features/streamer-legacy-state-hotfix-v8.78.0.js"
       - "js/features/route-feature-loader-v8.64.1.js"
       - "css/streamer-ranked-refine-v8.67.2.css"
       - "css/streamer-obs-embed-v8.67.6.css"
@@ -72,6 +73,12 @@ jobs:
               const guest=page.getByRole('button',{name:/continue as guest/i});
               if(await guest.count())try{await guest.click({timeout:2500});await page.waitForTimeout(500)}catch{}
               await dismissOverlays();
+              await page.evaluate(()=>{
+                state.streamer=state.streamer||{};
+                state.streamer.controlOpponent={name:'Pikachu ex'};
+                state.streamer.customOpponent={name:'Legacy Opponent'};
+                state.streamer.controlDeckId={id:state.battlePrefs?.lastDeckId||''};
+              });
               await page.evaluate(()=>window.goPage?.('streamer'));
               await page.waitForTimeout(1800);
               await dismissOverlays();
@@ -81,6 +88,9 @@ jobs:
                 const obs2Settings=document.querySelector('.pnObsStudio[data-mode="ranked"] .pnObsSettings');
                 return {
                   refined:!!window.PPCStreamerRankedRefine,
+                  legacyStateHotfix:!!window.PPCStreamerLegacyStateHotfix,
+                  opponentType:typeof window.state?.streamer?.controlOpponent,
+                  deckIdType:typeof window.state?.streamer?.controlDeckId,
                   workspace:document.querySelector('#app')?.dataset.streamerWorkspace,
                   grid:!!document.querySelector('.rankedControlGrid'),
                   secondary:!!document.querySelector('.rankedSecondaryGrid'),
@@ -99,7 +109,7 @@ jobs:
                   runtimeMessage:document.querySelector('.runtimeError .dangerBox')?.innerText||''
                 };
               });
-              if(!state.refined||state.workspace!=='ranked'||!state.grid||!state.secondary||!state.hero||!state.settingsAvailable||!state.diagCollapsed||!state.inlinePreview||!state.legacyPreviewHidden||!state.quick||!state.live||!state.rank||!state.perf||state.overflow>8||state.error||errors.length)failures.push({name,state,errors});
+              if(!state.refined||!state.legacyStateHotfix||state.opponentType!=='string'||state.deckIdType!=='string'||state.workspace!=='ranked'||!state.grid||!state.secondary||!state.hero||!state.settingsAvailable||!state.diagCollapsed||!state.inlinePreview||!state.legacyPreviewHidden||!state.quick||!state.live||!state.rank||!state.perf||state.overflow>8||state.error||errors.length)failures.push({name,state,errors});
 
               await dismissOverlays();
               const tournament=page.getByRole('tab',{name:/tournament workspace/i});
