@@ -7,6 +7,7 @@ on:
       - 'js/features/streamer-tournament-auto-link-v8.73.1.js'
       - 'js/features/streamer-tournament-manual-player-follow-v8.72.3.js'
       - 'js/features/streamer-tournament-switch-hotfix-v8.78.2.js'
+      - 'js/features/streamer-tournament-hidden-input-hotfix-v8.78.3.js'
       - 'js/features/route-feature-loader-v8.64.1.js'
       - 'js/services/limitless-live-table-service-v8.68.1.js'
       - 'js/features/streamer-limitless-live-table-v8.68.3.js'
@@ -37,6 +38,13 @@ jobs:
           grep -q "clearDerivedTournamentState" js/features/streamer-tournament-switch-hotfix-v8.78.2.js
           grep -q "PPCStreamerOBSRemote?.publish?.(true)" js/features/streamer-tournament-switch-hotfix-v8.78.2.js
           grep -q "streamer-tournament-switch-hotfix-v8.78.2.js?v=878200" js/features/route-feature-loader-v8.64.1.js
+      - name: Verify stale hidden tournament input regression guard
+        run: |
+          grep -q "PPCStreamerTournamentHiddenInputHotfix" js/features/streamer-tournament-hidden-input-hotfix-v8.78.3.js
+          grep -q "syncHiddenTournamentInput" js/features/streamer-tournament-hidden-input-hotfix-v8.78.3.js
+          grep -q "pnLiveTournament" js/features/streamer-tournament-hidden-input-hotfix-v8.78.3.js
+          grep -q "PPCStreamerLimitlessLiveTable" js/features/streamer-tournament-hidden-input-hotfix-v8.78.3.js
+          grep -q "streamer-tournament-hidden-input-hotfix-v8.78.3.js?v=878300" js/features/route-feature-loader-v8.64.1.js
       - name: Verify deployed current tournament lookup
         env:
           LOOKUP_URL: https://cdmzrsvwztndqfwzsumo.supabase.co/functions/v1/limitless-refresh
