@@ -12,6 +12,77 @@
   });
   window.PocketNexusDeckPolicy=policy;
 
+  /* Deck Builder layout repair — keep the card catalog inside the builder workspace.
+     The catalog remains paginated by the existing renderCatalog() path; this only changes
+     containment/scrolling and intentionally does not touch card data or deck behavior. */
+  function installDeckBuilderLayoutRepair(){
+    if(document.getElementById('pocketnexusDeckBuilderLayoutRepair'))return;
+    const style=document.createElement('style');
+    style.id='pocketnexusDeckBuilderLayoutRepair';
+    style.textContent=`
+      @media (min-width: 761px){
+        .builderSplit{
+          align-items:stretch;
+          height:min(76vh,820px);
+          min-height:560px;
+        }
+        .builderDeckPane,
+        .builderSearchPane{
+          min-width:0;
+          min-height:0;
+          height:100%;
+        }
+        .builderDeckPane{
+          position:relative;
+          top:auto;
+          overflow-y:auto;
+          overscroll-behavior:contain;
+          scrollbar-gutter:stable;
+        }
+        .builderSearchPane{
+          display:flex;
+          flex-direction:column;
+          overflow:hidden;
+        }
+        .builderSearchPane > .builderPaneHeader,
+        .builderSearchPane > .builderSearchInput,
+        .builderSearchPane > .builderFilterRow,
+        .builderSearchPane > #catalogInfo,
+        .builderSearchPane > #moreWrap{
+          flex:0 0 auto;
+        }
+        .builderSearchPane > #cards.builderCatalog{
+          flex:1 1 auto;
+          min-height:0;
+          overflow-y:auto;
+          overscroll-behavior:contain;
+          scrollbar-gutter:stable;
+          align-content:start;
+          padding-right:4px;
+        }
+      }
+      @media (max-width: 760px){
+        .builderSplit{
+          height:auto;
+          min-height:0;
+          align-items:start;
+        }
+        .builderDeckPane,
+        .builderSearchPane{
+          height:auto;
+          min-height:0;
+          overflow:visible;
+        }
+        .builderSearchPane > #cards.builderCatalog{
+          max-height:none;
+          overflow:visible;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  installDeckBuilderLayoutRepair();
+
   function normalizeLegacyDeckView(){
     try{
       if(typeof deckBuildFilter!=='undefined'&&!['all','favorites'].includes(deckBuildFilter))deckBuildFilter='all';
@@ -67,6 +138,7 @@
   const originalEditor=window.renderEditorShell;
   if(typeof originalEditor==='function'){
     window.renderEditorShell=function(){
+      installDeckBuilderLayoutRepair();
       const result=originalEditor.apply(this,arguments);
       scrubDeckEditorCollectionLimits();
       return result;
