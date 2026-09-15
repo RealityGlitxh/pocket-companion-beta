@@ -2,6 +2,7 @@
 // Presentation-only: preserves existing deck data, sync, filters, actions and editor behavior.
 (()=>{
  if(!document.querySelector('link[data-pn-deck-art]')){const l=document.createElement('link');l.rel='stylesheet';l.href='css/deck-manager-art-v8.79.0.css?v=879000';l.dataset.pnDeckArt='true';document.head.appendChild(l)}
+ if(!window.PPCDeckBuilderInteraction&&!document.querySelector('script[data-pn-builder-interaction]')){const s=document.createElement('script');s.src='js/features/deck-builder-interaction-v8.79.0.js?v=879001';s.async=false;s.dataset.pnBuilderInteraction='true';document.head.appendChild(s)}
  const cardEntries=d=>Object.entries(d?.cards||{}).filter(([,q])=>Number(q)>0);
  const findCard=id=>{const key=String(id||'');return (window.CARDS||[]).find(c=>String(c?.id??c?.cardId??c?.code??'')===key)||null};
  const artForCard=c=>window.ImageService?.fields?.(c)?.[0]||'';
