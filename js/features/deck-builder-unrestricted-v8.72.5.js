@@ -58,7 +58,14 @@
           overscroll-behavior:contain;
           scrollbar-gutter:stable;
           align-content:start;
+          grid-auto-rows:max-content;
           padding-right:4px;
+        }
+        .builderSearchPane > #cards.builderCatalog > .card{
+          height:max-content;
+          min-height:max-content;
+          align-self:start;
+          flex-shrink:0;
         }
       }
       @media (max-width: 760px){
@@ -76,6 +83,12 @@
         .builderSearchPane > #cards.builderCatalog{
           max-height:none;
           overflow:visible;
+          grid-auto-rows:max-content;
+        }
+        .builderSearchPane > #cards.builderCatalog > .card{
+          height:max-content;
+          min-height:max-content;
+          align-self:start;
         }
       }
     `;
