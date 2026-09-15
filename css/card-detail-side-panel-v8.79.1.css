@@ -1,0 +1,13 @@
+/* PocketNexus v8.79.1 — Card details side panel.
+   Presentation-only: keeps the existing card detail body, collection actions and verified gameplay enrichment. */
+#cardModal.pnCardSidePanel{background:rgba(2,6,12,.38);backdrop-filter:blur(4px);align-items:stretch;justify-content:flex-end;padding:0;}
+#cardModal.pnCardSidePanel .modal{width:min(620px,92vw);height:100dvh;max-height:none;margin:0;border-radius:22px 0 0 22px;border-top:0;border-right:0;border-bottom:0;padding:20px 22px 28px;box-shadow:-22px 0 60px rgba(0,0,0,.42);animation:pnCardPanelIn .2s ease-out;}
+#cardModal.pnCardSidePanel .modalgrid{grid-template-columns:minmax(150px,210px) minmax(0,1fr);align-items:start;}
+#cardModal.pnCardSidePanel .modalgrid>div:first-child{position:sticky;top:0;}
+#cardModal.pnCardSidePanel .modalgrid>div:first-child img{width:100%;height:auto;max-height:330px;object-fit:contain;}
+#cardModal.pnCardSidePanel .metricgrid{grid-template-columns:repeat(2,minmax(0,1fr));}
+#cardModal.pnCardSidePanel .verifiedCardGameplay{margin-top:18px!important;}
+#cardModal.pnCardSidePanel .verifiedCardGameplay .metricgrid{grid-template-columns:repeat(3,minmax(0,1fr));}
+@keyframes pnCardPanelIn{from{transform:translateX(32px);opacity:.72}to{transform:translateX(0);opacity:1}}
+@media(max-width:680px){#cardModal.pnCardSidePanel{background:rgba(2,6,12,.58)}#cardModal.pnCardSidePanel .modal{width:100%;border-radius:18px 0 0 18px;padding:16px}#cardModal.pnCardSidePanel .modalgrid{grid-template-columns:120px minmax(0,1fr);gap:12px}#cardModal.pnCardSidePanel .modalgrid>div:first-child{position:static}#cardModal.pnCardSidePanel .verifiedCardGameplay .metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:460px){#cardModal.pnCardSidePanel .modal{width:96vw}#cardModal.pnCardSidePanel .modalgrid{grid-template-columns:1fr}#cardModal.pnCardSidePanel .modalgrid>div:first-child img{max-height:300px}#cardModal.pnCardSidePanel .metricgrid,#cardModal.pnCardSidePanel .verifiedCardGameplay .metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
