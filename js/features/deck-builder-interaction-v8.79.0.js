@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 if(window.PPCDeckBuilderInteraction)return;
-if(!document.querySelector('link[data-pn-builder-interaction]')){const l=document.createElement('link');l.rel='stylesheet';l.href='css/deck-builder-interaction-v8.79.0.css?v=879000';l.dataset.pnBuilderInteraction='true';document.head.appendChild(l)}
+if(!document.querySelector('link[data-pn-builder-interaction]')){const l=document.createElement('link');l.rel='stylesheet';l.href='css/deck-builder-interaction-v8.79.0.css?v=879102';l.dataset.pnBuilderInteraction='true';document.head.appendChild(l)}
 let selectedId='';
 function escText(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function currentDeck(){return (window.state?.decks||[]).find(d=>d.id===window.state?.selected)||null}
@@ -11,5 +11,5 @@ function install(){if(typeof window.renderEditorShell!=='function'||typeof windo
 document.addEventListener('pointerover',e=>{const el=e.target.closest?.('.builderDraggableCard[data-card-id]');if(el)preview(el.dataset.cardId)},true);
 document.addEventListener('click',e=>{const add=e.target.closest?.('[data-pn-builder-add]');if(add){e.preventDefault();window.addCard?.(add.dataset.pnBuilderAdd);return}const rem=e.target.closest?.('[data-pn-builder-remove]');if(rem){e.preventDefault();window.removeCard?.(rem.dataset.pnBuilderRemove);return}const view=e.target.closest?.('[data-pn-builder-view]');if(view){e.preventDefault();window.openCardModal?.(view.dataset.pnBuilderView);return}const el=e.target.closest?.('.builderDraggableCard[data-card-id]');if(el&&!e.target.closest('button'))preview(el.dataset.cardId)},true);
 document.addEventListener('dblclick',e=>{const el=e.target.closest?.('.builderDraggableCard[data-card-id]');if(el&&!e.target.closest('button')){e.preventDefault();window.addCard?.(el.dataset.cardId)}},true);
-window.PPCDeckBuilderInteraction={version:'8.79.0',install,preview};let tries=0;const timer=setInterval(()=>{if(install()||++tries>80)clearInterval(timer)},100);
+window.PPCDeckBuilderInteraction={version:'8.79.1',install,preview};let tries=0;const timer=setInterval(()=>{if(install()||++tries>80)clearInterval(timer)},100);
 })();
