@@ -37,21 +37,23 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+            await ctx.addInitScript(()=>localStorage.setItem('ppc_whats_new_auto','off'));
             const p=await ctx.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
             await p.goto(`${root}?authux=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
             const guest=p.locator('[data-entry-action="guest"]');if(await guest.count())await guest.click().catch(()=>{});
             await p.waitForFunction(()=>typeof state==='object'&&typeof accountPage==='function'&&window.getPPCCloudClient?.()?.auth,{timeout:30000});
             await p.evaluate(()=>{
+              window.PPCWhatsNew?.setAuto?.(false);
               state.onboarding={...(state.onboarding||{}),completed:true,skipped:true};
               cloudSession=null;cloudProfile=null;state.page='account';state.user=null;state.sessionMode=null;
               document.getElementById('onboardingBackdrop')?.remove();
-              document.getElementById('ppcWhatsNewBackdrop')?.remove();
+              window.PPCWhatsNew?.close?.(false);
               accountPage();
               document.getElementById('onboardingBackdrop')?.remove();
-              document.getElementById('ppcWhatsNewBackdrop')?.remove();
+              window.PPCWhatsNew?.close?.(false);
             });
             await p.waitForSelector('#authEmail',{timeout:10000});
-            await p.evaluate(()=>{document.getElementById('onboardingBackdrop')?.remove();document.getElementById('ppcWhatsNewBackdrop')?.remove();});
+            await p.evaluate(()=>{document.getElementById('onboardingBackdrop')?.remove();window.PPCWhatsNew?.close?.(false);});
             const email=p.locator('#authEmail'),password=p.locator('#authPassword'),toggle=p.locator('#authPasswordToggle'),submit=p.locator('#accountEmailSignInBtn');
             assert(await email.getAttribute('autocomplete')==='email','email autocomplete missing');
             assert(await password.getAttribute('autocomplete')==='current-password','password autocomplete missing');
