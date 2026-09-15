@@ -1,21 +1,21 @@
-/* PocketNexus V8.68.2 — OBS studio uses one remote source across workspaces. */
+/* PocketNexus V8.68.3 — OBS studio uses one remote source across workspaces. */
 (function(){
 'use strict';
 if(window.PPCStreamerOBS2)return;
 const MODES=['ranked','tournament','caster'],STORE_PREFIX='ppc_stream_overlay_v868_',CHANNEL_PREFIX='ppc-stream-v868-';
 const SOURCE={ranked:'overlay-ranked.html',tournament:'overlay-tournament.html',caster:'overlay-caster.html'};
-const DEFAULTS={ranked:{preset:'full',theme:'dark',opacity:92,scale:100,recentCount:5,anchor:'bottom-center',entrance:'fade'},tournament:{preset:'full',theme:'dark',opacity:94,scale:100,anchor:'bottom-center',entrance:'fade'},caster:{preset:'top',theme:'dark',opacity:96,scale:100,anchor:'top-center',entrance:'slide'}};
+const DEFAULTS={ranked:{preset:'full',theme:'dark',opacity:92,scale:100,recentCount:5,anchor:'bottom-center',entrance:'fade',sceneSeconds:20},tournament:{preset:'full',theme:'dark',opacity:94,scale:100,anchor:'bottom-center',entrance:'fade',sceneSeconds:20},caster:{preset:'top',theme:'dark',opacity:96,scale:100,anchor:'top-center',entrance:'slide',sceneSeconds:20}};
 const safe=(fn,f=null)=>{try{return fn()}catch{return f}};
 function mode(){return safe(()=>state.streamer.overlayMode,'ranked')||'ranked'}
 function ensure(){const s=state.streamer||(state.streamer={});s.overlays=s.overlays||{};for(const m of MODES)s.overlays[m]={...DEFAULTS[m],...(s.overlays[m]||{})};return s.overlays}
 function config(m=mode()){return ensure()[m]||ensure().ranked}
 function sourceUrl(m=mode()){try{return new URL(SOURCE[m]||SOURCE.ranked,location.href).href}catch{return SOURCE[m]||SOURCE.ranked}}
-function payloadFor(m){const d=safe(()=>window.__ppcObs2BaseBuild?window.__ppcObs2BaseBuild():buildStreamerOverlayState(),{})||{};d.config={...(d.config||{}),...config(m),overlayMode:m};d.overlayProduct=m;d.version='8.68.2';return d}
+function payloadFor(m){const d=safe(()=>window.__ppcObs2BaseBuild?window.__ppcObs2BaseBuild():buildStreamerOverlayState(),{})||{};d.config={...(d.config||{}),...config(m),overlayMode:m};d.overlayProduct=m;d.version='8.68.3';return d}
 function publishOne(m){const d=payloadFor(m);safe(()=>localStorage.setItem(STORE_PREFIX+m,JSON.stringify(d)));safe(()=>{const c=new BroadcastChannel(CHANNEL_PREFIX+m);c.postMessage({type:'state',data:d,at:Date.now()});c.close()});return d}
 function publishAll(){const out={};for(const m of MODES)out[m]=publishOne(m);return out}
-function previewSrc(m){const remote=safe(()=>window.PPCStreamerOBSRemote?.sourceUrl?.(),'');if(remote){const u=new URL(remote,location.href);u.searchParams.set('embedded','1');u.searchParams.set('v','868202');return u.href}const u=new URL(SOURCE[m],location.href);u.searchParams.set('embedded','1');u.searchParams.set('v','868202');return u.href}
+function previewSrc(m){const remote=safe(()=>window.PPCStreamerOBSRemote?.sourceUrl?.(),'');if(remote){const u=new URL(remote,location.href);u.searchParams.set('embedded','1');u.searchParams.set('v','868203');return u.href}const u=new URL(SOURCE[m],location.href);u.searchParams.set('embedded','1');u.searchParams.set('v','868203');return u.href}
 function refreshPreview(m=mode()){const f=document.querySelector(`iframe[data-obs-mode="${m}"]`);if(!f)return;const u=new URL(previewSrc(m));u.searchParams.set('refresh',String(Date.now()));f.src=u.href}
-function set(key,value,m=mode()){if(['opacity','scale','recentCount'].includes(key))value=Number(value);if(/^show/.test(key))value=!!value;config(m)[key]=value;safe(()=>save());publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true));return value}
+function set(key,value,m=mode()){if(['opacity','scale','recentCount','sceneSeconds'].includes(key))value=Number(value);if(/^show/.test(key))value=!!value;config(m)[key]=value;safe(()=>save());publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true));return value}
 function copySource(){if(window.PPCStreamerOBSRemote?.copySource)return window.PPCStreamerOBSRemote.copySource();const u=sourceUrl(mode());if(navigator.clipboard?.writeText)navigator.clipboard.writeText(u);else safe(()=>copyFallbackDialog(u,'OBS source'))}
 function openFull(){if(window.PPCStreamerOBSRemote?.openTest)return window.PPCStreamerOBSRemote.openTest();window.open(sourceUrl(mode()),'_blank')}
 function reset(m=mode()){state.streamer.overlays[m]={...DEFAULTS[m]};safe(()=>save());publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true));safe(()=>streamerPage())}
@@ -24,5 +24,5 @@ let applying=false;
 function hideLegacyPreview(app){app.querySelectorAll('#streamPreview').forEach(x=>{x.hidden=true;x.style.display='none';x.setAttribute('aria-hidden','true')});app.querySelectorAll('[data-streamer-section="obs"]').forEach(x=>{x.style.display='none'})}
 function apply(){if(applying||safe(()=>state.page,'')!=='streamer')return;const app=document.getElementById('app');if(!app)return;ensure();hideLegacyPreview(app);const m=mode();const existing=app.querySelector(`.pnObsStudio[data-mode="${m}"]`);if(existing&&existing.querySelector(`iframe[data-obs-mode="${m}"]`)){publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true));return}applying=true;try{app.querySelectorAll('.pnObsStudio').forEach(x=>x.remove());hideLegacyPreview(app);const host=document.createElement('div');host.innerHTML=editorHtml(m);const studio=host.firstElementChild;app.appendChild(studio);const c=config(m);const sels=studio.querySelectorAll('select');if(sels[0])sels[0].value=c.preset||'full';if(sels[1])sels[1].value=c.theme||'dark';const f=studio.querySelector('iframe');if(f)f.addEventListener('load',()=>{publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true))},{once:true});publishAll();safe(()=>window.PPCStreamerOBSRemote?.publish?.(true))}finally{applying=false}}
 function install(){ensure();if(typeof window.buildStreamerOverlayState==='function'&&!window.__ppcObs2BaseBuild)window.__ppcObs2BaseBuild=window.buildStreamerOverlayState.bind(window);if(typeof window.streamerPage==='function'&&!window.streamerPage.__obs2Stable){const base=window.streamerPage;window.streamerPage=function(){const out=base.apply(this,arguments);requestAnimationFrame(()=>requestAnimationFrame(apply));return out};window.streamerPage.__obs2Stable=true}requestAnimationFrame(()=>requestAnimationFrame(apply))}
-let tries=0,t=setInterval(()=>{install();if(++tries>40)clearInterval(t)},100);window.PPCStreamerOBS2={version:'8.68.2',ensure,config,set,reset,sourceUrl,copySource,openFull,publishAll,refreshPreview,apply,install};
+let tries=0,t=setInterval(()=>{install();if(++tries>40)clearInterval(t)},100);window.PPCStreamerOBS2={version:'8.68.3',ensure,config,set,reset,sourceUrl,copySource,openFull,publishAll,refreshPreview,apply,install};
 })();
