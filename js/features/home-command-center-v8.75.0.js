@@ -2,7 +2,7 @@
    Presentation-only command center. Uses existing state/services/routes and does not own backend data. */
 (function(){
   'use strict';
-  const VERSION='8.75.0';
+  const VERSION='8.80.1';
   const $esc=(value)=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   const list=(value)=>Array.isArray(value)?value:[];
   const num=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
@@ -90,7 +90,7 @@
     if(faller?.delta<0)cells.push({label:'Biggest faller',value:$esc(faller.a.shortName||faller.a.name||'Unknown'),detail:`Down ${Math.abs(faller.delta)} ${Math.abs(faller.delta)===1?'spot':'spots'} to #${faller.cur}`});
     else if(top?.stats?.confidence||top?.confidence)cells.push({label:'Confidence',value:$esc(top.stats?.confidence||top.confidence),detail:'Top archetype sample'});
     if(sample>0)cells.push({label:'Meta sample',value:sample.toLocaleString(),detail:snapshot?.matches?'Tracked matches':'Tracked decklists'});
-    return `<section class="pnHomeMeta panel" aria-labelledby="pnHomeMetaTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">META READ</span><h2 id="pnHomeMetaTitle">What changed in the field</h2></div><span class="statusDot ${live?'live':''}">${status?.loading?'SYNCING':$esc(source.toUpperCase())}</span></div>${cells.length?`<div class="pnHomeMetaGrid">${cells.slice(0,4).map(c=>`<div class="pnHomeMetaCell"><span>${c.label}</span><strong>${c.value}</strong><small>${$esc(c.detail)}</small></div>`).join('')}</div>`:`<div class="pnHomeModuleError"><strong>Meta is loading</strong><span>Open Meta Center for the full competitive view.</span></div>`}<div class="pnHomeMetaFooter"><span>${$esc(updatedText)}${status?.error?' • Cached/fallback data shown':''}</span><button class="textButton" type="button" data-home-route="meta">View Full Meta →</button></div></section>`;
+    return `<section class="pnHomeMeta panel" aria-labelledby="pnHomeMetaTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">META READ</span><h2 id="pnHomeMetaTitle">What changed in the field</h2></div><span class="statusDot ${live?'live':''}">${status?.loading?'SYNCING':$esc(source.toUpperCase())}</span></div>${cells.length?`<div class="pnHomeMetaGrid">${cells.slice(0,4).map((c,i)=>`<div class="pnHomeMetaCell"><b class="pnHomeMetaIndex">0${i+1}</b><span>${c.label}</span><strong>${c.value}</strong><small>${$esc(c.detail)}</small></div>`).join('')}</div>`:`<div class="pnHomeModuleError"><strong>Meta is loading</strong><span>Open Meta Center for the full competitive view.</span></div>`}<div class="pnHomeMetaFooter"><span>${$esc(updatedText)}${status?.error?' • Cached/fallback data shown':''}</span><button class="textButton" type="button" data-home-route="meta">View Full Meta →</button></div></section>`;
   }
 
   function continueCard(matches,deck){
@@ -126,7 +126,7 @@
     const app=document.getElementById('app');if(!app)return;
     const matches=completed().sort((a,b)=>dateValue(b.timestamp)-dateValue(a.timestamp)),deck=activeDeck(matches),empty=isEmptyAccount(matches);
     app.innerHTML=`<main class="pnHomeCommandCenter" data-home-version="${VERSION}">
-      <header class="pnHomeHero"><div><span class="pocketHeroKicker"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKETNEXUS</span></span><h1>Competitive Command Center</h1><p>Everything important about your Pocket experience, in one place.</p></div><div class="pnHomeHeroAction"><button type="button" data-home-route="matches">＋ Log Match</button></div></header>
+      <header class="pnHomeHero pnHomeHeroVisual"><div class="pnHomeHeroCopy"><span class="pocketHeroKicker"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKETNEXUS</span></span><h1>Build. Play. Track. Improve.</h1><p>Your competitive Pocket hub — rank progress, active deck, recent battles and the current field at a glance.</p><div class="pnHomeHeroButtons"><button type="button" data-home-route="matches">＋ Log Match</button><button class="secondary" type="button" data-home-route="decks">Open Decks</button></div></div><div class="pnHomeHeroArt" aria-hidden="true"><span class="pnHomeHeroCard pnHomeHeroCardA"></span><span class="pnHomeHeroCard pnHomeHeroCardB"></span><span class="pnHomeHeroOrb"></span></div></header>
       ${empty?onboarding():snapshot(matches,deck)}
       ${metaRead()}
       ${quickActions()}
