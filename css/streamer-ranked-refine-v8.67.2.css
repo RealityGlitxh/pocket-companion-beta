@@ -146,3 +146,7 @@
  .rankedCollapseToggle{width:100%}
 }
 @media (prefers-reduced-motion:reduce){.rankedRankProgress i{transition:none!important}}
+
+
+/* v8.80.3 cohesive visual system */
+.rankedControlHero{border-color:#34577a!important;background:radial-gradient(circle at 86% 20%,rgba(106,69,245,.22),transparent 26%),linear-gradient(120deg,#111f38,#091725)!important}.rankedStatusChip{border-color:#294963;background:linear-gradient(145deg,#0c1b2b,#081522)}.rankedQuickCard{border-color:#654bc9!important;background:linear-gradient(160deg,rgba(48,35,108,.58),#0a1726 48%,#081522)!important}.rankedControlGrid>.panel{border-color:#294963!important;background:linear-gradient(180deg,#0c1a29,#081522)!important}.rankedRankVisual{border-color:#5d48be!important;box-shadow:inset 0 0 32px rgba(92,62,207,.09)}
