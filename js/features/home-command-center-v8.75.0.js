@@ -40,12 +40,30 @@
   }
   function signedIn(){return !!(window.state?.user||window.cloudSession?.user)}
 
+  function deckArtSmall(deck){
+    if(!deck)return '';
+    try{if(typeof window.ppcDeckArtFan==='function')return window.ppcDeckArtFan(deck)}catch{}
+    return '';
+  }
+  function deckArtThumb(deck){
+    if(!deck)return '';
+    try{
+      const items=typeof window.deckItems==='function'?window.deckItems(deck):[];
+      const c=items.map(x=>x.card).find(Boolean);
+      if(!c)return '';
+      const src=c.thumbnailUrl||c.image||c.fullImageUrl||(Array.isArray(c.thumbnailImageSources)?c.thumbnailImageSources[0]:'')||'';
+      if(!src)return '';
+      return `<img loading="lazy" decoding="async" src="${$esc(src)}" alt="" onerror="this.parentElement?.classList.remove('hasArt');this.remove()">`;
+    }catch{return ''}
+  }
+
   function snapshot(matches,deck){
     const rank=window.state?.rank||{tier:'Unranked',points:0,streak:0},recent=recentRecord(matches,10),drec=deckRecord(deck,matches);
     const metrics=[];
-    metrics.push({label:'Current rank',value:$esc(rank.tier||'Unranked'),detail:num(rank.points)?`${fmtRp(rank.points)} RP`:'No RP tracked yet',action:'rank'});
+    const rankArt=typeof window.rankEmblemHtml==='function'?window.rankEmblemHtml(rank.tier,36):'';
+    metrics.push({label:'Current rank',value:$esc(rank.tier||'Unranked'),detail:num(rank.points)?`${fmtRp(rank.points)} RP`:'No RP tracked yet',action:'rank',art:rankArt});
     if(recent.rows.length)metrics.push({label:'Recent record',value:`${recent.w}-${recent.l}`,detail:`Last ${recent.rows.length} tracked ${recent.rows.length===1?'match':'matches'}`,action:'stats'});
-    if(deck)metrics.push({label:'Active deck',value:$esc(deck.name||'Saved deck'),detail:drec?.rows.length?`${drec.w}-${drec.l} tracked record`:`${typeof window.deckCount==='function'?window.deckCount(deck):list(deck.cards).length}/20 cards`,action:'decks'});
+    if(deck)metrics.push({label:'Active deck',value:$esc(deck.name||'Saved deck'),detail:drec?.rows.length?`${drec.w}-${drec.l} tracked record`:`${typeof window.deckCount==='function'?window.deckCount(deck):list(deck.cards).length}/20 cards`,action:'decks',art:deckArtThumb(deck)});
     if(num(rank.streak)>0)metrics.push({label:'Current streak',value:`${num(rank.streak)}W`,detail:'Tracked ranked streak',action:'rank'});
     const owned=collectionOwnedCount();
     if(owned>0&&metrics.length<4)metrics.push({label:'Collection',value:String(owned),detail:'Unique owned cards tracked',action:'collection'});
@@ -53,7 +71,7 @@
       if(metrics.length===1)metrics.push({label:'Recent record',value:'Start tracking',detail:'Log a battle to build your record',action:'matches'});
       else metrics.push({label:'Active deck',value:'Choose a deck',detail:'Build or open a saved deck',action:'decks'});
     }
-    return `<section class="pnHomeSnapshot" aria-labelledby="pnHomeSnapshotTitle"><div class="pnHomeSnapshotHead"><div><span class="eyebrow">COMPETITIVE SNAPSHOT</span><h2 id="pnHomeSnapshotTitle">Where you are right now</h2></div>${signedIn()?'<span class="pnHomeCloudHint">Account data</span>':'<span class="pnHomeCloudHint">Local guest data</span>'}</div><div class="pnHomeMetricStrip">${metrics.slice(0,4).map(m=>`<button type="button" class="pnHomeMetric" data-home-route="${m.action}"><span>${m.label}</span><strong>${m.value}</strong><small>${$esc(m.detail)}</small></button>`).join('')}</div></section>`;
+    return `<section class="pnHomeSnapshot" aria-labelledby="pnHomeSnapshotTitle"><div class="pnHomeSnapshotHead"><div><span class="eyebrow">COMPETITIVE SNAPSHOT</span><h2 id="pnHomeSnapshotTitle">Where you are right now</h2></div>${signedIn()?'<span class="pnHomeCloudHint">Account data</span>':'<span class="pnHomeCloudHint">Local guest data</span>'}</div><div class="pnHomeMetricStrip">${metrics.slice(0,4).map(m=>`<button type="button" class="pnHomeMetric ${m.art?'hasArt':''}" data-home-route="${m.action}">${m.art?`<span class="pnHomeMetricArt" aria-hidden="true">${m.art}</span>`:''}<span>${m.label}</span><strong>${m.value}</strong><small>${$esc(m.detail)}</small></button>`).join('')}</div></section>`;
   }
 
   function safeMeta(){
@@ -84,13 +102,13 @@
     const updated=snapshot?.generatedAt?new Date(snapshot.generatedAt):null;
     const updatedText=updated&&Number.isFinite(updated.getTime())?`Updated ${updated.toLocaleDateString([], {month:'short',day:'numeric'})} ${updated.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`:'Latest available snapshot';
     const cells=[];
-    if(top)cells.push({label:'Top archetype',value:$esc(top.shortName||top.name||'Unknown'),detail:usageOf(top)>=0?`${pct(usageOf(top))} usage`:'Current #1'});
+    if(top){let art='';try{art=typeof window.metaIntelArtwork==='function'?window.metaIntelArtwork(top):''}catch{}cells.push({label:'Top archetype',value:$esc(top.shortName||top.name||'Unknown'),detail:usageOf(top)>=0?`${pct(usageOf(top))} usage`:'Current #1',art});}
     if(riser?.delta>0)cells.push({label:'Biggest riser',value:$esc(riser.a.shortName||riser.a.name||'Unknown'),detail:`Up ${riser.delta} ${riser.delta===1?'spot':'spots'} to #${riser.cur}`});
     else if(most)cells.push({label:'Most played',value:$esc(most.shortName||most.name||'Unknown'),detail:`${pct(usageOf(most))} usage`});
     if(faller?.delta<0)cells.push({label:'Biggest faller',value:$esc(faller.a.shortName||faller.a.name||'Unknown'),detail:`Down ${Math.abs(faller.delta)} ${Math.abs(faller.delta)===1?'spot':'spots'} to #${faller.cur}`});
     else if(top?.stats?.confidence||top?.confidence)cells.push({label:'Confidence',value:$esc(top.stats?.confidence||top.confidence),detail:'Top archetype sample'});
     if(sample>0)cells.push({label:'Meta sample',value:sample.toLocaleString(),detail:snapshot?.matches?'Tracked matches':'Tracked decklists'});
-    return `<section class="pnHomeMeta panel" aria-labelledby="pnHomeMetaTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">META READ</span><h2 id="pnHomeMetaTitle">What changed in the field</h2></div><span class="statusDot ${live?'live':''}">${status?.loading?'SYNCING':$esc(source.toUpperCase())}</span></div>${cells.length?`<div class="pnHomeMetaGrid">${cells.slice(0,4).map((c,i)=>`<div class="pnHomeMetaCell"><b class="pnHomeMetaIndex">0${i+1}</b><span>${c.label}</span><strong>${c.value}</strong><small>${$esc(c.detail)}</small></div>`).join('')}</div>`:`<div class="pnHomeModuleError"><strong>Meta is loading</strong><span>Open Meta Center for the full competitive view.</span></div>`}<div class="pnHomeMetaFooter"><span>${$esc(updatedText)}${status?.error?' • Cached/fallback data shown':''}</span><button class="textButton" type="button" data-home-route="meta">View Full Meta →</button></div></section>`;
+    return `<section class="pnHomeMeta panel" aria-labelledby="pnHomeMetaTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">META READ</span><h2 id="pnHomeMetaTitle">What changed in the field</h2></div><span class="statusDot ${live?'live':''}">${status?.loading?'SYNCING':$esc(source.toUpperCase())}</span></div>${cells.length?`<div class="pnHomeMetaGrid">${cells.slice(0,4).map((c,i)=>`<div class="pnHomeMetaCell ${c.art?'hasArt':''}">${c.art?`<span class="pnHomeMetaCellArt" aria-hidden="true">${c.art}</span>`:`<b class="pnHomeMetaIndex">0${i+1}</b>`}<span>${c.label}</span><strong>${c.value}</strong><small>${$esc(c.detail)}</small></div>`).join('')}</div>`:`<div class="pnHomeModuleError"><strong>Meta is loading</strong><span>Open Meta Center for the full competitive view.</span></div>`}<div class="pnHomeMetaFooter"><span>${$esc(updatedText)}${status?.error?' • Cached/fallback data shown':''}</span><button class="textButton" type="button" data-home-route="meta">View Full Meta →</button></div></section>`;
   }
 
   function continueCard(matches,deck){
@@ -100,8 +118,8 @@
       return `<section class="pnHomeContinue panel" aria-labelledby="pnHomeContinueTitle"><div><span class="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2 id="pnHomeContinueTitle">Ranked session</h2><p>${w}-${l} record${Number.isFinite(Number(rp))?` • ${fmtRp(rp)} RP`:''}</p></div><button type="button" data-home-route="rank">Continue session →</button></section>`;
     }
     if(deck){
-      const count=typeof window.deckCount==='function'?window.deckCount(deck):list(deck.cards).length;
-      return `<section class="pnHomeContinue panel" aria-labelledby="pnHomeContinueTitle"><div><span class="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2 id="pnHomeContinueTitle">${$esc(deck.name||'Saved deck')}</h2><p>${count}/20 cards${matches[0]?.deckId===deck.id||String(matches[0]?.deckName||'').toLowerCase()===String(deck.name||'').toLowerCase()?' • Used in your latest tracked match':''}</p></div><div class="pnHomeContinueButtons"><button type="button" data-home-open-deck="${$esc(deck.id)}">Edit deck</button><button class="secondary" type="button" data-home-route="matches">Log match</button></div></section>`;
+      const count=typeof window.deckCount==='function'?window.deckCount(deck):list(deck.cards).length,legal=typeof window.isDeckLegal==='function'?window.isDeckLegal(deck):count===20,art=deckArtSmall(deck);
+      return `<section class="pnHomeContinue pnHomeDeckCenterpiece panel" aria-labelledby="pnHomeContinueTitle">${art?`<div class="pnHomeDeckCenterArt" aria-hidden="true">${art}</div>`:''}<div class="pnHomeDeckCenterBody"><div><span class="eyebrow">ACTIVE DECK</span><h2 id="pnHomeContinueTitle">${$esc(deck.name||'Saved deck')}</h2><p><span class="pnHomeDeckStatus ${legal?'ready':'building'}">${legal?'Ready to play':'Needs work'}</span> ${count}/20 cards${deck.energy?` • ${$esc(deck.energy)} energy`:''}${matches[0]?.deckId===deck.id||String(matches[0]?.deckName||'').toLowerCase()===String(deck.name||'').toLowerCase()?' • Used in your latest tracked match':''}</p></div><div class="pnHomeContinueButtons"><button type="button" data-home-open-deck="${$esc(deck.id)}">Edit deck</button><button class="secondary" type="button" data-home-route="matches">Log match</button></div></div></section>`;
     }
     const last=matches[0];
     if(last)return `<section class="pnHomeContinue panel" aria-labelledby="pnHomeContinueTitle"><div><span class="eyebrow">CONTINUE WHERE YOU LEFT OFF</span><h2 id="pnHomeContinueTitle">Review recent matchup</h2><p>${$esc(last.deckName||'Deck')} vs ${$esc(last.opponentArchetype||'Unknown')}</p></div><button type="button" data-home-route="stats">Review performance →</button></section>`;
@@ -113,9 +131,17 @@
     return `<section class="pnHomeQuick" aria-labelledby="pnHomeQuickTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">QUICK ACTIONS</span><h2 id="pnHomeQuickTitle">What should you do next?</h2></div></div><div class="pnHomeQuickGrid">${actions.map(([icon,label,page])=>`<button type="button" data-home-route="${page}"><span aria-hidden="true">${icon}</span><strong>${label}</strong></button>`).join('')}</div></section>`;
   }
 
+  function matchDeckFor(m){
+    const decks=list(window.state?.decks);
+    if(m?.deckId){const d=decks.find(x=>String(x?.id)===String(m.deckId));if(d)return d}
+    const name=String(m?.deckName||'').trim().toLowerCase();
+    if(name)return decks.find(x=>String(x?.name||'').trim().toLowerCase()===name)||null;
+    return null;
+  }
+
   function recentActivity(matches){
     const rows=[...matches].sort((a,b)=>dateValue(b.timestamp)-dateValue(a.timestamp)).slice(0,5);
-    return `<section class="pnHomeRecent panel" aria-labelledby="pnHomeRecentTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">RECENT ACTIVITY</span><h2 id="pnHomeRecentTitle">Your latest tracked games</h2></div><button class="textButton" type="button" data-home-route="matches">Battle Tracker →</button></div>${rows.length?`<div class="pnHomeActivityList">${rows.map(m=>{const result=String(m.result||'—').toUpperCase(),cls=m.result==='win'?'good':m.result==='loss'?'bad':'neutral',rp=Number(m.rankChange),when=dateValue(m.timestamp)?new Date(m.timestamp).toLocaleDateString([], {month:'short',day:'numeric'}):'';return `<article class="pnHomeActivityRow"><span class="pnHomeActivityResult ${cls}">${$esc(result)}</span><div><strong>${$esc(m.deckName||'Deck')} <span>vs ${$esc(m.opponentArchetype||'Unknown')}</span></strong><small>${m.gameMode==='ranked'?'Ranked':'Battle'}${Number.isFinite(rp)&&rp!==0?` • ${rp>0?'+':''}${rp} RP`:''}${m.turnOrder&&m.turnOrder!=='unknown'?` • ${m.turnOrder==='first'?'First':'Second'}`:''}</small></div><time>${$esc(when)}</time></article>`}).join('')}</div>`:`<div class="pnHomeModuleError"><strong>No activity yet</strong><span>Your recorded matches will appear here.</span></div>`}</section>`;
+    return `<section class="pnHomeRecent panel" aria-labelledby="pnHomeRecentTitle"><div class="pnHomeSectionHead"><div><span class="eyebrow">RECENT ACTIVITY</span><h2 id="pnHomeRecentTitle">Your latest tracked games</h2></div><button class="textButton" type="button" data-home-route="matches">Battle Tracker →</button></div>${rows.length?`<div class="pnHomeActivityList">${rows.map(m=>{const result=String(m.result||'—').toUpperCase(),cls=m.result==='win'?'good':m.result==='loss'?'bad':'neutral',rp=Number(m.rankChange),when=dateValue(m.timestamp)?new Date(m.timestamp).toLocaleDateString([], {month:'short',day:'numeric'}):'',art=deckArtThumb(matchDeckFor(m));return `<article class="pnHomeActivityRow ${art?'hasArt':''}">${art?`<span class="pnHomeActivityArt" aria-hidden="true">${art}</span>`:''}<span class="pnHomeActivityResult ${cls}">${$esc(result)}</span><div><strong>${$esc(m.deckName||'Deck')} <span>vs ${$esc(m.opponentArchetype||'Unknown')}</span></strong><small>${m.gameMode==='ranked'?'Ranked':'Battle'}${Number.isFinite(rp)&&rp!==0?` • ${rp>0?'+':''}${rp} RP`:''}${m.turnOrder&&m.turnOrder!=='unknown'?` • ${m.turnOrder==='first'?'First':'Second'}`:''}</small></div><time>${$esc(when)}</time></article>`}).join('')}</div>`:`<div class="pnHomeModuleError"><strong>No activity yet</strong><span>Your recorded matches will appear here.</span></div>`}</section>`;
   }
 
   function onboarding(){
@@ -135,6 +161,17 @@
     </main>`;
     bind(app);
     scheduleMetaRefresh();
+    scheduleCardsRefresh();
+  }
+
+  let cardsRefreshScheduled=false;
+  function scheduleCardsRefresh(){
+    if(cardsRefreshScheduled)return;cardsRefreshScheduled=true;
+    try{
+      if(typeof cardsLoadedOnline!=='undefined'&&cardsLoadedOnline)return;
+      if(typeof loadCards!=='function')return;
+      loadCards().then(()=>{if(window.state?.page==='dashboard')renderDashboard()}).catch(()=>{});
+    }catch(e){console.warn('Home card art load deferred safely',e)}
   }
 
   let metaRefreshScheduled=false;

@@ -434,6 +434,30 @@ function pocketRankTierFromRP(points){
 function pocketRankFamily(tier){const t=String(tier||"");if(t.startsWith("Beginner"))return "beginner";if(t.startsWith("Poké Ball")||t.startsWith("Poke Ball"))return "poke";if(t.startsWith("Great Ball"))return "great";if(t.startsWith("Ultra Ball"))return "ultra";if(t.startsWith("Master Ball"))return "master";return "beginner"}
 function pocketRankFloorRP(tier){const family=pocketRankFamily(tier);return {beginner:0,poke:110,great:250,ultra:440,master:810}[family]??0}
 function pocketLossRP(tier){return {beginner:0,poke:5,great:5,ultra:7,master:10}[pocketRankFamily(tier)]??0}
+const RANK_EMBLEM_PALETTE={
+ beginner:{top:"#5b6b82",bottom:"#1b2432",band:"#0c1119",accent:"#c7ccd6"},
+ poke:{top:"#ff5c6c",bottom:"#f4f6fb",band:"#161a24",accent:"#ff8892"},
+ great:{top:"#2f7dff",bottom:"#e9f1ff",band:"#0d1017",accent:"#7ab2ff"},
+ ultra:{top:"#1c2230",bottom:"#f7c948",band:"#0d1017",accent:"#f7c948"},
+ master:{top:"#8a5cff",bottom:"#241a3d",band:"#c9a6ff",accent:"#c9a6ff"}
+};
+function rankEmblemPalette(family){return RANK_EMBLEM_PALETTE[family]||RANK_EMBLEM_PALETTE.beginner}
+function rankEmblemSubLevel(tier){const m=String(tier||"").trim().match(/(\d)$/);return m?m[1]:""}
+function rankEmblemHtml(tier,size){
+ size=Number(size)||56;
+ const label=String(tier||"Unranked").trim()||"Unranked",family=pocketRankFamily(label),p=rankEmblemPalette(family),level=rankEmblemSubLevel(label);
+ return `<span class="pnRankEmblem pnRankEmblem-${family}" style="--pn-rank-top:${p.top};--pn-rank-bottom:${p.bottom};--pn-rank-band:${p.band};--pn-rank-accent:${p.accent};width:${size}px;height:${size}px" role="img" aria-label="${esc(label)} rank">
+  <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+   <circle cx="32" cy="32" r="29" fill="var(--pn-rank-bottom)" stroke="var(--pn-rank-band)" stroke-width="2"/>
+   <path d="M3 32a29 29 0 0 1 58 0z" fill="var(--pn-rank-top)"/>
+   <rect x="2" y="29" width="60" height="6" fill="var(--pn-rank-band)"/>
+   <circle cx="32" cy="32" r="10" fill="var(--pn-rank-band)"/>
+   <circle cx="32" cy="32" r="6" fill="var(--pn-rank-bottom)"/>
+  </svg>
+  ${level?`<b class="pnRankEmblemLevel">${esc(level)}</b>`:""}
+ </span>`;
+}
+window.rankEmblemHtml=rankEmblemHtml;
 function masterBallLocalRP(result,currentStreak=0,tier="Beginner 1",beforeRP=0){
  const prev=Math.max(0,Number(currentStreak)||0),r=String(result||"").toLowerCase(),rp=Math.max(0,Math.floor(Number(beforeRP)||0));
  if(r==="win"){const next=prev+1,bonus=[0,0,3,6,9,12][Math.min(next,5)]||0;return {ok:true,previousStreak:prev,newStreak:next,streakBonus:bonus,rpChange:10+bonus}}

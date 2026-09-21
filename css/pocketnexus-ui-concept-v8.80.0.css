@@ -28,3 +28,40 @@ button{border-radius:9px}button.primary,.primaryButton,.btnPrimary{background:li
 @media(min-width:1200px){#app{max-width:1600px}.pnHomeMetricStrip{grid-template-columns:repeat(4,minmax(0,1fr))}.deck3bGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){.appHeaderBar{height:62px}.globalSearchButton{min-width:0}.globalSearchButtonText{display:none}#app{width:min(100% - 18px,1600px)}}
 @media(max-width:600px){.pnHomeHero{min-height:auto}.pnHomeMetricStrip{grid-template-columns:1fr 1fr}.pnHomeQuickGrid{grid-template-columns:1fr 1fr}.deck3bHero,.builderTopbar{border-radius:12px}}
+
+/* Rank emblem — reused on Home and Rank pages, driven by real state.rank.tier */
+.pnRankEmblem{position:relative;display:inline-flex;flex:0 0 auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
+.pnRankEmblem svg{width:100%;height:100%;display:block}
+.pnRankEmblemLevel{position:absolute;right:-3px;bottom:-3px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--pn-rank-accent);color:#0b0f16;font-size:10px;font-weight:800;line-height:16px;text-align:center;box-shadow:0 0 0 2px #07111d}
+
+/* Home metric tiles: real artwork replaces the generic gradient orb when present */
+.pnHomeMetric.hasArt:before{content:none}
+.pnHomeMetric.hasArt{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.pnHomeMetricArt{display:flex;align-items:center;justify-content:center;width:36px;height:36px;margin-bottom:2px}
+.pnHomeMetricArt img{width:34px;height:34px;object-fit:cover;border-radius:9px;box-shadow:0 6px 14px rgba(0,0,0,.35)}
+
+/* Active-deck centerpiece: real card-art fan instead of a text-only strip */
+.pnHomeDeckCenterpiece{display:flex;align-items:stretch;gap:0;overflow:hidden;padding:0}
+.pnHomeDeckCenterArt{flex:0 0 200px;min-height:150px}
+.pnHomeDeckCenterArt .deckArtFan{height:100%}
+.pnHomeDeckCenterBody{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:20px 22px}
+.pnHomeDeckStatus{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;letter-spacing:.02em;margin-right:6px}
+.pnHomeDeckStatus.ready{background:rgba(82,209,138,.16);color:var(--green,#52d18a)}
+.pnHomeDeckStatus.building{background:rgba(243,199,93,.16);color:var(--gold,#f3c75d)}
+@media(max-width:700px){.pnHomeDeckCenterpiece{flex-direction:column}.pnHomeDeckCenterArt{flex-basis:auto;height:120px}}
+
+/* Meta Read: swap the numeric index for real key-card artwork on the top archetype */
+.pnHomeMetaCell.hasArt{align-items:center}
+.pnHomeMetaCellArt{display:flex;gap:4px;margin-bottom:2px}
+.pnHomeMetaCellArt .metaIntelArtwork{height:auto;padding:0;background:none;gap:4px}
+.pnHomeMetaCellArt .metaIntelArtButton img,.pnHomeMetaCellArt .metaIntelArtPlaceholder{width:30px;height:42px;border-radius:5px}
+.pnHomeMetaCellArt .metaIntelArtPlaceholder{font-size:.5rem;padding:2px}
+
+/* Rank page: emblem beside the page title */
+.rankBorderHeaderIdentity{display:flex;align-items:center;gap:14px}
+.rankBorderEmblemWrap{flex:0 0 auto}
+
+/* Recent activity rows: small deck-art thumbnail per tracked match */
+.pnHomeActivityRow.hasArt{display:grid;grid-template-columns:32px auto 1fr auto;align-items:center}
+.pnHomeActivityArt{width:32px;height:32px;border-radius:8px;overflow:hidden;display:flex}
+.pnHomeActivityArt img{width:100%;height:100%;object-fit:cover}
