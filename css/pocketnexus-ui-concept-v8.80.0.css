@@ -60,6 +60,9 @@ button{border-radius:9px}button.primary,.primaryButton,.btnPrimary{background:li
 /* Rank page: emblem beside the page title */
 .rankBorderHeaderIdentity{display:flex;align-items:center;gap:14px}
 .rankBorderEmblemWrap{flex:0 0 auto}
+.rankSessionQuickWL{margin-top:12px;padding-top:12px;border-top:1px solid var(--pnx-line,#203b57)}
+.rankQuickWinBtn{background:linear-gradient(135deg,#2fbf7a,#1f8f5c);border-color:#39d68a}
+.rankQuickLossBtn{color:#ff8f99;border-color:#7a3540}
 
 /* Recent activity rows: small deck-art thumbnail per tracked match */
 .pnHomeActivityRow.hasArt{display:grid;grid-template-columns:32px auto 1fr auto;align-items:center}
