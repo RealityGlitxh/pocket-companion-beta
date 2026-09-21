@@ -72,3 +72,24 @@
  .battle3bHero h1{font-size:2rem}
  .battle3bResultActions{grid-template-columns:1fr 1fr}
 }
+
+
+/* v8.80.2 — Battle workspace: denser, more game-like, less empty dashboard space */
+#app:has(.battle3bPage){max-width:1640px}
+.battle3bPage{gap:10px}
+.battle3bHero{position:relative;overflow:hidden;padding:20px 22px;border-radius:14px;border-color:#315274;background:radial-gradient(circle at 86% 20%,rgba(104,68,240,.2),transparent 25%),linear-gradient(120deg,#111d35,#0a1726 60%,#09131f)}
+.battle3bHero:after{content:"";position:absolute;right:-40px;top:-90px;width:300px;height:300px;border:1px solid rgba(111,78,255,.22);border-radius:50%;box-shadow:0 0 70px rgba(100,68,235,.12);pointer-events:none}
+.battle3bHero h1{font-size:clamp(1.8rem,2.5vw,2.65rem);letter-spacing:-.04em}
+.battle3bHero p{font-size:.82rem;color:#aebfd1}
+.battle3bFocus{grid-template-columns:1.3fr repeat(3,minmax(0,.72fr));gap:7px}.battle3bFocus>div{padding:10px 12px;border-color:#294864;background:linear-gradient(145deg,#0c1b2b,#081522)}
+.battle3bFocus>div:first-child{border-color:#5b46b5;background:linear-gradient(145deg,rgba(54,38,117,.55),#0a1726)}
+.battle3bTabs{border-color:#294864;background:#081522}.battle3bTabs button.active{background:linear-gradient(135deg,#5839d0,#36288c)!important;border-color:#7257ed!important}
+.battle3bRecordGrid{grid-template-columns:minmax(0,1.55fr) minmax(280px,.62fr);gap:10px}
+.battle3bRecordCard{padding:17px;border-radius:13px;border-color:#345a79;background:linear-gradient(145deg,#10243a,#0a1726)}
+.battle3bRecordCard input,.battle3bRecordCard select{min-height:42px;background:#071522;border-color:#31506b}
+.battle3bResultActions button{min-height:52px}.battle3bResultActions button:first-child{border-color:#198568;background:linear-gradient(135deg,#116b59,#0b473e)}.battle3bResultActions button:last-child{border-color:#a73555;background:linear-gradient(135deg,#852841,#56192d)}
+.battle3bPage .battlePulseCard,.battle3bPage .battleRecentCard,.battle3bPage .sessionCard{border-color:#294864!important;background:linear-gradient(180deg,#0c1a29,#081522)!important}
+.battle3bPage .metric{border:1px solid #263f57!important;background:#081522!important;border-radius:10px}
+.battle3bPage .matchCard{border-color:#294864!important;background:linear-gradient(90deg,#0c1a29,#08131f)!important}
+.battle3bPage .matchCard:hover{border-color:#6750cc!important}
+@media(max-width:980px){.battle3bRecordGrid{grid-template-columns:1fr}.battle3bHero:after{opacity:.45}}
