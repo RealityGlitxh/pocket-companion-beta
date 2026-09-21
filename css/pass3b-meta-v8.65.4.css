@@ -93,3 +93,7 @@
   .metaCompactStatus{grid-template-columns:1fr!important}
   .metaCompactWindows{grid-template-columns:1fr 1fr!important}
 }
+
+
+/* v8.80.3 cohesive visual system */
+.metaCompactTop{border-color:#34577a!important;background:radial-gradient(circle at 88% 18%,rgba(106,69,245,.22),transparent 27%),linear-gradient(120deg,#111f38,#091725 62%,#08131f)!important}.metaPrimaryTabs{border:1px solid #294963!important;background:rgba(8,21,34,.94)!important}.metaPrimaryTabs button.active{background:linear-gradient(135deg,#5839d0,#36288c)!important}.metaCompactMain{border-color:#294963!important;background:linear-gradient(180deg,#0c1a29,#081522)!important}.metaCompactMain .metaIntelCard{border-color:#294963!important;background:linear-gradient(145deg,#0d1c2d,#081522)!important}.metaCompactMain .metaIntelCard:hover{border-color:#7257e7!important;box-shadow:0 12px 30px rgba(75,50,180,.14)!important}
