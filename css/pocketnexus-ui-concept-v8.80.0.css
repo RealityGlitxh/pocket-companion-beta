@@ -1,0 +1,30 @@
+/* PocketNexus v8.80.0 — approved visual concept rollout.
+   Presentation-only layer: preserves existing routes, data, auth and deck behavior. */
+:root{--pnx-purple:#6d45ff;--pnx-purple2:#8a5cff;--pnx-ink:#07111d;--pnx-panel:#0b1725;--pnx-panel2:#0e1c2c;--pnx-line:#203b57;--pnx-glow:rgba(109,69,255,.22)}
+body{background:radial-gradient(circle at 58% -10%,rgba(86,57,185,.13),transparent 32%),linear-gradient(180deg,#07111d 0%,#08121e 100%);color:#f5f7ff}
+.appHeader{background:rgba(5,13,23,.94);border-bottom:1px solid #1d334a;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.appHeaderBar{width:min(1600px,calc(100% - 28px));height:72px}
+.appBrand strong{font-size:1.2rem;letter-spacing:-.03em}.appBrandLogo{width:42px!important;height:42px!important;filter:drop-shadow(0 0 12px var(--pnx-glow))}
+.headerNav button,.headerNav summary{border-radius:10px;padding:9px 11px}.headerNav .active{background:linear-gradient(135deg,#6943f2,#5130d5);box-shadow:0 7px 20px rgba(88,53,218,.24)}
+.globalSearchButton{min-width:270px;justify-content:flex-start;background:#0b1929;border-color:#24415e;border-radius:10px}
+.globalSearchButtonText{flex:1;text-align:left}
+#app{width:min(1600px,calc(100% - 28px));padding-top:16px}
+.card,.panel,.box{border-color:var(--pnx-line);background:linear-gradient(180deg,rgba(12,27,43,.96),rgba(8,19,31,.98));box-shadow:0 10px 30px rgba(0,0,0,.14)}
+button{border-radius:9px}button.primary,.primaryButton,.btnPrimary{background:linear-gradient(135deg,#7049ff,#5632dc);border-color:#7958ff;box-shadow:0 7px 20px rgba(92,53,225,.2)}
+/* Home: tighter command-center proportions from approved concept */
+.pnHomeCommandCenter{gap:12px}.pnHomeHero{min-height:142px;padding:18px 22px;border-color:#294565;background:radial-gradient(circle at 75% 40%,rgba(111,67,255,.23),transparent 30%),linear-gradient(135deg,#121a39,#0a1728 58%,#0b1420);border-radius:14px}
+.pnHomeHero h1{font-size:clamp(2rem,3vw,2.7rem)}.pnHomeSnapshot,.pnHomeMeta,.pnHomeRecent{border-radius:13px!important;border-color:#24415d!important}
+.pnHomeMetricStrip{gap:8px}.pnHomeMetric{min-height:118px;padding:15px;border-radius:12px;border-color:#274764}.pnHomeMetric:before{border-radius:50%;background:radial-gradient(circle,#6e47ff 0 35%,#21175e 37% 56%,#101b31 58%);border-color:#8d71ff;color:#fff;box-shadow:0 0 18px rgba(112,73,255,.3)}
+.pnHomeQuickGrid{gap:8px}.pnHomeQuickGrid button{min-height:78px;border-radius:10px;border-color:#4f3dcc;background:linear-gradient(135deg,rgba(63,40,154,.86),rgba(23,25,69,.94))}.pnHomeQuickGrid button>span{background:linear-gradient(145deg,#774cff,#5231d6)}
+/* Decks + builder */
+.deck3bPage,.builderWorkspacePage{gap:10px}.deck3bHero,.builderTopbar{border-radius:13px;border-color:#294764;background:linear-gradient(135deg,#111e31,#0a1522)}.deck3bCard,.builderDeckPane,.builderSearchPane{border-color:#25435f;background:linear-gradient(180deg,#0d1c2c,#091522);border-radius:12px}
+.deck3bSummary>div,.deck3bControls{background:#0b1826;border-color:#24415d}.builderSplit{gap:10px}.builderCatalog.cards{gap:9px}.deckcards.builderDeckCards{gap:8px}
+.builderActions button{border-color:#31506c}.builderActions button:last-child{background:linear-gradient(135deg,#714aff,#5734dd);border-color:#7e61ff}
+/* Collection / battle / rank / meta share one visual system without changing markup */
+.collection3bPage .card,.battle3bPage .card,.meta3bPage .card,[class*="rank"] .card{border-color:#24415d;background:linear-gradient(180deg,#0c1a29,#081521)}
+.cards .card,.cardGrid .card{transition:transform .14s ease,border-color .14s ease}.cards .card:hover,.cardGrid .card:hover{transform:translateY(-2px);border-color:#6f59d9}
+.badge,.pill,.chip{border-radius:7px}.active.badge,.chip.active{background:#5637d8;color:#fff}
+/* Dense desktop workspace similar to approved mockup */
+@media(min-width:1200px){#app{max-width:1600px}.pnHomeMetricStrip{grid-template-columns:repeat(4,minmax(0,1fr))}.deck3bGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.appHeaderBar{height:62px}.globalSearchButton{min-width:0}.globalSearchButtonText{display:none}#app{width:min(100% - 18px,1600px)}}
+@media(max-width:600px){.pnHomeHero{min-height:auto}.pnHomeMetricStrip{grid-template-columns:1fr 1fr}.pnHomeQuickGrid{grid-template-columns:1fr 1fr}.deck3bHero,.builderTopbar{border-radius:12px}}
