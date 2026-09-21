@@ -64,6 +64,10 @@ button{border-radius:9px}button.primary,.primaryButton,.btnPrimary{background:li
 .rankQuickWinBtn{background:linear-gradient(135deg,#2fbf7a,#1f8f5c);border-color:#39d68a}
 .rankQuickLossBtn{color:#ff8f99;border-color:#7a3540}
 
+/* Decks list: highlight the active deck (state.battlePrefs.lastDeckId) */
+.deckManagerCard.isActiveDeck{border-color:var(--pnx-purple2,#8a5cff);box-shadow:0 0 0 1px rgba(138,92,255,.35),0 10px 30px rgba(0,0,0,.14)}
+.deckManagerCard.isActiveDeck .eyebrow{color:var(--pnx-purple2,#8a5cff)}
+
 /* Recent activity rows: small deck-art thumbnail per tracked match */
 .pnHomeActivityRow.hasArt{display:grid;grid-template-columns:32px auto 1fr auto;align-items:center}
 .pnHomeActivityArt{width:32px;height:32px;border-radius:8px;overflow:hidden;display:flex}
