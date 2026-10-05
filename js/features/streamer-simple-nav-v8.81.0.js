@@ -32,13 +32,20 @@ function markGroups(app){
 function addHeading(app,view){
  const first=app.querySelector('[data-pn-nav-group="'+view+'"]');if(!first)return;
  const prev=first.previousElementSibling;if(prev?.classList?.contains('pnStreamerSectionHead'))return;
- const v=VIEWS[view],h=document.createElement('div');h.className='pnStreamerSectionHead';h.dataset.pnNavGroup=view;h.innerHTML='<div><h2>'+v.label+'</h2><p>'+v.desc+'</p></div>';first.before(h)
+ const v=VIEWS[view],h=document.createElement('div');h.className='pnStreamerSectionHead';h.dataset.pnNavGroup=view;h.innerHTML='<div><span class="pnSectionKicker">STREAMER CENTER</span><h2>'+v.label+'</h2><p>'+v.desc+'</p></div>';first.before(h)
+}
+function combineHeader(app){
+ const tabs=app.querySelector('.streamerWorkspaceTabs'),navEl=app.querySelector('.pnStreamerNav');if(!tabs||!navEl)return;
+ let shell=app.querySelector('.pnStreamerCommandBar');
+ if(!shell){shell=document.createElement('div');shell.className='pnStreamerCommandBar';tabs.before(shell)}
+ if(tabs.parentElement!==shell)shell.appendChild(tabs);
+ if(navEl.parentElement!==shell)shell.appendChild(navEl);
 }
 function apply(){
  if(safe(()=>state.page,'')!=='streamer')return;const app=document.getElementById('app');if(!app)return;
  app.querySelectorAll('.pnStreamerSectionHead').forEach(x=>x.remove());
  let n=app.querySelector('.pnStreamerNav');if(!n){n=nav();const tabs=app.querySelector('.streamerWorkspaceTabs');const intro=app.querySelector('.streamerWorkspaceIntro');(intro||tabs||app.firstElementChild)?.after(n)}
- markGroups(app);Object.keys(VIEWS).forEach(v=>addHeading(app,v));setView(current(),false)
+ combineHeader(app);markGroups(app);Object.keys(VIEWS).forEach(v=>addHeading(app,v));setView(current(),false)
 }
 let queued=false;function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>requestAnimationFrame(()=>{queued=false;apply()}))}
 function install(){if(typeof window.streamerPage==='function'&&!window.streamerPage.__simpleNav){const base=window.streamerPage;window.streamerPage=function(){const out=base.apply(this,arguments);schedule();return out};window.streamerPage.__simpleNav=true}schedule()}
