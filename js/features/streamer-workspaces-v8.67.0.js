@@ -44,7 +44,8 @@
   }
 
   function allowed(mode,type){
-    if(type==='mode'||type==='shared'||type==='obs'||type==='overlay-settings'||type==='diagnostics')return true;
+    if(type==='mode'||type==='shared')return true;
+    if(type==='obs'||type==='overlay-settings'||type==='diagnostics'||type==='scene-rotation')return false;
     if(mode==='ranked')return ['live-session','quick-match','session-performance','current-rank','recent-matches','matchup-panel'].includes(type);
     if(mode==='tournament')return ['creator-expansion','scene-rotation'].includes(type);
     if(mode==='caster')return ['scene-rotation'].includes(type);
