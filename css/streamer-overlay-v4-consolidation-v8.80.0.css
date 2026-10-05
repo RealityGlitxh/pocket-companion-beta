@@ -1,0 +1,27 @@
+/* PocketNexus V8.80.0 — Streamer Overlay v4 consolidation */
+.streamerWorkspacePage [data-streamer-section="scene-rotation"],
+.streamerWorkspacePage [data-streamer-section="overlay-settings"],
+.streamerWorkspacePage [data-streamer-section="diagnostics"],
+.streamerWorkspacePage [data-streamer-section="obs"],
+.streamerWorkspacePage .pnScenePreset{display:none!important}
+.streamerWorkspacePage .pnObsStudio{margin:16px 0 12px;border-color:#31506a;background:linear-gradient(180deg,#0d1a26,#09131c)}
+.streamerWorkspacePage .pnObsStudioHead h2{font-size:1.35rem;margin:3px 0}
+.streamerWorkspacePage .pnObsPreviewCard{background:
+ linear-gradient(45deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.035) 75%),
+ linear-gradient(45deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.035) 75%),#07111a;
+ background-size:24px 24px;background-position:0 0,12px 12px}
+.streamerWorkspacePage .pnObsViewport{min-height:0!important;aspect-ratio:16/9;background:transparent!important}
+.streamerWorkspacePage .pnObsViewport iframe{background:transparent!important}
+.pnOverlayLiveLabel{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;color:#9fb2c5;font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.pnOverlayLiveLabel strong{color:#e8f4ff;font-size:.72rem}
+.pnOverlayCanonical{margin-top:10px;padding-top:10px;border-top:1px solid #263d51}
+.pnOverlayCanonical h3{margin:0 0 8px;font-size:.82rem}
+.pnOverlayToggleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.pnOverlayToggle{display:flex;align-items:center;gap:7px;padding:8px 9px;border:1px solid #263d51;border-radius:9px;background:#09141e;font-size:.7rem;color:#c8d6e2}
+.pnOverlayToggle input{width:auto;margin:0}
+.pnOverlayActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.pnOverlayAdvanced{margin-top:10px;border:1px solid #263d51;border-radius:10px;background:#09141e}
+.pnOverlayAdvanced summary{cursor:pointer;padding:10px;font-size:.75rem;font-weight:800}
+.pnOverlayAdvancedBody{padding:0 10px 10px;display:grid;gap:8px}
+.pnOverlayAdvancedBody label{font-size:.7rem;color:#c8d6e2}
+@media(max-width:700px){.pnOverlayToggleGrid,.pnOverlayActions{grid-template-columns:1fr}}
