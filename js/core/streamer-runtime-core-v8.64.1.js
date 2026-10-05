@@ -73,6 +73,11 @@ function streamerRPJourney(){
  if(!pts.length)pts.push(Number(currentRankObj().points||0));
  return pts.slice(-30);
 }
+function streamerOverlayText(v,fallback=""){
+ if(typeof v==="string"||typeof v==="number")return String(v).trim()||fallback;
+ if(v&&typeof v==="object"){const x=v.name??v.displayName??v.username??v.playerName??v.label??v.title??v.value;if(x!==undefined&&x!==v)return String(x).trim()||fallback}
+ return fallback;
+}
 function buildStreamerOverlayState(){
  const ms=completedMatches().sort((a,b)=>b.timestamp-a.timestamp),overall=wl(ms),st=streakInfo(ms),rank=currentRankObj(),deck=streamerCurrentDeck(),session=streamerSessionStats(),opp=streamerOpponentValue(),mu=streamerMatchupStats(opp),cfg=state.streamer||{},last=ms[0]||null;
  return {
@@ -81,7 +86,7 @@ function buildStreamerOverlayState(){
   record:{wins:overall.w,losses:overall.l,ties:overall.t,winRate:overall.wr,streak:st.type==="none"?"—":`${st.type==="win"?"W":"L"}${st.count}`},rank:{tier:rank.tier||"Unranked",points:Number(rank.points||0)},rpJourney:streamerRPJourney(),opponent:opp||"",matchup:{session:mu.session,today:mu.today,lifetime:mu.lifetime},
   session:session?{id:session.session.id,name:session.session.name||"Battle Session",start:Number(session.session.start||0),wins:session.w,losses:session.l,ties:session.t,winRate:session.wr,streak:session.streak,bestWin:session.bestWin,rankChange:session.rankChange}:null,
   lastMatch:last?{result:last.result,deckName:last.deckName,opponentArchetype:last.opponentArchetype,rankChange:Number(last.rankChange||0),rankAfter:Number(last.rankAfter?.points||rank.points||0)}:null,
-  tournament:{name:cfg.tournamentName||"Tournament",round:cfg.tournamentRound||"Round 1",record:cfg.tournamentRecord||"0-0",stage:cfg.tournamentStage||"Swiss"},caster:{a:cfg.casterA||"Player A",b:cfg.casterB||"Player B",scoreA:Number(cfg.casterScoreA||0),scoreB:Number(cfg.casterScoreB||0)},
+  tournament:{name:streamerOverlayText(cfg.tournamentName,"Tournament"),round:streamerOverlayText(cfg.tournamentRound,"Round 1"),record:streamerOverlayText(cfg.tournamentRecord,"0-0"),stage:streamerOverlayText(cfg.tournamentStage,"Swiss")},caster:{a:streamerOverlayText(cfg.casterA,"Player A"),b:streamerOverlayText(cfg.casterB,"Player B"),scoreA:Number(cfg.casterScoreA||0),scoreB:Number(cfg.casterScoreB||0)},
   recent:ms.slice(0,Math.max(1,Math.min(10,Number(cfg.recentCount||5)))).map(m=>({id:m.id,result:m.result,deckName:m.deckName,opponentArchetype:m.opponentArchetype,turnOrder:m.turnOrder,rankChange:Number(m.rankChange||0),timestamp:m.timestamp}))
  };
 }
