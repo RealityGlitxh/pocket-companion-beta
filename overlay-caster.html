@@ -1,1 +1,3 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketNexus — Caster Overlay</title><meta http-equiv="refresh" content="0;url=overlay.html?mode=caster"></head><body style="margin:0;background:transparent"><script>location.replace('overlay.html?mode=caster'+(location.hash||''));</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketNexus — Caster Overlay</title></head><body style="margin:0;background:transparent"><script>
+const p=new URLSearchParams(location.search);p.set('mode','caster');location.replace('overlay.html?'+p.toString()+(location.hash||''));
+</script></body></html>
