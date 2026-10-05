@@ -115,7 +115,8 @@
     app.querySelector('.streamerWorkspaceIntro')?.remove();
     const anchor=first||app.firstElementChild;
     anchor?.after(workspaceTabs(mode));
-    app.querySelector('.streamerWorkspaceTabs')?.after(workspaceIntro(mode));
+    // V8.84: remove the large workspace hero. The active tab already provides context.
+    app.querySelector('.streamerWorkspaceIntro')?.remove();
 
     const panels=workspacePanels(app);
     for(const panel of panels){
