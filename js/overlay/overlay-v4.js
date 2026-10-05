@@ -1,7 +1,7 @@
 (()=>{'use strict';
 const STORE='ppc_stream_overlay_v83',CHANNEL='ppc-stream-v83',SUPA='https://cdmzrsvwztndqfwzsumo.supabase.co',PUB='sb_publishable_rRpqFtZ_izENE8u8gTjo9Q_858RVJzl';
 const q=new URLSearchParams(location.search),forced=q.get('mode'),overlayId=q.get('overlay'),root=document.getElementById('overlayRoot');
-let state=null,sceneIndex=0,lastScene=Date.now(),polling=false,failures=0,status=overlayId?'connecting':'local',timer=null,channel=null,lastMode='';
+let state=null,sceneIndex=0,lastScene=Date.now(),polling=false,failures=0,status=overlayId?'connecting':'local',timer=null,channel=null,lastMode='',lastSignature='';
 const esc=v=>String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const n=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
 const mode=()=>forced||state?.config?.overlayMode||'ranked';
@@ -30,10 +30,11 @@ function render(){
  const hud=cfg.persistentHud!==false&&mode()==='ranked'?'<div class="pn-hud"><span class="pn-dot"></span>'+esc((state.rank?.tier||'Ranked')+' • '+(state.rank?.points||0)+' RP • '+(record().streak??'—'))+'</div>':'';
  root.innerHTML=hud+renderScene(list[sceneIndex]);
 }
-function apply(next,activeMode,remote=false){if(!next)return;state=next;if(forced){state.config=state.config||{};state.config.overlayMode=forced}const m=forced||activeMode||mode();if(lastMode&&lastMode!==m){sceneIndex=0;lastScene=Date.now()}lastMode=m;if(!remote){const requested=n(next?.config?.sceneIndex,NaN);if(Number.isFinite(requested))sceneIndex=Math.max(0,requested)%Math.max(1,scenes().length)}render()}
+function signature(next,activeMode){try{return JSON.stringify([activeMode||'',next])}catch{return String(Date.now())}}
+function apply(next,activeMode,remote=false){if(!next)return;const sig=signature(next,activeMode);if(remote&&sig===lastSignature)return false;lastSignature=sig;state=next;if(forced){state.config=state.config||{};state.config.overlayMode=forced}const m=forced||activeMode||mode();if(lastMode&&lastMode!==m){sceneIndex=0;lastScene=Date.now()}lastMode=m;if(!remote){const requested=n(next?.config?.sceneIndex,NaN);if(Number.isFinite(requested))sceneIndex=Math.max(0,requested)%Math.max(1,scenes().length)}render();return true}
 async function pull(){if(!overlayId||polling)return;polling=true;const ctl=new AbortController(),timeout=setTimeout(()=>ctl.abort(),5000);try{const res=await fetch(SUPA+'/rest/v1/rpc/read_stream_overlay?ts='+Date.now(),{method:'POST',headers:{apikey:PUB,'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({p_overlay_id:overlayId}),cache:'no-store',signal:ctl.signal});if(!res.ok)throw Error('HTTP '+res.status);const out=await res.json();status=out?.status||'error';if(status==='ok'){const env=out.state||{},m=forced||env.activeMode||'ranked',next=env.modes?.[m];if(next){failures=0;apply(next,m,true);return}}state=null;render()}catch(e){if(++failures>=2){status='error';state=null;render()}}finally{clearTimeout(timeout);polling=false}}
 function initLocal(){try{channel=new BroadcastChannel(CHANNEL);channel.onmessage=e=>{const m=e.data||{};if(m.type==='state'&&m.data)apply(m.data,mode(),false);if(m.type==='ping')channel.postMessage({type:'pong',from:'overlay-v4',at:Date.now()})};channel.postMessage({type:'overlay-ready',version:4,at:Date.now()})}catch{}window.addEventListener('storage',e=>{if(e.key===STORE){try{const x=JSON.parse(e.newValue||'null');if(x)apply(x,mode(),false)}catch{}}});try{const x=JSON.parse(localStorage.getItem(STORE)||'null');if(x)apply(x,mode(),false);else render()}catch{render()}}
-if(overlayId){render();pull();timer=setInterval(pull,1000)}else initLocal();
-setInterval(()=>{if(state?.config?.sceneRotation!==false&&Date.now()-lastScene>=Math.max(3,n(state?.config?.sceneSeconds,10))*1000){const list=scenes();sceneIndex=(sceneIndex+1)%Math.max(1,list.length);lastScene=Date.now();render()}},1000);
+if(overlayId){render();pull();timer=setInterval(pull,5000)}else initLocal();
+setInterval(()=>{if(state?.config?.sceneRotation!==false&&Date.now()-lastScene>=Math.max(10,n(state?.config?.sceneSeconds,120))*1000){const list=scenes();sceneIndex=(sceneIndex+1)%Math.max(1,list.length);lastScene=Date.now();render()}},1000);
 window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);try{channel?.close()}catch{}});
 })();
