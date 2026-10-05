@@ -38,8 +38,9 @@ function canonicalizeStudio(app){
  studio.dataset.overlayOwner='v4';
  const eyebrow=studio.querySelector('.pnObsEyebrow');if(eyebrow)eyebrow.textContent='OVERLAY V4 • '+label(m).toUpperCase();
  const h=studio.querySelector('h2');if(h)h.textContent='Overlay Studio';
- const p=studio.querySelector('.pnObsStudioHead p');if(p)p.textContent='One preview, one settings source, and one OBS browser-source pipeline for this workspace.';
- const canvas=studio.querySelector('.pnObsCanvas');if(canvas)canvas.textContent='Output: 1920 × 1080';
+ const p=studio.querySelector('.pnObsStudioHead p');if(p)p.textContent='Preview, customize, and send this workspace to OBS.';
+ const canvas=studio.querySelector('.pnObsCanvas');if(canvas)canvas.textContent='1920 × 1080';
+ const actions=studio.querySelector('.pnObsActions');if(actions){actions.innerHTML='<button class="secondary" onclick="PPCStreamerOBSRemote?.copySource?.()||PPCStreamerOBS2.copySource()">Copy OBS URL</button><button class="secondary" onclick="PPCStreamerOBSRemote?.openTest?.()||PPCStreamerOBS2.openFull()">Open Overlay</button>'}
  studioExtras(studio,m);
  return true;
 }
