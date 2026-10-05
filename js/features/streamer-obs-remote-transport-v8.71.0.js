@@ -98,9 +98,9 @@ function updateUi(kind='connecting'){
     if(el.title!==title)el.title=title;
   });
 }
-function setupHtml(m){return `<div class="pnObsRemoteSetup" data-pn-remote-obs="${m}" style="margin:12px 0;padding:14px;border:1px solid #ffffff18;border-radius:14px;background:#ffffff08"><div class="between" style="gap:12px;align-items:flex-start"><div><span class="pnObsEyebrow">OBS BROWSER SOURCE</span><h3 style="margin:4px 0">Remote OBS Overlay</h3><p class="muted" style="margin:0">Works in OBS even when it does not share PocketNexus browser storage. This URL follows the active Stream Control Center workspace.</p></div><span class="pnObsStatus active" data-pn-remote-obs-status>Remote OBS: Connecting…</span></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="secondary" onclick="PPCStreamerOBSRemote.copySource()">Copy Overlay URL</button><button class="secondary" onclick="PPCStreamerOBSRemote.openTest()">Test Overlay</button><button class="secondary" onclick="PPCStreamerOBSRemote.regenerate()">Regenerate URL</button><span class="muted tiny">Recommended: 1920 × 1080</span></div></div>`}
+function setupHtml(m){return `<div class="pnObsRemoteInline" data-pn-remote-obs="${m}"><span class="pnObsStatus active" data-pn-remote-obs-status>Remote OBS: Connecting…</span><button class="secondary" onclick="PPCStreamerOBSRemote.regenerate()">Regenerate URL</button></div>`}
 function inject(){
-  for(const m of MODES){const studio=document.querySelector(`.pnObsStudio[data-mode="${m}"]`);if(!studio||studio.querySelector('[data-pn-remote-obs]'))continue;const row=studio.querySelector('.pnObsStatusRow');if(row)row.insertAdjacentHTML('afterend',setupHtml(m));else studio.insertAdjacentHTML('afterbegin',setupHtml(m));}
+  for(const m of MODES){const studio=document.querySelector(`.pnObsStudio[data-mode="${m}"]`);if(!studio||studio.querySelector('[data-pn-remote-obs]'))continue;const row=studio.querySelector('.pnObsStatusRow');if(row)row.insertAdjacentHTML('beforeend',setupHtml(m));else studio.insertAdjacentHTML('afterbegin',setupHtml(m));}
   updateUi(lastError?'error':readCreds()?'connected':'connecting');
 }
 function patchObs2(){
