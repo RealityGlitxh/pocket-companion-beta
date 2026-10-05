@@ -26,3 +26,19 @@ body[data-pn-ui="2"] .headerTools{gap:6px}.globalSearchButtonText{max-width:120p
 .pnHomeOnboarding{grid-column:1/-1;border:0!important;border-radius:18px!important;background:#0e141c!important}
 @media(max-width:1050px){.pnHomeHeroArt{opacity:.38;right:-30px}.pnHomeCommandCenter{grid-template-columns:1fr}.pnHomeMeta,.pnHomeCommandCenter .pnHomeQuickActions,.pnHomeCommandCenter .pnHomeContinue,.pnHomeCommandCenter .pnHomeRecent{grid-column:1}.pnHomeMetricStrip{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){body[data-pn-ui="2"] #app{width:calc(100% - 22px);padding-top:14px}.pnHomeCommandCenter{gap:10px}.pnHomeHero{min-height:270px;padding:26px 20px!important;border-radius:20px!important}.pnHomeHero h1{font-size:clamp(2.7rem,14vw,4.1rem)!important}.pnHomeHeroArt{display:none}.pnHomeMetricStrip{grid-template-columns:1fr 1fr}.pnHomeMetric{min-height:94px;padding:13px!important}.pnHomeHeroButtons{flex-wrap:wrap}}
+
+/* PocketNexus UI 2.2 — compact competitive workspace */
+.pnHomeCommandCenter{display:grid!important;grid-template-columns:minmax(0,1.55fr) minmax(300px,.7fr)!important;gap:12px!important;align-items:start!important}
+.pnHomeTopbar{grid-column:1/-1;display:flex;align-items:end;justify-content:space-between;gap:20px;padding:10px 2px 16px;border-bottom:1px solid var(--pn2-line)}
+.pnHomeTopbar h1{margin:2px 0 3px!important;font-size:clamp(1.8rem,3vw,2.6rem)!important;line-height:1!important;letter-spacing:-.045em!important}.pnHomeTopbar p{margin:0;color:var(--pn2-muted);font-size:.82rem}.pnHomeTopActions{display:flex;gap:7px}
+.pnHomePrimary{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:10px}
+.pnHomeDeckFocus,.pnHomeSessionFocus{border:1px solid var(--pn2-line);border-radius:16px;background:#0e141c}
+.pnHomeDeckFocus{padding:20px}.pnHomeFocusLabel{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;color:#788797;font-size:.64rem;font-weight:900;letter-spacing:.1em}.pnHomeTextAction{padding:0!important;border:0!important;background:transparent!important;color:#79caff!important;font-size:.68rem!important}
+.pnHomeDeckIdentity{display:flex;align-items:center;gap:14px}.pnHomeDeckMark{display:grid;place-items:center;width:52px;height:52px;border-radius:12px;background:linear-gradient(145deg,#19314a,#101c29);color:#7bcbff;font-size:1.3rem}.pnHomeDeckIdentity h2{margin:0 0 3px;font-size:1.35rem}.pnHomeDeckIdentity p{margin:0;color:var(--pn2-muted);font-size:.76rem}.pnHomeFocusActions{display:flex;gap:7px;margin-top:18px}
+.pnHomeSessionFocus{display:flex;flex-direction:column;justify-content:center;padding:20px}.pnHomeSessionFocus strong{margin:8px 0 0;font-size:3.2rem;line-height:1;letter-spacing:-.06em}.pnHomeSessionFocus p{margin:5px 0 18px;color:var(--pn2-muted);font-size:.72rem}.pnHomeSessionFocus button{align-self:flex-start}
+.pnHomeHero{display:none!important}
+.pnHomeSnapshot{grid-column:1/-1!important;margin-top:2px}.pnHomeSnapshotHead{margin-top:0!important}
+.pnHomeMeta{grid-column:1!important}.pnHomeQuickActions{grid-column:2!important}.pnHomeContinue{grid-column:1!important}.pnHomeRecent{grid-column:1/-1!important}
+.pnHomeCommandCenter>.panel{padding:18px!important;border:1px solid var(--pn2-line)!important;background:#0d131a!important}.pnHomeCommandCenter>.panel:hover{border-color:rgba(255,255,255,.13)!important}
+@media(max-width:900px){.pnHomeCommandCenter{grid-template-columns:1fr!important}.pnHomePrimary{grid-template-columns:1fr 210px}.pnHomeMeta,.pnHomeQuickActions,.pnHomeContinue,.pnHomeRecent{grid-column:1!important}}
+@media(max-width:650px){.pnHomeTopbar{align-items:flex-start;flex-direction:column}.pnHomePrimary{grid-template-columns:1fr}.pnHomeSessionFocus strong{font-size:2.5rem}.pnHomeTopActions{width:100%}.pnHomeTopActions button{flex:1}}
