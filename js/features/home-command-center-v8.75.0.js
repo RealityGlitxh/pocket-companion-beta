@@ -2,7 +2,7 @@
    Presentation-only command center. Uses existing state/services/routes and does not own backend data. */
 (function(){
   'use strict';
-  const VERSION='8.80.1';
+  const VERSION='9.1.0';
   const $esc=(value)=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   const list=(value)=>Array.isArray(value)?value:[];
   const num=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
@@ -126,7 +126,8 @@
     const app=document.getElementById('app');if(!app)return;
     const matches=completed().sort((a,b)=>dateValue(b.timestamp)-dateValue(a.timestamp)),deck=activeDeck(matches),empty=isEmptyAccount(matches);
     app.innerHTML=`<main class="pnHomeCommandCenter" data-home-version="${VERSION}">
-      <header class="pnHomeHero pnHomeHeroVisual"><div class="pnHomeHeroCopy"><span class="pocketHeroKicker"><span class="pocketBallMark" aria-hidden="true"><i></i></span><span>POCKETNEXUS</span></span><h1>Build. Play. Track. Improve.</h1><p>Your competitive Pocket hub — rank progress, active deck, recent battles and the current field at a glance.</p><div class="pnHomeHeroButtons"><button type="button" data-home-route="matches">＋ Log Match</button><button class="secondary" type="button" data-home-route="decks">Open Decks</button></div></div><div class="pnHomeHeroArt" aria-hidden="true"><span class="pnHomeHeroCard pnHomeHeroCardA"></span><span class="pnHomeHeroCard pnHomeHeroCardB"></span><span class="pnHomeHeroOrb"></span></div></header>
+      <header class="pnHomeTopbar"><div><span class="eyebrow">POCKETNEXUS</span><h1>Competitive Hub</h1><p>Everything you need for your next Pocket session.</p></div><div class="pnHomeTopActions"><button type="button" data-home-route="matches">＋ Record Battle</button><button class="secondary" type="button" data-home-route="decks">Decks</button></div></header>
+      <section class="pnHomePrimary"><article class="pnHomeDeckFocus"><div class="pnHomeFocusLabel"><span>ACTIVE DECK</span><button class="pnHomeTextAction" type="button" data-home-route="decks">Change</button></div><div class="pnHomeDeckIdentity"><div class="pnHomeDeckMark">▣</div><div><h2>${deck?$esc(deck.name||'Saved deck'):'Choose a deck'}</h2><p>${deck?((typeof window.deckCount==='function'?window.deckCount(deck):list(deck.cards).length)+'/20 cards ready'):'Build or select a deck before your next session.'}</p></div></div><div class="pnHomeFocusActions"><button type="button" data-home-route="${deck?'matches':'decks'}">${deck?'Play this deck':'Choose deck'}</button>${deck?'<button class="secondary" type="button" data-home-open-deck="'+$esc(deck.id)+'">View deck</button>':''}</div></article><article class="pnHomeSessionFocus"><span class="eyebrow">LAST 10</span><strong>${recentRecord(matches,10).w}-${recentRecord(matches,10).l}</strong><p>${recentRecord(matches,10).rows.length||0} tracked matches</p><button class="secondary" type="button" data-home-route="stats">View performance →</button></article></section>
       ${empty?onboarding():snapshot(matches,deck)}
       ${metaRead()}
       ${quickActions()}
