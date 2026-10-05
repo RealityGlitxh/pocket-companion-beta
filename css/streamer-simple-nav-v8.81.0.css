@@ -30,3 +30,21 @@
 .pnStreamerEmpty{padding:26px;border:1px dashed #315069;border-radius:13px;background:rgba(255,255,255,.015);color:var(--sc-muted);text-align:center}
 @media(max-width:760px){.streamerWorkspacePage{padding-left:0;padding-right:0}.streamerWorkspacePage .pnStreamerNav{display:flex;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}.streamerWorkspacePage .pnStreamerNav::-webkit-scrollbar{display:none}.pnStreamerNav button{flex:0 0 auto;min-width:122px}.streamerWorkspacePage .streamerWorkspaceTabs{overflow-x:auto}.streamerWorkspacePage .streamerWorkspaceTabs button{flex:0 0 auto;min-width:120px}.streamerWorkspacePage .panel{padding:13px!important}.pnStreamerNav .pnNavIcon{display:none}}
 @media(prefers-reduced-motion:reduce){.pnStreamerNav button{transition:none}.pnStreamerNav button:hover{transform:none}}
+
+/* V8.83 — compact Streamer workspace restructuring */
+.streamerWorkspacePage .pnObsStatusRow{align-items:center;padding:0 14px;margin:10px 0 0!important}
+.streamerWorkspacePage .pnObsRemoteInline{display:flex;align-items:center;gap:7px;margin-left:auto}
+.streamerWorkspacePage .pnObsRemoteInline .pnObsStatus{white-space:nowrap}
+.streamerWorkspacePage .pnObsRemoteInline button{min-height:30px;padding:5px 9px;font-size:.68rem}
+.streamerWorkspacePage .pnObsStudioGrid{grid-template-columns:minmax(0,1.65fr) minmax(260px,.35fr)!important;gap:0!important;padding:0 4px 10px}
+.streamerWorkspacePage .pnObsSettings{position:static!important;padding:11px!important}
+.streamerWorkspacePage .pnObsViewport{min-height:0!important}
+.streamerWorkspacePage .pnObsField{margin-bottom:7px!important}
+.streamerWorkspacePage .pnOverlayToggleGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.streamerWorkspacePage .pnOverlayToggle{min-height:32px;padding:6px 7px}
+.streamerWorkspacePage[data-streamer-workspace="tournament"] [data-pn-nav-group="setup"] .form3,
+.streamerWorkspacePage[data-streamer-workspace="caster"] [data-pn-nav-group="setup"] .form3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.streamerWorkspacePage[data-streamer-workspace="tournament"] [data-pn-nav-group="setup"],
+.streamerWorkspacePage[data-streamer-workspace="caster"] [data-pn-nav-group="setup"]{padding:13px!important}
+.streamerWorkspacePage .pnLiveField small{display:block;margin-top:4px;line-height:1.35}
+@media(max-width:1000px){.streamerWorkspacePage .pnObsStudioGrid{grid-template-columns:1fr!important}.streamerWorkspacePage .pnObsRemoteInline{width:100%;margin-left:0;justify-content:space-between}}
